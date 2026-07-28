@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="title desc">
+  <title id="title">Ícone Checklist de Obra</title>
+  <desc id="desc">Prancheta de inspeção com fundo minimalista.</desc>
+  <rect width="1254" height="1254" fill="#1f331b"/>
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity="0.26">
+    <circle cx="627" cy="627" r="366"/>
+    <path d="M282 338V282H338M916 282H972V338M282 916V972H338M916 972H972V916"/>
+  </g>
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity="0.44">
+    <path d="M392 336H862V972H392Z"/>
+  </g>
+  <g stroke="none">
+    <path fill="#2d5da9" d="M388 350H866V976H388V350ZM430 410V916H824V410Z" fill-rule="evenodd"/>
+    <path fill="#f9b215" d="M535 286H719L754 392H500Z"/>
+    <rect x="566" y="244" width="122" height="82" rx="18" fill="#ed6b1d"/>
+    <path fill="#ed6b1d" d="M467 500L510 543L583 461L615 492L511 611L436 536Z"/>
+    <path fill="#f9b215" d="M467 638L510 681L583 599L615 630L511 749L436 674Z"/>
+    <path fill="#a7c798" d="M467 776L510 819L583 737L615 768L511 887L436 812Z"/>
+  </g>
+  <g fill="none" stroke="#a7c798" stroke-width="8" opacity="0.9" stroke-linecap="square">
+    <path d="M650 523H785M650 661H785M650 799H785"/>
+  </g>
+</svg>

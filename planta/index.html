@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR" data-app-code="planta">
 <head>
+<link rel="icon" type="image/svg+xml" href="../shared/IconPlanta.svg">
 <script>
   // Aplica o tema salvo ANTES da primeira renderização, pra não piscar
   // claro→escuro ao carregar a página.
@@ -29,6 +30,7 @@
 <script src="https://unpkg.com/svg2pdf.js@2.4.0/dist/svg2pdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../shared/runtime-config.local.js"></script>
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js"></script>
 <script src="../shared/app-guard.js"></script>
@@ -159,6 +161,11 @@
     transition:border-color .15s,color .15s,background .15s}
   #btnLogout:hover{border-color:var(--over);color:var(--over);background:var(--over-soft)}
   #btnLogout:active{transform:scale(.96)}
+  #btnLogout{display:none}
+  .side-session{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface);flex-shrink:0}
+  .side-session-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:700;color:var(--ink-soft)}
+  .side-session button{border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-sm);padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer}
+  .side-session button:hover{border-color:var(--over);color:var(--over);background:var(--over-soft)}
 
   /* ── Chave de alternância de tema (claro/escuro) ── */
   .theme-toggle{width:46px;height:26px;border-radius:var(--r-pill);border:1px solid var(--line);
@@ -726,6 +733,10 @@
     <div id="tabsContainer" class="tabs-container"></div>
     <div class="inv" id="inv"></div>
     <div class="totals" id="totals"></div>
+    <div class="side-session" id="side-session-planta">
+      <span class="side-session-name" id="side-user-name">—</span>
+      <button type="button" id="side-logout-planta">Sair</button>
+    </div>
   </aside>
 
   <div class="stage">
@@ -10548,7 +10559,7 @@ document.getElementById("menuToggle").onclick=()=>{
   }
 };
 window.addEventListener("resize",render);
-document.getElementById("headerLogo").src=DEFAULT_LOGO;
+document.getElementById("headerLogo").src="../shared/IconPlanta.svg";
 document.getElementById("projName").value=state.name||"";
 renderTabs();renderInv();render();fit();
 // ============================================================
@@ -10855,7 +10866,7 @@ function abrirQuantitativo() {
   const brlFmt = v => v.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
 
   const perfilBadge = `<span class="q-margem-badge">
-    ${pricingData.perfil === 'Gestor' ? '👔' : '🛒'} <b>${pricingData.perfil}</b>
+    ${(pricingData.perfil === 'Gestor' || pricingData.perfil === 'Gestor Matriz') ? '👔' : '🛒'} <b>${pricingData.perfil}</b>
     &nbsp;·&nbsp; ${esc(pricingData.franquia)}
   </span>`;
 
@@ -11476,7 +11487,7 @@ async function autenticarECarregarToken() {
     const perfil  = pricingData.perfil    || "—";
     const franquia= pricingData.franquia  || "—";
     const icon    = perfil === 'Admin'   ? '🏛️' :
-                    perfil === 'Gestor'  ? '👔' : '🛒';
+                    (perfil === 'Gestor' || perfil === 'Gestor Matriz')  ? '👔' : '🛒';
     document.getElementById("userPerfilBadge").textContent = `${icon} ${perfil}`;
     document.getElementById("userFranquia").textContent    = franquia;
     document.getElementById("userInfoBar").style.display  = "flex";
@@ -11705,10 +11716,11 @@ function gerarPDFOrcamento(action = 'save') {
 // Wire the button
 document.getElementById("btnQuant").addEventListener("click", ()=>{ qViewTab='paineis'; abrirQuantitativo(); });
 // Botão Sair: apaga token salvo e recarrega a página para voltar ao login
-document.getElementById("btnLogout").addEventListener("click", () => {
-  localStorage.removeItem("321modular_token");
-  location.reload();
-});
+const voltarParaPortal = () => {
+  location.href = window.SuperAppAuth.getPortalUrl();
+};
+document.getElementById("btnLogout").addEventListener("click", voltarParaPortal);
+document.getElementById("side-logout-planta").addEventListener("click", voltarParaPortal);
 // Alterna entre tema claro/escuro e salva a escolha para as próximas sessões
 document.getElementById("themeToggle").addEventListener("click", () => {
   const isDark = document.documentElement.getAttribute("data-theme") === "dark";
@@ -14292,6 +14304,8 @@ async function autenticarECarregar() {
   if (!session) return;
   const data = await callRPC('autenticar', {});
   if (!data || !data.ok) return;
+  const profile = await window.SuperAppAuth.getProfile();
+  document.getElementById('side-user-name').textContent = profile?.display_name || session.user.email || 'Usuário';
   tokenAtivoSessao = 'central-session';
   aplicarPricingData(data);
   const overlay = document.getElementById('authOverlay');
@@ -14300,14 +14314,15 @@ async function autenticarECarregar() {
   renderInv();
   iniciarPollingPrecos();
   const perfil = pricingData.perfil || '—';
-  document.getElementById('userPerfilBadge').textContent = perfil === 'Admin' ? '🏛️ Admin' : perfil;
+  const icon = perfil === 'Admin' ? '🏛️' : (perfil === 'Gestor Matriz' || perfil === 'Gestor' ? '👔' : '🛒');
+  document.getElementById('userPerfilBadge').textContent = icon + ' ' + perfil;
   document.getElementById('userFranquia').textContent = pricingData.franquia || '—';
   document.getElementById('userInfoBar').style.display = 'flex';
   document.getElementById('jsonAdminBtns').style.display = perfil === 'Admin' ? 'flex' : 'none';
 }
 // Inicia autenticação ao carregar a página
 autenticarECarregar();
-document.getElementById("authLogo").src = DEFAULT_LOGO;
+document.getElementById("authLogo").src = "../shared/IconPlanta.svg";
 
 </script>
 

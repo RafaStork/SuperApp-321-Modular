@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https://drive.google.com https://lh3.googleusercontent.com https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'" />
-<link rel="icon" type="image/png" href="./IconVarOrig.png">
+<link rel="icon" type="image/svg+xml" href="../shared/IconGestaoEngenharia.svg">
 <link rel="apple-touch-icon" href="./IconVarOrig.png">
 <link rel="manifest" href="./manifest.json">
 <meta name="mobile-web-app-capable" content="yes">
@@ -14,6 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<script src="../shared/runtime-config.local.js"></script>
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js"></script>
 <script src="../shared/app-guard.js"></script>
@@ -163,6 +164,9 @@ nav.tabs{display:flex; flex-direction:column; gap:2px; padding:0 10px;}
 .tab-btn.active{color:#fff; background:linear-gradient(135deg, var(--accent), var(--accent-3)); box-shadow:0 6px 16px -4px var(--accent-soft), 0 2px 6px -2px rgba(232,89,12,.35); font-weight:700; padding-left:13px;}
 .tab-btn.active::before{ height:0; }
 .side-footer{padding:14px 18px 16px; border-top:1px solid var(--border); margin-top:0; display:flex; flex-direction:column; gap:8px; flex-shrink:0; background:var(--surface);}
+.side-session{display:flex;align-items:center;gap:8px;min-width:0}
+.side-session-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--text-dim);font-weight:700}
+.side-session .tab-btn{flex:0 0 auto;padding:7px 10px;}
 
 .theme-toggle{ width:46px; height:25px; border-radius:999px; border:1px solid var(--border); background:var(--bg); position:relative; padding:0; cursor:pointer; flex-shrink:0; transition:background .2s,border-color .2s; }
 .theme-toggle:hover{border-color:var(--accent);}
@@ -678,7 +682,10 @@ svg text{ font-family:var(--font); }
     <div class="nav-scroll"><nav class="tabs" id="nav-tabs"></nav></div>
     <div class="side-footer">
       <button class="theme-toggle" id="theme-toggle" type="button" title="Alternar tema"><span class="knob">☀️</span></button>
-      <button class="tab-btn" id="logout-btn" style="justify-content:center;">Sair</button>
+      <div class="side-session">
+        <span class="side-session-name" id="side-user-name">—</span>
+        <button class="tab-btn" id="logout-btn" style="justify-content:center;">Sair</button>
+      </div>
     </div>
   </aside>
 
@@ -738,8 +745,8 @@ document.getElementById('theme-toggle').addEventListener('click', ()=>{
   if (currentView) navigateTo(currentView);
 });
 applyTheme(localStorage.getItem('tema-tarefas-app') || 'light');
-document.getElementById('login-logo').src = DEFAULT_LOGO;
-document.getElementById('side-logo').src = DEFAULT_LOGO;
+document.getElementById('login-logo').src = '../shared/IconGestaoEngenharia.svg';
+document.getElementById('side-logo').src = '../shared/IconGestaoEngenharia.svg';
 
 function toast(msg, isErr=false){
   const t = document.getElementById('toast');
@@ -807,7 +814,15 @@ function ligarArrasteContainer(containerEl, seletorItem, aoReordenar){
   });
 }
 async function persistirOrdem(tabela, ids){
-  await Promise.all(ids.map((id, idx)=> sb.from(tabela).update({ ordem: idx }).eq('id', id)));
+  const resultados = await Promise.all(ids.map((id, idx) =>
+    sb.from(tabela).update({ ordem: idx }).eq('id', id).select('id,ordem').maybeSingle()
+  ));
+  const falha = resultados.find(r => r.error || !r.data);
+  if (falha) {
+    toast('Erro ao salvar a ordem: ' + (falha?.error?.message || 'gravação não confirmada'), true);
+    return false;
+  }
+  return true;
 }
 
 function monthLabel(iso){ if (!iso) return 'Sem mês'; const d = new Date(iso + 'T00:00:00'); return d.toLocaleDateString('pt-BR', { month:'short', year:'numeric' }); }
@@ -841,11 +856,8 @@ document.getElementById('login-token-toggle').addEventListener('click', ()=>{
   button.setAttribute('aria-pressed', String(mostrar));
 });
 
-document.getElementById('logout-btn').addEventListener('click', async ()=>{
-  await sb.auth.signOut();
-  currentUser = null;
-  currentProfile = null;
-  location.reload();
+document.getElementById('logout-btn').addEventListener('click', () => {
+  location.href = window.SuperAppAuth.getPortalUrl();
 });
 document.getElementById('btn-atualizar').addEventListener('click', atualizarManualmente);
 
@@ -903,6 +915,7 @@ async function bootAfterLogin(){
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-shell').classList.add('active');
   document.getElementById('user-name').textContent = currentProfile.nome;
+  document.getElementById('side-user-name').textContent = currentProfile.nome;
   const stamp = document.getElementById('user-role-stamp');
   stamp.textContent = ROTULO_PAPEL[currentProfile.role] || currentProfile.role;
   stamp.className = 'role-stamp role-' + currentProfile.role;
@@ -1323,9 +1336,16 @@ async function navigateTo(key, opts){
 }
 
 async function saveField(table, id, field, value){
-  const { error } = await sb.from(table).update({ [field]: value }).eq('id', id);
-  if (error) toast('Erro ao salvar: ' + error.message, true);
-  return !error;
+  const { data, error } = await sb.from(table)
+    .update({ [field]: value })
+    .eq('id', id)
+    .select('id,' + field)
+    .maybeSingle();
+  if (error || !data) {
+    toast('Erro ao salvar: ' + (error?.message || 'gravação não confirmada'), true);
+    return false;
+  }
+  return true;
 }
 
 async function saveTipoProblemaState(table, id, field, tipoId, classe){

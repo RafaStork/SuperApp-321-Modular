@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="title desc">
+  <title id="title">Ícone Playbook</title>
+  <desc id="desc">Livro aberto com fundo minimalista.</desc>
+  <rect width="1254" height="1254" fill="#1f331b"/>
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity="0.26">
+    <circle cx="627" cy="627" r="366"/>
+    <path d="M282 338V282H338M916 282H972V338M282 916V972H338M916 972H972V916"/>
+  </g>
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity="0.45">
+    <path d="M322 367Q470 330 612 397M642 397Q784 330 932 367"/>
+    <path d="M627 355V929"/>
+  </g>
+  <g stroke-linejoin="miter">
+    <path fill="#ed6b1d" d="M314 388Q458 351 607 418V902Q458 835 314 872Z"/>
+    <path fill="#2d5da9" d="M647 418Q796 351 940 388V872Q796 835 647 902Z"/>
+    <path fill="#f9b215" d="M607 418L627 392L647 418V902L627 930L607 902Z"/>
+  </g>
+  <g fill="none" stroke="#a7c798" stroke-width="7" opacity="0.9" stroke-linecap="square">
+    <path d="M365 492Q474 472 555 510M365 582Q474 562 555 600M365 672Q474 652 555 690"/>
+    <path d="M699 510Q780 472 889 492M699 600Q780 562 889 582M699 690Q780 652 889 672"/>
+  </g>
+</svg>

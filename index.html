@@ -4,9 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Portal operacional 321 Modular">
+  <link rel="icon" type="image/svg+xml" href="shared/IconSuperApp.svg">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1f331b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="321 Modular">
   <title>321 Modular | SuperApp</title>
   <link rel="stylesheet" href="shared/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous" defer></script>
+  <script src="shared/runtime-config.local.js"></script>
   <script src="shared/runtime-config.js"></script>
   <script src="shared/auth.js" defer></script>
 </head>
@@ -14,7 +21,7 @@
   <main class="portal-shell">
     <section id="auth-view" class="auth-view" aria-label="Login">
       <div class="login-panel">
-        <img class="login-logo" src="shared/IconGestao.svg" alt="321 Modular">
+        <img class="login-logo" src="shared/IconSuperApp.svg" alt="321 Modular">
         <p class="portal-kicker">SuperApp operacional</p>
         <h1 class="login-title">Acesse seu ambiente</h1>
         <p class="login-subtitle">Entre para visualizar os módulos liberados para o seu perfil.</p>
@@ -30,7 +37,7 @@
     </section>
     <section id="apps-section" class="apps-view hidden" aria-labelledby="apps-title">
       <header class="portal-header">
-        <a class="portal-brand" href="./" aria-label="Voltar ao início"><img src="shared/IconGestao.svg" alt=""><span><strong>321</strong> Modular <small>SuperApp</small></span></a>
+        <a class="portal-brand" href="./" aria-label="Voltar ao início"><img src="shared/IconSuperApp.svg" alt=""><span><strong>321</strong> Modular <small>SuperApp</small></span></a>
         <div class="portal-header-actions"><div class="profile-chip"><span id="profile-initials" class="profile-avatar">3M</span><span class="profile-chip-copy"><strong id="profile-name">Usuário</strong><small id="profile-scope">Sessão ativa</small></span></div><button id="logout-button" class="quiet-button" type="button">Sair</button></div>
       </header>
       <nav class="portal-nav" aria-label="Navegação do SuperApp"><button id="apps-tab" class="portal-tab active" type="button" aria-selected="true">Aplicativos</button><button id="admin-tab" class="portal-tab hidden" type="button" aria-selected="false">Administração</button></nav>
@@ -59,12 +66,12 @@
     </section>
   </main>
   <script>
-    const catalog=[['gestao','Gestão','Engenharia e Indústria da Matriz','G','Matriz'],['planta','Planta','Catálogo de plantas homologadas','P','Matriz e franquias'],['playbook','Playbook','Orientações da operação de franquias','P','Matriz e franquias'],['checklist','Checklist','Montagem e conferência de obra','C','Matriz e franquias'],['financeiro','Gestão Financeira','Obras e saldos operacionais','F','Matriz e franquias']];
+    const catalog=[['gestao','Gestão','Engenharia e Indústria da Matriz','Matriz','IconGestaoEngenharia.svg'],['planta','Planta','Catálogo de plantas homologadas','Matriz e franquias','IconPlanta.svg'],['playbook','Playbook','Orientações da operação de franquias','Matriz e franquias','IconPlaybook.svg'],['checklist','Checklist','Montagem e conferência de obra','Matriz e franquias','IconChecklistObra.svg'],['financeiro','Gestão Financeira','Obras e saldos operacionais','Matriz','IconGestaoFinanceira.svg']];
     const $=id=>document.getElementById(id), config=window.SUPERAPP_CONFIG||{}, message=$('form-message'), button=$('login-button'), authView=$('auth-view'), appsSection=$('apps-section'), adminSection=$('admin-section'), appsPanel=$('apps-panel'), adminTab=$('admin-tab'), appsTab=$('apps-tab'), appsGrid=$('apps-grid');
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])), setMessage=(target,text,kind)=>{target.textContent=text||'';target.className='form-message '+(kind||'')}, appUrl=route=>route==='checklist'?'https://checklist.321modular.com.br/':new URL(String(config.appBasePath||'./')+route+'/',document.baseURI).href;
     let adminUsers=[],adminRoles=[],adminFranchises=[],adminUnits=[],adminCurrentUserId='';
     function showProfile(profile){const name=profile?.display_name||'Usuário', role=profile?.role_name||profile?.role_code||'Acesso operacional', scope=profile?.franchise_name?'Franquia · '+profile.franchise_name:profile?.unit_name?'Matriz · '+profile.unit_name:'Matriz · acesso global';$('profile-name').textContent=name;$('profile-scope').textContent=scope;$('profile-initials').textContent=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'3M';$('welcome-name').textContent=name.split(/\s+/)[0];$('welcome-role').textContent=role;$('welcome-scope').textContent=scope}
-    function renderApps(entitlements){const allowed=new Map(entitlements.map(app=>[app.app_code,app])),visible=catalog.filter(([code])=>allowed.has(code));$('apps-count').textContent=visible.length+' '+(visible.length===1?'liberado':'liberados');appsGrid.innerHTML=visible.length?visible.map(([code,name,description,mark,scope])=>'<a class="app-card" href="'+appUrl(code)+'"><span class="app-card-mark">'+mark+'</span><span class="app-card-content"><strong>'+escapeHtml(name)+'</strong><span>'+escapeHtml(description)+'</span></span><span class="app-card-footer"><small>'+escapeHtml(scope)+'</small><b aria-hidden="true">→</b></span></a>').join(''):'<p class="form-message error">Nenhum aplicativo autorizado para este usuário.</p>'}
+function renderApps(entitlements){const allowed=new Map(entitlements.map(app=>[app.app_code,app])),visible=catalog.filter(([code])=>allowed.has(code));$('apps-count').textContent=visible.length+' '+(visible.length===1?'liberado':'liberados');appsGrid.innerHTML=visible.length?visible.map(([code,name,description,scope,icon])=>'<a class="app-card" href="'+appUrl(code)+'"><span class="app-card-icon"><img src="shared/'+icon+'" alt=""></span><span class="app-card-content"><strong>'+escapeHtml(name)+'</strong><span>'+escapeHtml(description)+'</span></span><span class="app-card-footer"><small>'+escapeHtml(scope)+'</small><b aria-hidden="true">→</b></span></a>').join(''):'<p class="form-message error">Nenhum aplicativo autorizado para este usuário.</p>'}
     function showAuthenticated(profile,entitlements){showProfile(profile);renderApps(entitlements);authView.classList.add('hidden');appsSection.classList.remove('hidden');if(profile?.is_adm){adminTab.classList.remove('hidden');initAdmin()}}
     async function showSession(){if(!window.SuperAppAuth||!SuperAppAuth.isConfigured()){button.disabled=true;setMessage(message,'Homologação não configurada.','error');return}try{const session=await SuperAppAuth.getSession();if(!session)return;const profile=await SuperAppAuth.getProfile();adminCurrentUserId=profile?.user_id||'';showAuthenticated(profile,await SuperAppAuth.getEntitlements())}catch(error){setMessage(message,error.message||'Não foi possível validar a sessão.','error')}}
     $('login-form').addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;setMessage(message,'Validando acesso...');try{await SuperAppAuth.signIn($('identifier').value.trim(),$('password').value);const profile=await SuperAppAuth.getProfile();adminCurrentUserId=profile?.user_id||'';showAuthenticated(profile,await SuperAppAuth.getEntitlements());event.target.reset()}catch(error){setMessage(message,error.message||'Acesso negado.','error');button.disabled=false}});
