@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Portal operacional 321 Modular">
+  <title>321 Modular | SuperApp</title>
+  <link rel="stylesheet" href="shared/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous" defer></script>
+  <script src="shared/runtime-config.js"></script>
+  <script src="shared/auth.js" defer></script>
+</head>
+<body class="portal-page">
+  <main class="portal-shell">
+    <section id="auth-view" class="auth-view" aria-label="Login">
+      <div class="login-panel">
+        <img class="login-logo" src="shared/IconGestao.svg" alt="321 Modular">
+        <p class="portal-kicker">SuperApp operacional</p>
+        <h1 class="login-title">Acesse seu ambiente</h1>
+        <p class="login-subtitle">Entre para visualizar os módulos liberados para o seu perfil.</p>
+        <form id="login-form" class="login-card" autocomplete="on">
+          <label for="identifier">Usuário</label>
+          <input id="identifier" name="identifier" type="email" inputmode="email" autocomplete="username" placeholder="nome@321modular.com.br" required>
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" required>
+          <button id="login-button" class="primary-button" type="submit">Entrar no SuperApp</button>
+          <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+    <section id="apps-section" class="apps-view hidden" aria-labelledby="apps-title">
+      <header class="portal-header">
+        <a class="portal-brand" href="./" aria-label="Voltar ao início"><img src="shared/IconGestao.svg" alt=""><span><strong>321</strong> Modular <small>SuperApp</small></span></a>
+        <div class="portal-header-actions"><div class="profile-chip"><span id="profile-initials" class="profile-avatar">3M</span><span class="profile-chip-copy"><strong id="profile-name">Usuário</strong><small id="profile-scope">Sessão ativa</small></span></div><button id="logout-button" class="quiet-button" type="button">Sair</button></div>
+      </header>
+      <nav class="portal-nav" aria-label="Navegação do SuperApp"><button id="apps-tab" class="portal-tab active" type="button" aria-selected="true">Aplicativos</button><button id="admin-tab" class="portal-tab hidden" type="button" aria-selected="false">Administração</button></nav>
+      <div id="apps-panel" class="apps-panel">
+        <section class="welcome-panel" aria-labelledby="apps-title"><div><p class="eyebrow">Ambiente autorizado</p><h1 id="apps-title">Olá, <span id="welcome-name">usuário</span>.</h1><p>Escolha um aplicativo para continuar sua operação.</p></div><div class="scope-summary"><span>Seu acesso</span><strong id="welcome-role">Validando...</strong><small id="welcome-scope">Sessão protegida pelo Supabase</small></div></section>
+        <div class="section-heading"><div><p class="eyebrow">Módulos disponíveis</p><h2>Aplicativos</h2></div><span id="apps-count" class="count-pill">0 liberados</span></div>
+        <div id="apps-grid" class="apps-grid"></div>
+      </div>
+    </section>
+    <section id="admin-section" class="admin-view hidden" aria-labelledby="admin-title">
+      <div class="admin-heading"><div><p class="eyebrow">Acesso restrito · ADM</p><h1 id="admin-title">Administração de usuários</h1><p>Defina o perfil e o escopo de cada usuário. Toda alteração é registrada no banco.</p></div><span class="admin-lock">ADM</span></div>
+      <div class="admin-layout">
+        <section class="admin-form-card"><div class="section-heading compact"><div><p class="eyebrow">Configurar acesso</p><h2>Vínculo do usuário</h2></div></div>
+          <div class="admin-form">
+            <label class="field field-wide" for="admin-user">Usuário<select id="admin-user"></select></label>
+            <fieldset class="scope-fieldset"><legend>Onde este usuário trabalha?</legend><label class="scope-option"><input type="radio" name="admin-scope" value="MATRIZ" checked><span><strong>Matriz</strong><small>Usuário interno</small></span></label><label class="scope-option"><input type="radio" name="admin-scope" value="FRANQUIA"><span><strong>Franquia</strong><small>Equipe de uma unidade</small></span></label></fieldset>
+            <label class="field" for="admin-role">Perfil<select id="admin-role"></select></label>
+            <label id="admin-franchise-wrap" class="field hidden" for="admin-franchise">Franquia<select id="admin-franchise"></select></label>
+            <label id="admin-unit-wrap" class="field hidden" for="admin-unit">Unidade da Matriz<select id="admin-unit"></select></label>
+            <p id="admin-scope-note" class="field-help">Selecione Matriz ou Franquia para carregar os perfis disponíveis.</p>
+            <button id="admin-save" class="primary-button" type="button">Salvar acesso</button>
+          </div><p id="admin-message" class="form-message" role="status" aria-live="polite"></p>
+        </section>
+        <section class="admin-list-card"><div class="section-heading compact"><div><p class="eyebrow">Visão geral</p><h2>Usuários cadastrados</h2></div><button id="admin-refresh" class="icon-button" type="button" aria-label="Atualizar lista">↻</button></div><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Usuário</th><th>Perfil</th><th>Escopo</th><th>Status</th><th>Ação</th></tr></thead><tbody id="admin-users"></tbody></table></div></section>
+      </div>
+    </section>
+  </main>
+  <script>
+    const catalog=[['gestao','Gestão','Engenharia e Indústria da Matriz','G','Matriz'],['planta','Planta','Catálogo de plantas homologadas','P','Matriz e franquias'],['playbook','Playbook','Orientações da operação de franquias','P','Matriz e franquias'],['checklist','Checklist','Montagem e conferência de obra','C','Matriz e franquias'],['financeiro','Gestão Financeira','Obras e saldos operacionais','F','Matriz e franquias']];
+    const $=id=>document.getElementById(id), config=window.SUPERAPP_CONFIG||{}, message=$('form-message'), button=$('login-button'), authView=$('auth-view'), appsSection=$('apps-section'), adminSection=$('admin-section'), appsPanel=$('apps-panel'), adminTab=$('admin-tab'), appsTab=$('apps-tab'), appsGrid=$('apps-grid');
+    const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])), setMessage=(target,text,kind)=>{target.textContent=text||'';target.className='form-message '+(kind||'')}, appUrl=route=>route==='checklist'?'https://checklist.321modular.com.br/':new URL(String(config.appBasePath||'./')+route+'/',document.baseURI).href;
+    let adminUsers=[],adminRoles=[],adminFranchises=[],adminUnits=[],adminCurrentUserId='';
+    function showProfile(profile){const name=profile?.display_name||'Usuário', role=profile?.role_name||profile?.role_code||'Acesso operacional', scope=profile?.franchise_name?'Franquia · '+profile.franchise_name:profile?.unit_name?'Matriz · '+profile.unit_name:'Matriz · acesso global';$('profile-name').textContent=name;$('profile-scope').textContent=scope;$('profile-initials').textContent=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'3M';$('welcome-name').textContent=name.split(/\s+/)[0];$('welcome-role').textContent=role;$('welcome-scope').textContent=scope}
+    function renderApps(entitlements){const allowed=new Map(entitlements.map(app=>[app.app_code,app])),visible=catalog.filter(([code])=>allowed.has(code));$('apps-count').textContent=visible.length+' '+(visible.length===1?'liberado':'liberados');appsGrid.innerHTML=visible.length?visible.map(([code,name,description,mark,scope])=>'<a class="app-card" href="'+appUrl(code)+'"><span class="app-card-mark">'+mark+'</span><span class="app-card-content"><strong>'+escapeHtml(name)+'</strong><span>'+escapeHtml(description)+'</span></span><span class="app-card-footer"><small>'+escapeHtml(scope)+'</small><b aria-hidden="true">→</b></span></a>').join(''):'<p class="form-message error">Nenhum aplicativo autorizado para este usuário.</p>'}
+    function showAuthenticated(profile,entitlements){showProfile(profile);renderApps(entitlements);authView.classList.add('hidden');appsSection.classList.remove('hidden');if(profile?.is_adm){adminTab.classList.remove('hidden');initAdmin()}}
+    async function showSession(){if(!window.SuperAppAuth||!SuperAppAuth.isConfigured()){button.disabled=true;setMessage(message,'Homologação não configurada.','error');return}try{const session=await SuperAppAuth.getSession();if(!session)return;const profile=await SuperAppAuth.getProfile();adminCurrentUserId=profile?.user_id||'';showAuthenticated(profile,await SuperAppAuth.getEntitlements())}catch(error){setMessage(message,error.message||'Não foi possível validar a sessão.','error')}}
+    $('login-form').addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;setMessage(message,'Validando acesso...');try{await SuperAppAuth.signIn($('identifier').value.trim(),$('password').value);const profile=await SuperAppAuth.getProfile();adminCurrentUserId=profile?.user_id||'';showAuthenticated(profile,await SuperAppAuth.getEntitlements());event.target.reset()}catch(error){setMessage(message,error.message||'Acesso negado.','error');button.disabled=false}});
+    $('logout-button').addEventListener('click',async()=>{await SuperAppAuth.signOut();location.reload()});
+    appsTab.addEventListener('click',()=>{appsTab.classList.add('active');adminTab.classList.remove('active');appsPanel.classList.remove('hidden');adminSection.classList.add('hidden')});adminTab.addEventListener('click',()=>{adminTab.classList.add('active');appsTab.classList.remove('active');appsPanel.classList.add('hidden');adminSection.classList.remove('hidden')});
+    const adminUser=$('admin-user'),adminRole=$('admin-role'),adminFranchise=$('admin-franchise'),adminUnit=$('admin-unit'),adminFranchiseWrap=$('admin-franchise-wrap'),adminUnitWrap=$('admin-unit-wrap'),adminUsersBody=$('admin-users'),adminMessage=$('admin-message'),adminScopeNote=$('admin-scope-note'),adminText=v=>escapeHtml(v==null?'':v),selectedScope=()=>document.querySelector('input[name="admin-scope"]:checked')?.value||'MATRIZ',selectedUser=()=>adminUsers.find(u=>u.user_id===adminUser.value);
+    function updateAdminScopeFields(){const role=adminRoles.find(item=>item.code===adminRole.value),scope=selectedScope(),needsFranchise=scope==='FRANQUIA',needsUnit=scope==='MATRIZ'&&role?.scope_kind==='UNIT';adminFranchiseWrap.classList.toggle('hidden',!needsFranchise);adminUnitWrap.classList.toggle('hidden',!needsUnit);adminScopeNote.textContent=needsFranchise?'O usuário ficará restrito à franquia selecionada.':role?.scope_kind==='GLOBAL'?'Acesso interno global à Matriz.':'O usuário ficará vinculado à unidade única da Matriz.'}
+    function renderRoles(){const scope=selectedScope(),roles=adminRoles.filter(role=>scope==='FRANQUIA'?role.scope_kind==='FRANQUIA':role.scope_kind!=='FRANQUIA'),current=selectedUser()?.role_code;adminRole.innerHTML=roles.map(role=>'<option value="'+adminText(role.code)+'">'+adminText(role.code)+' · '+adminText(role.display_name)+'</option>').join('');if(roles.some(role=>role.code===current))adminRole.value=current;updateAdminScopeFields()}
+    function syncFormFromUser(){const user=selectedUser(),scope=user?.scope_kind==='FRANQUIA'?'FRANQUIA':'MATRIZ';document.querySelectorAll('input[name="admin-scope"]').forEach(input=>input.checked=input.value===scope);renderRoles();if(user?.franchise_id)adminFranchise.value=user.franchise_id;if(user?.unit_id)adminUnit.value=user.unit_id}
+    function renderAdminUsers(){adminUsersBody.innerHTML=adminUsers.map(u=>{const scope=u.scope_kind==='FRANQUIA'?'Franquia · '+(u.franchise_name||'não definida'):u.unit_name?'Matriz · '+u.unit_name:'Matriz · global',status=u.profile_active&&u.binding_active;return '<tr><td><strong>'+adminText(u.display_name)+'</strong><small>'+adminText(u.login_identifier)+'</small></td><td><span class="role-badge">'+adminText(u.role_code||'Sem perfil')+'</span></td><td>'+adminText(scope)+'</td><td><span class="status-dot '+(status?'on':'off')+'">'+(status?'Ativo':'Inativo')+'</span></td><td>'+(u.user_id===adminCurrentUserId?'<span class="current-label">Atual</span>':'<button class="table-action" type="button" data-edit="'+adminText(u.user_id)+'">Editar</button> <button class="table-action danger" type="button" data-deactivate="'+adminText(u.user_id)+'">Desativar</button>')+'</td></tr>'}).join('');adminUsersBody.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{adminUser.value=b.dataset.edit;syncFormFromUser();adminUser.focus()}));adminUsersBody.querySelectorAll('[data-deactivate]').forEach(b=>b.addEventListener('click',async()=>{if(!confirm('Desativar este usuário?'))return;try{await SuperAppAuth.adminDeactivateUser(b.dataset.deactivate);setMessage(adminMessage,'Usuário desativado.','success');await loadAdmin()}catch(e){setMessage(adminMessage,e.message||'Operação negada.','error')}}))}
+    async function loadAdmin(){adminUsers=await SuperAppAuth.adminListUsers();renderAdminUsers()}
+    async function initAdmin(){try{[adminUsers,adminRoles,adminFranchises,adminUnits]=await Promise.all([SuperAppAuth.adminListUsers(),SuperAppAuth.adminListRoles(),SuperAppAuth.adminListFranchises(),SuperAppAuth.adminListUnits()]);adminUser.innerHTML=adminUsers.filter(u=>u.profile_active).map(u=>'<option value="'+adminText(u.user_id)+'">'+adminText(u.display_name)+' · '+adminText(u.login_identifier)+'</option>').join('');adminFranchise.innerHTML='<option value="">Selecione a franquia</option>'+adminFranchises.map(f=>'<option value="'+adminText(f.id)+'">'+adminText(f.display_name)+'</option>').join('');adminUnit.innerHTML='<option value="">Selecione a unidade</option>'+adminUnits.map(u=>'<option value="'+adminText(u.id)+'">'+adminText(u.name)+'</option>').join('');document.querySelectorAll('input[name="admin-scope"]').forEach(input=>input.addEventListener('change',renderRoles));adminUser.addEventListener('change',syncFormFromUser);adminRole.addEventListener('change',updateAdminScopeFields);$('admin-refresh').addEventListener('click',loadAdmin);syncFormFromUser();renderAdminUsers()}catch(error){setMessage(adminMessage,error.message||'Não foi possível carregar a administração.','error')}}
+    $('admin-save').addEventListener('click',async()=>{const role=adminRoles.find(item=>item.code===adminRole.value),scope=selectedScope(),unitId=scope==='MATRIZ'&&role?.scope_kind==='UNIT'?adminUnit.value:'',franchiseId=scope==='FRANQUIA'?adminFranchise.value:'';if(!role||!adminUser.value||(scope==='FRANQUIA'&&!franchiseId)||(role.scope_kind==='UNIT'&&!unitId)){setMessage(adminMessage,'Selecione usuário, perfil e o escopo exigido.','error');return}try{await SuperAppAuth.adminAssignAccess(adminUser.value,role.code,scope,unitId,franchiseId);setMessage(adminMessage,'Acesso atualizado e auditado.','success');await loadAdmin();syncFormFromUser()}catch(e){setMessage(adminMessage,e.message||'Operação negada.','error')}});
+    window.addEventListener('load',showSession);
+  </script>
+</body>
+</html>
+

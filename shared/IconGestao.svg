@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="title desc">
+  <title id="title">Ícone Gestão</title>
+  <desc id="desc">Símbolo geométrico de gestão reconstruído da imagem de referência.</desc>
+
+  <rect width="1254" height="1254" fill="#1f331b"/>
+
+  <g fill="none" stroke="#a7c798" stroke-width="2.5" opacity="0.44">
+    <circle cx="627" cy="671" r="302"/>
+    <path d="M207 370H1047M207 973H1047M326 248V1104M928 248V1104"/>
+    <path d="M210 249L1045 1104M1045 249L210 1104" stroke-dasharray="20 17"/>
+    <path d="M627 142V1104M128 671H1126" stroke-dasharray="20 17"/>
+  </g>
+
+  <g fill="none" stroke="#a7c798" stroke-width="2.5" opacity="0.58">
+    <path d="M207 370H326V489M928 370V248M326 973V1104M928 973V1104"/>
+  </g>
+
+  <g stroke="none" stroke-linejoin="miter">
+    <path fill="#ed6b1d" d="M348 572L602 828L537 894L348 703Z"/>
+    <path fill="#f9b215" d="M550 756L704 597L765 658L610 818Z"/>
+    <path fill="#2d5da9" d="M713 587L926 369L1046 369L775 649Z"/>
+  </g>
+</svg>
