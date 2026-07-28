@@ -872,8 +872,20 @@ async function bootAfterLogin(){
   const session = sessionData && sessionData.session;
   if (sessionError || !session) return false;
 
+  const entitlements = await window.SuperAppAuth.getEntitlements();
+  if (!entitlements.some(item => item.app_code === 'gestao')){
+    document.getElementById('login-error').textContent = 'Esta conta não possui permissão para usar o app Gestão.';
+    return false;
+  }
+
   const centralProfile = await window.SuperAppAuth.getProfile();
-  const roleMap = { ADM: 'admin', GEng: 'admin', GInd: 'gestor', UEng: 'usuario', UInd: 'usuario' };
+  const roleMap = {
+    ADM: 'admin',
+    GEng: 'gestor_engenharia',
+    UEng: 'usuario_engenharia_sac',
+    GInd: 'gestor_industria',
+    UInd: 'usuario_industria',
+  };
   const perfil = centralProfile && {
     id: centralProfile.user_id,
     nome: centralProfile.display_name,
@@ -1234,20 +1246,7 @@ function ehGestorOuAdmin(role){
 function abaTemAlgumAcesso(perm){ return !!(perm && perm.acesso); }
 
 function abasPermitidasPara(role){
-  let abas = ABAS_DISPONIVEIS.filter(([key])=> abaTemAlgumAcesso(permissoesPara(key, role)));
-  // Redes de segurança: 1) se a pessoa ficaria sem ENXERGAR NENHUMA aba
-  // (nem uma só), libera "Minhas Tarefas" como último recurso pra ela não
-  // ficar trancada fora do sistema inteiro — mas se o admin deixou outras
-  // abas visíveis e só tirou o acesso a "Minhas Tarefas" de propósito, isso
-  // é respeitado normalmente (a aba fica escondida mesmo). 2) admin sempre
-  // mantém acesso a "Usuários", senão ninguém mais mexe nas permissões.
-  if (!abas.length){
-    abas = [ABAS_DISPONIVEIS.find(([key])=>key==='minhas-tarefas')];
-  }
-  if (role === 'admin' && !abas.some(([key])=>key==='usuarios')){
-    abas.push(ABAS_DISPONIVEIS.find(([key])=>key==='usuarios'));
-  }
-  return abas;
+  return ABAS_DISPONIVEIS.filter(([key])=> abaTemAlgumAcesso(permissoesPara(key, role)));
 }
 
 function buildNav(){
@@ -2889,9 +2888,11 @@ async function viewProgramacaoCarregamento(){
           const franquiaWrap = itemEl.querySelector('[data-franquia-wrap]');
           if (franquiaWrap){
             franquiaWrap.innerHTML = buildSimplePicker(registro.franquia||'', opcoesDe('chamados_franquia').map(o=>({value:o.valor, label:o.valor, dot:corMenuParaTema(o.cor)})), async (v)=>{
-              const { error: errUp } = await sb.from('agendamentos_carregamento').update({ franquia: v }).eq('id', id);
+              const opcaoFranquia = opcoesDe('chamados_franquia').find(o=>o.valor===v);
+              const { error: errUp } = await sb.from('agendamentos_carregamento').update({ franquia: v, franquia_id: opcaoFranquia?.franquia_id || null }).eq('id', id);
               if (errUp) return toast('Erro: '+errUp.message, true);
               registro.franquia = v;
+              registro.franquia_id = opcaoFranquia?.franquia_id || null;
               toast('Franquia atualizada.');
               renderGrid();
             }, { placeholder:'Franquia' });
@@ -2974,7 +2975,8 @@ async function viewProgramacaoCarregamento(){
 
     if (podeCriar){
       let franquiaEscolhida = '';
-      document.getElementById('novo-franquia-wrap').innerHTML = buildSimplePicker('', opcoesDe('chamados_franquia').map(o=>({value:o.valor, label:o.valor, dot:corMenuParaTema(o.cor)})), (v)=>{ franquiaEscolhida = v; }, { placeholder:'Selecione a franquia' });
+  let franquiaEscolhidaId = null;
+      document.getElementById('novo-franquia-wrap').innerHTML = buildSimplePicker('', opcoesDe('chamados_franquia').map(o=>({value:o.valor, label:o.valor, dot:corMenuParaTema(o.cor)})), (v)=>{ franquiaEscolhida = v; franquiaEscolhidaId = opcoesDe('chamados_franquia').find(o=>o.valor===v)?.franquia_id || null; }, { placeholder:'Selecione a franquia' });
       ligarCampoHoraComRelogio(document.getElementById('novo-hora'), document.getElementById('novo-hora-clock'));
       document.getElementById('btn-agendar').addEventListener('click', async ()=>{
         if (!franquiaEscolhida) return toast('Escolha a franquia.', true);
@@ -2986,7 +2988,7 @@ async function viewProgramacaoCarregamento(){
             : `Esse dia é fim de semana. Confirma o agendamento mesmo assim?`;
           if (!(await confirmarAcao(msg, 'Agendar mesmo assim'))) return;
         }
-        const registro = { data: iso, hora: horaValor, franquia: franquiaEscolhida, observacoes: document.getElementById('novo-obs').value.trim()||null, criado_por: currentUser.id };
+        const registro = { data: iso, hora: horaValor, franquia: franquiaEscolhida, franquia_id: franquiaEscolhidaId, observacoes: document.getElementById('novo-obs').value.trim()||null, criado_por: currentUser.id };
         const { data: novo, error: errIns } = await sb.from('agendamentos_carregamento').insert(registro).select().single();
         if (errIns) return toast('Erro ao agendar: '+errIns.message, true);
         dados.push(novo);
@@ -3811,45 +3813,31 @@ function abrirModelosChecklistPopup(){
 async function viewUsuarios(){
   const meuTokenDaTela = __viewToken;
   document.getElementById('page-title').textContent = 'Usuários';
-  document.getElementById('page-sub').textContent = 'Contas autenticadas pelo Supabase Auth. Senhas e tokens nunca são exibidos.';
+  document.getElementById('page-sub').textContent = 'Usuários ativos com permissão de acesso ao app Gestão.';
   const { data, error } = await sb.rpc('listar_usuarios');
   if (error) throw error;
   if (meuTokenDaTela !== __viewToken) return;
 
   const perm = permissoesAtuais('usuarios');
-  const podeEditar = !!perm.editar;
-  const podeCriar = !!perm.criar;
+  const podeEditarPermissoes = !!perm.editar;
   const podeExcluirUsuario = !!perm.excluir;
   const dadosVisiveis = (data||[]).filter(p => perm.ver_outros || (perm.ver_proprio && p.id===currentUser.id));
   const root = document.getElementById('view-root');
 
   root.innerHTML = `
     ${(!perm.ver_outros && perm.ver_proprio) ? `<div class="section-note">Sua permissão nesta aba mostra apenas o seu cadastro.</div>` : ''}
-    <div class="section-note">As contas são criadas com segurança pelo Supabase Auth. Senhas nunca são exibidas ou salvas nesta página.</div>
+    <div class="section-note">A role é vinculada automaticamente ao cadastro central do SuperApp. Novas contas e alterações de role são administradas na Landing page.</div>
     <div class="table-wrap" style="margin-bottom:22px;"><table>
       <thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Status</th><th></th></tr></thead>
       <tbody id="tbody"></tbody>
     </table></div>
-    ${podeCriar ? `
-    <h3 style="font-size:15px;font-weight:800;margin-bottom:12px;">+ Criar novo usuário</h3>
-    <div class="table-wrap"><table><tbody><tr>
-      <td><input type="text" class="cell-input" id="nu-nome" placeholder="Nome completo" style="min-width:160px" /></td>
-      <td><input type="email" class="cell-input" id="nu-email" placeholder="E-mail" style="min-width:190px" /></td>
-      <td><select class="cell-input" id="nu-role" style="min-width:190px">${PAPEIS.map(r=>`<option value="${r}">${escapeHtml(ROTULO_PAPEL[r]||r)}</option>`).join('')}</select></td>
-      <td><input type="password" class="cell-input" id="nu-senha" placeholder="Senha inicial (10+ caracteres)" autocomplete="new-password" style="min-width:210px" /></td>
-      <td><button class="btn btn-primary" id="btn-criar-usuario" style="width:auto">Criar conta</button></td>
-    </tr></tbody></table></div>
-    ` : ''}  `;
+  `;
 
   document.getElementById('tbody').innerHTML = dadosVisiveis.map(p=>`
     <tr data-uid="${escapeHtml(p.id)}">
       <td>${escapeHtml(p.nome)}</td>
       <td>${escapeHtml(p.usuario)}</td>
-      <td>${podeEditar ? buildRolePicker(p.role, async (v, btn)=>{
-        const { error } = await sb.rpc('atualizar_role', { p_user_id: p.id, p_role: v });
-        if (error) return toast('Erro: '+error.message, true);
-        flashSaved(btn); toast('Papel atualizado.');
-      }) : `<span class="role-stamp role-${escapeHtml(p.role)}">${escapeHtml(ROTULO_PAPEL[p.role]||p.role)}</span>`}</td>
+      <td><span class="role-stamp role-${escapeHtml(p.role)}">${escapeHtml(ROTULO_PAPEL[p.role]||p.role)}</span></td>
       <td>${p.ativo ? 'Ativo' : 'Inativo'}</td>
       <td class="row-actions">
         ${(podeExcluirUsuario && p.id!==currentUser.id && p.ativo) ? `<button class="icon-btn" data-action="desativar">desativar</button>` : ''}
@@ -3857,24 +3845,6 @@ async function viewUsuarios(){
     </tr>
   `).join('');
 
-  if (podeCriar){
-    document.getElementById('btn-criar-usuario').addEventListener('click', async ()=>{
-      const nome = document.getElementById('nu-nome').value.trim();
-      const email = document.getElementById('nu-email').value.trim().toLowerCase();
-      const role = document.getElementById('nu-role').value;
-      const password = document.getElementById('nu-senha').value;
-      if (!nome || !email || !password) return toast('Preencha nome, e-mail e senha.', true);
-      if (password.length < 10) return toast('A senha precisa ter pelo menos 10 caracteres.', true);
-      const btn = document.getElementById('btn-criar-usuario');
-      btn.disabled = true; btn.textContent = 'Criando…';
-      const { data: result, error: invokeError } = await sb.functions.invoke('admin-users', { body: { action:'create', nome, email, role, password } });
-      btn.disabled = false; btn.textContent = 'Criar conta';
-      if (invokeError || !result || result.error) return toast('Erro: '+(result?.error || invokeError?.message || 'falha ao criar conta'), true);
-      document.getElementById('nu-senha').value = '';
-      toast('Conta criada com sucesso.');
-      navigateTo('usuarios');
-    });
-  }
   if (podeExcluirUsuario){
     document.querySelectorAll('#tbody [data-action="desativar"]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
@@ -3888,7 +3858,7 @@ async function viewUsuarios(){
     });
   }
 
-  if (podeEditar){
+  if (podeEditarPermissoes){
     try{
       await montarPainelPermissoes(meuTokenDaTela);
     }catch(err){
