@@ -88,21 +88,21 @@ input,select,textarea{font-family:var(--font);}
 .role-stamp{ display:inline-flex; align-items:center; justify-content:center;
   clip-path:polygon(20% 5%, 80% 5%, 100% 50%, 80% 95%, 20% 95%, 0% 50%);
   font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:6px 12px; color:var(--c-white); }
-.role-admin{background:var(--accent);}
-.role-gestor_engenharia{background:var(--accent-2);}
-.role-usuario_engenharia_sac{background:var(--text-faint);}
-.role-gestor_industria{background:var(--accent-3); color:var(--c-ink);}
-.role-usuario_industria{background:var(--accent-4);}
+.role-ADM{background:var(--accent);}
+.role-GEng{background:var(--accent-2);}
+.role-UEng{background:var(--text-faint);}
+.role-GInd{background:var(--accent-3); color:var(--c-ink);}
+.role-UInd{background:var(--accent-4);}
 
 /* Seletor de papel do usuário (Usuários > Papel, e criação de usuário): uma
    faixa lateral colorida — igual à paleta do "role-stamp" — dá pra ver de
    longe qual papel está selecionado sem precisar ler o texto do <select>. */
 .role-picker{ border-left:4px solid var(--text-faint); font-weight:700; min-width:130px; transition:border-left-color .18s var(--ease-out), border-color .18s var(--ease-out), box-shadow .18s var(--ease-out); }
-.role-picker[data-role="admin"]{ border-left-color:var(--accent); }
-.role-picker[data-role="gestor_engenharia"]{ border-left-color:var(--accent-2); }
-.role-picker[data-role="usuario_engenharia_sac"]{ border-left-color:var(--text-faint); }
-.role-picker[data-role="gestor_industria"]{ border-left-color:var(--accent-3); }
-.role-picker[data-role="usuario_industria"]{ border-left-color:var(--accent-4); }
+.role-picker[data-role="ADM"]{ border-left-color:var(--accent); }
+.role-picker[data-role="GEng"]{ border-left-color:var(--accent-2); }
+.role-picker[data-role="UEng"]{ border-left-color:var(--text-faint); }
+.role-picker[data-role="GInd"]{ border-left-color:var(--accent-3); }
+.role-picker[data-role="UInd"]{ border-left-color:var(--accent-4); }
 
 /* Nível de permissão — linha expansível (Usuários > Permissões de abas).
    Clique no nome da aba revela as subcategorias (checkboxes) por papel. */
@@ -923,21 +923,19 @@ async function bootAfterLogin(){
   }
 
   const centralProfile = await window.SuperAppAuth.getProfile();
-  const roleMap = {
-    ADM: 'admin',
-    GEng: 'gestor_engenharia',
-    UEng: 'usuario_engenharia_sac',
-    GInd: 'gestor_industria',
-    UInd: 'usuario_industria',
-  };
+
   const perfil = centralProfile && {
     id: centralProfile.user_id,
     nome: centralProfile.display_name,
     usuario: centralProfile.login_identifier,
-    role: roleMap[centralProfile.role_code] || 'usuario'
+    role: centralProfile.role_code || ''
   };
   if (!perfil || !perfil.id){
     document.getElementById('login-error').textContent = 'Conta autenticada sem perfil ativo no SuperApp.';
+    return false;
+  }
+  if (!PAPEIS.includes(perfil.role)){
+    document.getElementById('login-error').textContent = 'A role ativa não é válida para o app Gestão.';
     return false;
   }
 
@@ -959,7 +957,7 @@ async function bootAfterLogin(){
   atualizarBolinhaNotificacoes();
   setInterval(atualizarBolinhaNotificacoes, 45000); // só a contagem da bolinha — não recarrega dado nenhum de tela
   const abasPermitidas = abasPermitidasPara(currentProfile.role).map(([key])=>key);
-  const preferida = currentProfile.role.startsWith('usuario') ? 'minhas-tarefas' : 'dashboard';
+  const preferida = ['UEng','UInd'].includes(currentProfile.role) ? 'minhas-tarefas' : 'dashboard';
   const firstView = abasPermitidas.includes(preferida) ? preferida : (abasPermitidas[0] || 'minhas-tarefas');
   navigateTo(firstView);
   return true;
@@ -1161,20 +1159,20 @@ const NAV_GRUPOS = [
 // Cargos do sistema. "engenharia" cobre o time de Engenharia (e SAC, no caso
 // do usuário), "industria" cobre o time de Indústria (programação de
 // carregamento e as reclamações que o SAC registra pra Indústria resolver).
-const PAPEIS = ['admin','gestor_engenharia','usuario_engenharia_sac','gestor_industria','usuario_industria'];
+const PAPEIS = ['ADM','GEng','UEng','GInd','UInd'];
 const ROTULO_PAPEL = {
-  admin: 'Admin',
-  gestor_engenharia: 'Gestor Engenharia',
-  usuario_engenharia_sac: 'Usuário Engenharia e SAC',
-  gestor_industria: 'Gestor Indústria',
-  usuario_industria: 'Usuário Indústria',
+  ADM: 'Administrador',
+  GEng: 'Gestor Engenharia',
+  UEng: 'Usuário Engenharia e SAC',
+  GInd: 'Gestor Indústria',
+  UInd: 'Usuário Indústria',
 };
 const NAV_ITEMS_PADRAO = {
-  admin:                  ['dashboard','minhas-tarefas','chamados','projetos','vendas','programacao-carregamento','sac-industria','pedidos-agendamentos-sac-industria','opcoes-menu','usuarios','pendencias-leitura','auditoria'],
-  gestor_engenharia:      ['dashboard','minhas-tarefas','chamados','projetos','vendas','sac-industria','pedidos-agendamentos-sac-industria','auditoria'],
-  usuario_engenharia_sac: ['minhas-tarefas','chamados','sac-industria','pedidos-agendamentos-sac-industria'],
-  gestor_industria:       ['dashboard','minhas-tarefas','programacao-carregamento','sac-industria','pedidos-agendamentos-sac-industria','auditoria'],
-  usuario_industria:      ['minhas-tarefas','programacao-carregamento','pedidos-agendamentos-sac-industria'],
+  ADM:                    ['dashboard','minhas-tarefas','chamados','projetos','vendas','programacao-carregamento','sac-industria','pedidos-agendamentos-sac-industria','opcoes-menu','usuarios','pendencias-leitura','auditoria'],
+  GEng:      ['dashboard','minhas-tarefas','chamados','projetos','vendas','sac-industria','pedidos-agendamentos-sac-industria','auditoria'],
+  UEng: ['minhas-tarefas','chamados','sac-industria','pedidos-agendamentos-sac-industria'],
+  GInd:       ['dashboard','minhas-tarefas','programacao-carregamento','sac-industria','pedidos-agendamentos-sac-industria','auditoria'],
+  UInd:      ['minhas-tarefas','programacao-carregamento','pedidos-agendamentos-sac-industria'],
 };
 
 // Categorias de sub-permissão configuráveis por aba. Abas "simples" (sem
@@ -1302,7 +1300,7 @@ function permissoesAtuais(aba){ return permissoesPara(aba); }
 // true pra admin e pra qualquer papel de gestor (Engenharia ou Indústria).
 function ehGestorOuAdmin(role){
   role = role || (currentProfile && currentProfile.role) || '';
-  return role === 'admin' || role.startsWith('gestor');
+  return ['ADM','GEng','GInd'].includes(role);
 }
 function abaTemAlgumAcesso(perm){ return !!(perm && perm.acesso); }
 
@@ -2261,11 +2259,11 @@ painel.innerHTML = opcoes.map(o=>o.header ? `<div class="dd-group-label"${o.dot?
 
 // Seletor de papel do usuário — mesma faixa colorida do "role-stamp".
 const ROLE_OPCOES_PICKER = [
-  { value:'usuario_engenharia_sac', label:'Usuário Engenharia e SAC', dot:'var(--text-faint)' },
-  { value:'gestor_engenharia', label:'Gestor Engenharia', dot:'var(--accent-2)' },
-  { value:'usuario_industria', label:'Usuário Indústria', dot:'var(--accent-4)' },
-  { value:'gestor_industria', label:'Gestor Indústria', dot:'var(--accent-3)' },
-  { value:'admin', label:'Admin', dot:'var(--accent)' },
+  { value:'UEng', label:'Usuário Engenharia e SAC', dot:'var(--text-faint)' },
+  { value:'GEng', label:'Gestor Engenharia', dot:'var(--accent-2)' },
+  { value:'UInd', label:'Usuário Indústria', dot:'var(--accent-4)' },
+  { value:'GInd', label:'Gestor Indústria', dot:'var(--accent-3)' },
+  { value:'ADM', label:'Administrador', dot:'var(--accent)' },
 ];
 function buildRolePicker(valorAtual, aoSelecionar){
   return buildSimplePicker(valorAtual, ROLE_OPCOES_PICKER, aoSelecionar, { classeExtra:'role-picker', dataAttr:'role' });
@@ -2487,7 +2485,7 @@ async function viewTabela(tableName){
   function render(rows){
     const tbody = document.getElementById('tbody');
     if (!rows.length){
-    const avisoVazio = currentProfile?.role === 'usuario_engenharia_sac'
+    const avisoVazio = currentProfile?.role === 'UEng'
       ? 'Nenhum registro atribuído a você. Um Gestor pode definir você em Responsáveis.'
       : 'Nenhum registro encontrado.';
     tbody.innerHTML = `<tr class="empty-row"><td colspan="${cfg.fields.length+1+(cfg.detalhavel?1:0)+(cfg.notificacoes?1:0)}">${avisoVazio}</td></tr>`;
@@ -3578,7 +3576,7 @@ async function viewOpcoesMenu(){
   let classeDestinoNovaSubclasse = '';
   root.innerHTML = `
     <div class="toolbar">
-      ${currentProfile.role==='admin' ? `<button class="btn" id="btn-abrir-config-visual" type="button">Ajuste de cor no modo escuro</button>` : ''}
+      ${currentProfile.role==='ADM' ? `<button class="btn" id="btn-abrir-config-visual" type="button">Ajuste de cor no modo escuro</button>` : ''}
       ${ehGestorOuAdmin() ? `<button class="btn" id="btn-abrir-modelos-checklist" type="button">Modelos de checklist</button>` : ''}
     </div>
     <div class="toolbar">
@@ -3591,7 +3589,7 @@ async function viewOpcoesMenu(){
       <thead><tr id="opcoes-head"><th>Valor (texto do menu)</th><th>Cor</th><th>Ordem</th><th>Ativo</th><th></th></tr></thead>
       <tbody id="tbody"></tbody>
     </table></div>`;
-  if (currentProfile.role==='admin') document.getElementById('btn-abrir-config-visual').addEventListener('click', abrirConfigVisualPopup);
+  if (currentProfile.role==='ADM') document.getElementById('btn-abrir-config-visual').addEventListener('click', abrirConfigVisualPopup);
   if (ehGestorOuAdmin()) document.getElementById('btn-abrir-modelos-checklist').addEventListener('click', abrirModelosChecklistPopup);
 
   async function atualizarGrupoTipo(id, patch, modo, classeAntiga){
@@ -4045,14 +4043,14 @@ async function montarPainelPermissoes(meuTokenDaTela){
   painel.id = 'painel-permissoes';
   painel.innerHTML = `
     <h3 style="font-size:15px;font-weight:800;margin:26px 0 12px;">Permissões de abas por papel</h3>
-    <div class="section-note">A coluna "acesso" na linha principal decide se a aba aparece no menu lateral daquele papel. Abas com mais detalhes têm uma seta ▸ pra expandir e configurar o que a pessoa pode ver/criar/editar/excluir dentro delas. O papel <b>admin</b> sempre mantém controle total sobre "Usuários", pra ninguém ficar trancado fora desta tela.</div>
+    <div class="section-note">A coluna "acesso" na linha principal decide se a aba aparece no menu lateral daquele papel. Abas com mais detalhes têm uma seta ▸ pra expandir e configurar o que a pessoa pode ver/criar/editar/excluir dentro delas. O papel <b>ADM</b> sempre mantém controle total sobre "Usuários", pra ninguém ficar trancado fora desta tela.</div>
     <div class="table-wrap" style="margin-bottom:22px;"><table>
       <thead><tr><th>Aba / Permissão</th>${PAPEIS.map(r=>`<th style="text-align:center">${escapeHtml(ROTULO_PAPEL[r])}</th>`).join('')}</tr></thead>
       <tbody>
         ${ABAS_DISPONIVEIS.map(([key,label])=>{
           const subs = subcategoriasDetalhadasDe(key);
           function celula(r, chave){
-            const travado = (r==='admin' && key==='usuarios');
+            const travado = (r==='ADM' && key==='usuarios');
             const marcado = travado ? true : !!atual[r][key][chave];
             return `<td style="text-align:center"><input type="checkbox" class="perm-check" data-role="${r}" data-aba="${key}" data-chave="${chave}" ${marcado?'checked':''} ${travado?'disabled':''} /></td>`;
           }
@@ -4071,7 +4069,7 @@ async function montarPainelPermissoes(meuTokenDaTela){
             <tr class="perm-sub-row" data-aba="${key}">
               ${celulaAnimada(escapeHtml(s.label))}
               ${PAPEIS.map(r=>{
-                const travado = (r==='admin' && key==='usuarios');
+                const travado = (r==='ADM' && key==='usuarios');
                 const marcado = travado ? true : !!atual[r][key][s.key];
                 return celulaAnimada(`<input type="checkbox" class="perm-check" data-role="${r}" data-aba="${key}" data-chave="${s.key}" ${marcado?'checked':''} ${travado?'disabled':''} />`, true);
               }).join('')}
@@ -4099,7 +4097,7 @@ async function montarPainelPermissoes(meuTokenDaTela){
       const { role, aba, chave } = cb.dataset;
       const combo = role+'|'+aba;
       if (!porCombo[combo]) porCombo[combo] = {};
-      porCombo[combo][chave] = (role==='admin' && aba==='usuarios') ? true : cb.checked;
+      porCombo[combo][chave] = (role==='ADM' && aba==='usuarios') ? true : cb.checked;
     });
     const linhas = [];
     ABAS_DISPONIVEIS.forEach(([key])=>{
