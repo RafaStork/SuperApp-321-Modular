@@ -398,6 +398,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or)!impo
 .side-footer .side-session-role{color:var(--tm);line-height:1.3;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:break-word}
 .side-footer .side-session .tab-btn{border:1px solid var(--bdr);background:var(--wh);color:var(--t2);padding:7px 10px;min-height:100%;border-radius:8px}
 .side-footer .side-session .tab-btn:hover{background:var(--gc);color:var(--t1);border-color:var(--tm)}
+</style><style data-superapp-mobile-footer>
+@media(max-width:880px){
+  #sidebar{height:100dvh;max-height:100dvh;min-height:0}
+  #sidebar .nav-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  #sidebar .side-footer{position:sticky;bottom:0;z-index:3;flex-shrink:0;padding-bottom:calc(18px + env(safe-area-inset-bottom));background:var(--wh);box-shadow:0 -8px 18px -14px rgba(0,0,0,.45)}
+}
 </style></head>
 <body>
 

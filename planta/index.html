@@ -696,6 +696,15 @@
   .aside-backdrop{position:fixed;inset:0;z-index:24;background:rgba(10,12,15,.5);backdrop-filter:blur(2px)}
   .aside-backdrop.active{display:block}
 }
+</style><style data-superapp-mobile-footer>
+main{position:relative}
+@media(max-width:760px){
+  main{height:100%;min-height:0}
+  #aside{top:0;bottom:0;height:auto;max-height:100%;min-height:0;overflow:hidden}
+  #aside .tabs-container{flex:0 0 auto}
+  #aside .inv{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  #aside .side-footer{position:relative;z-index:2;flex:0 0 auto;padding-bottom:calc(14px + env(safe-area-inset-bottom));box-shadow:0 -8px 18px -14px rgba(0,0,0,.45)}
+}
 </style></head>
 <body>
 
