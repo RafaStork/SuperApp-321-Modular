@@ -161,8 +161,8 @@
     transition:border-color .15s,color .15s,background .15s}
   #btnLogout:hover{border-color:var(--over);color:var(--over);background:var(--over-soft)}
   #btnLogout:active{transform:scale(.96)}
-  #btnLogout{display:none}
-  .side-session{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface);flex-shrink:0}
+  #btnLogout{display:none} #userInfoBar{display:none!important}
+  .side-session-copy{display:grid;gap:2px;min-width:0;flex:1}.side-session-name{display:block;flex:initial}.side-session-role{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink-muted);font-size:10px;font-weight:600}.side-session{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line);background:var(--surface);flex-shrink:0}
   .side-session-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:700;color:var(--ink-soft)}
   .side-session button{border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-sm);padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer}
   .side-session button:hover{border-color:var(--over);color:var(--over);background:var(--over-soft)}
@@ -734,7 +734,7 @@
     <div class="inv" id="inv"></div>
     <div class="totals" id="totals"></div>
     <div class="side-session" id="side-session-planta">
-      <span class="side-session-name" id="side-user-name">—</span>
+      <span class="side-session-copy"><strong class="side-session-name" id="side-user-name">—</strong><small class="side-session-role" id="side-user-role">—</small></span>
       <button type="button" id="side-logout-planta">Sair</button>
     </div>
   </aside>
@@ -10559,7 +10559,7 @@ document.getElementById("menuToggle").onclick=()=>{
   }
 };
 window.addEventListener("resize",render);
-document.getElementById("headerLogo").src="../shared/IconPlanta.svg";
+document.getElementById("headerLogo").src=DEFAULT_LOGO;
 document.getElementById("projName").value=state.name||"";
 renderTabs();renderInv();render();fit();
 // ============================================================
@@ -14306,6 +14306,9 @@ async function autenticarECarregar() {
   if (!data || !data.ok) return;
   const profile = await window.SuperAppAuth.getProfile();
   document.getElementById('side-user-name').textContent = profile?.display_name || session.user.email || 'Usuário';
+  const plantaRoleLabel = profile?.role_name || profile?.role_code || pricingData.perfil || 'Acesso operacional';
+  const plantaScopeLabel = profile?.franchise_name ? `Franquia · ${profile.franchise_name}` : profile?.unit_name ? `Matriz · ${profile.unit_name}` : 'Matriz · acesso global';
+  document.getElementById('side-user-role').textContent = `${plantaRoleLabel} · ${plantaScopeLabel}`;
   tokenAtivoSessao = 'central-session';
   aplicarPricingData(data);
   const overlay = document.getElementById('authOverlay');
@@ -14322,7 +14325,7 @@ async function autenticarECarregar() {
 }
 // Inicia autenticação ao carregar a página
 autenticarECarregar();
-document.getElementById("authLogo").src = "../shared/IconPlanta.svg";
+document.getElementById("authLogo").src = DEFAULT_LOGO;
 
 </script>
 

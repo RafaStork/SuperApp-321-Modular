@@ -116,6 +116,21 @@ input,select,textarea{font-family:var(--font);}
 .perm-sub-row.aberto .perm-sub-inner{ max-height:54px; opacity:1; padding:9px 14px; }
 .perm-check{ width:17px; height:17px; accent-color:var(--accent); cursor:pointer; }
 .perm-check:disabled{ opacity:.55; cursor:not-allowed; }
+/* Painel de permissões: uma única superfície para todas as opções, com
+   separadores suaves entre linhas para manter a leitura da matriz. */
+#painel-permissoes table tbody td,
+#painel-permissoes .perm-sub-row td,
+#painel-permissoes .perm-sub-inner,
+#painel-permissoes .perm-toggle{
+  background:var(--surface) !important;
+}
+#painel-permissoes table tbody tr td{
+  border-bottom:1px solid var(--border-soft);
+}
+#painel-permissoes .perm-sub-row td{
+  border-bottom-color:var(--border);
+}
+#painel-permissoes .perm-check{accent-color:var(--accent);}
 
 #login-screen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; background:
   radial-gradient(1100px 550px at 15% 0%, var(--accent-soft), transparent 60%),
@@ -164,7 +179,7 @@ nav.tabs{display:flex; flex-direction:column; gap:2px; padding:0 10px;}
 .tab-btn.active{color:#fff; background:linear-gradient(135deg, var(--accent), var(--accent-3)); box-shadow:0 6px 16px -4px var(--accent-soft), 0 2px 6px -2px rgba(232,89,12,.35); font-weight:700; padding-left:13px;}
 .tab-btn.active::before{ height:0; }
 .side-footer{padding:14px 18px 16px; border-top:1px solid var(--border); margin-top:0; display:flex; flex-direction:column; gap:8px; flex-shrink:0; background:var(--surface);}
-.side-session{display:flex;align-items:center;gap:8px;min-width:0}
+.side-session-copy{display:grid;gap:2px;min-width:0;flex:1}.side-session-name{display:block;flex:initial}.side-session-role{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-faint);font-size:10px;font-weight:600}.side-session{display:flex;align-items:center;gap:8px;min-width:0}
 .side-session-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--text-dim);font-weight:700}
 .side-session .tab-btn{flex:0 0 auto;padding:7px 10px;}
 
@@ -683,7 +698,7 @@ svg text{ font-family:var(--font); }
     <div class="side-footer">
       <button class="theme-toggle" id="theme-toggle" type="button" title="Alternar tema"><span class="knob">☀️</span></button>
       <div class="side-session">
-        <span class="side-session-name" id="side-user-name">—</span>
+        <span class="side-session-copy"><strong class="side-session-name" id="side-user-name">—</strong><small class="side-session-role" id="side-user-role">—</small></span>
         <button class="tab-btn" id="logout-btn" style="justify-content:center;">Sair</button>
       </div>
     </div>
@@ -697,7 +712,7 @@ svg text{ font-family:var(--font); }
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
         <button class="btn" id="btn-atualizar" type="button" title="Buscar dados mais recentes">⟳ Atualizar</button>
-        <div class="user-chip"><span id="user-name">—</span><span class="role-stamp" id="user-role-stamp">—</span></div>
+        
       </div>
     </div>
     <div id="view-root"></div>
@@ -745,8 +760,8 @@ document.getElementById('theme-toggle').addEventListener('click', ()=>{
   if (currentView) navigateTo(currentView);
 });
 applyTheme(localStorage.getItem('tema-tarefas-app') || 'light');
-document.getElementById('login-logo').src = '../shared/IconGestaoEngenharia.svg';
-document.getElementById('side-logo').src = '../shared/IconGestaoEngenharia.svg';
+document.getElementById('login-logo').src = DEFAULT_LOGO;
+document.getElementById('side-logo').src = DEFAULT_LOGO;
 
 function toast(msg, isErr=false){
   const t = document.getElementById('toast');
@@ -914,11 +929,10 @@ async function bootAfterLogin(){
 
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-shell').classList.add('active');
-  document.getElementById('user-name').textContent = currentProfile.nome;
   document.getElementById('side-user-name').textContent = currentProfile.nome;
-  const stamp = document.getElementById('user-role-stamp');
-  stamp.textContent = ROTULO_PAPEL[currentProfile.role] || currentProfile.role;
-  stamp.className = 'role-stamp role-' + currentProfile.role;
+  const roleLabel = centralProfile?.role_name || centralProfile?.role_code || ROTULO_PAPEL[currentProfile.role] || currentProfile.role;
+  const scopeLabel = centralProfile?.franchise_name ? `Franquia · ${centralProfile.franchise_name}` : centralProfile?.unit_name ? `Matriz · ${centralProfile.unit_name}` : 'Matriz · acesso global';
+  document.getElementById('side-user-role').textContent = `${roleLabel} · ${scopeLabel}`;
 
   await loadMenuOpcoes();
   await loadReclamacoesIndustriaTipos();
@@ -1188,8 +1202,7 @@ const SUBPERMISSOES_ABA = {
   ],  usuarios: [
     {key:'ver_proprio', label:'Visualizar somente o próprio cadastro'},
     {key:'ver_outros',  label:'Visualizar o cadastro de todos os usuários'},
-    {key:'criar',       label:'Permissão para criar novo usuário'},
-    {key:'editar',      label:'Permissão para editar cargo e token de usuários'},
+    {key:'editar',      label:'Permissão para editar permissões de abas'},
     {key:'excluir',     label:'Permissão para excluir usuários'},
   ],
 };

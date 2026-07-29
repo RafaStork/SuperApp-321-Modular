@@ -72,13 +72,13 @@ nav a.pending:hover{padding-left:14px;background:transparent;color:rgba(255,255,
 .nav-parent.expanded .nav-parent-link{color:#fff;background:rgba(255,255,255,.05)}
 .side-footer{flex-shrink:0;padding:16px 20px 20px;border-top:1px solid rgba(255,255,255,.08)}
 .side-footer p{color:rgba(255,255,255,.35);font-size:10.5px;font-weight:600;line-height:1.5}
-.side-session{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.side-session-copy{display:grid;gap:2px;min-width:0;flex:1}.side-session-name{display:block;flex:initial}.side-session-role{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,.45);font-size:9.5px;font-weight:600}.side-session{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
 .side-session-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:rgba(255,255,255,.72);font-size:11px;font-weight:700;}
 .side-session button{border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;border-radius:7px;padding:5px 8px;font-size:10.5px;font-weight:700;cursor:pointer;}
 .side-session button:hover{background:rgba(255,255,255,.12);border-color:var(--go);}
 
 /* ── MAIN ── */
-main{margin-left:var(--sw);padding:40px 56px 100px;max-width:960px}
+main{margin-left:var(--sw);padding:40px 56px 100px;max-width:none;width:calc(100% - var(--sw));min-height:100vh;box-sizing:border-box}
 .sec{display:none}
 .sec.active{display:block;animation:fadein .35s var(--ease-out)}
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
@@ -232,7 +232,7 @@ details.script .script-body{padding:0 16px 14px}
 
 <nav>
   <div class="side-brand">
-    <span class="brand-logo-wrap"><img class="brand-mark-img" src="../shared/IconPlaybook.svg" alt="321 Modular"></span>
+    <span class="brand-logo-wrap"><img class="brand-mark-img" src="images/img01.svg" alt="321 Modular"></span>
     <div class="brand-sub">PLAYBOOK DE OPERAÇÃO</div>
     <button class="theme-toggle" id="themeToggle" type="button" title="Alternar tema claro/escuro"><span class="knob" id="themeKnob">☀️</span></button>
   </div>
@@ -278,7 +278,7 @@ details.script .script-body{padding:0 16px 14px}
   </div>
   <div class="side-footer">
     <div class="side-session">
-      <span id="side-user-name" class="side-session-name">—</span>
+      <span class="side-session-copy"><strong id="side-user-name" class="side-session-name">—</strong><small id="side-user-role" class="side-session-role">—</small></span>
       <button type="button" id="side-logout-playbook">Sair</button>
     </div>
     <p>Versão 1 — Julho de 2026<br>Documento vivo — em construção contínua</p>
@@ -1005,7 +1005,7 @@ details.script .script-body{padding:0 16px 14px}
   </div>
   <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
   <h2>2.6 Funil de Venda</h2>
-  <p>Cada etapa entrega só uma coisa: a pessoa chegar inteira na próxima. Decisão de R$60 mil a R.side-footer p{color:rgba(255,255,255,.35);font-size:10.5px;font-weight:600;line-height:1.5}80 mil não fecha em texto.</p>
+  <p>Cada etapa entrega só uma coisa: a pessoa chegar inteira na próxima. Decisão de R$60 mil a R$80 mil não fecha em texto.</p>
 
   <div class="callout warn">
     <span class="callout-lbl">⚠️ Nomenclatura oficial no Leezi</span>
@@ -2487,6 +2487,10 @@ async function carregarSessaoPlaybook(){
     const label = profile?.display_name || session.user.email || 'Usuário';
     const nameEl = document.getElementById('side-user-name');
     if(nameEl) nameEl.textContent = label;
+    const roleLabel = profile?.role_name || profile?.role_code || 'Acesso operacional';
+    const scopeLabel = profile?.franchise_name ? `Franquia · ${profile.franchise_name}` : profile?.unit_name ? `Matriz · ${profile.unit_name}` : 'Matriz · acesso global';
+    const roleEl = document.getElementById('side-user-role');
+    if(roleEl) roleEl.textContent = `${roleLabel} · ${scopeLabel}`;
   }catch(e){ console.warn('Sessão do Playbook não carregada', e); }
 }
 const playbookLogout = document.getElementById('side-logout-playbook');
