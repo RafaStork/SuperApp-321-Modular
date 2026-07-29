@@ -11,7 +11,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="321 Modular">
   <title>321 Modular | SuperApp</title>
-  <link rel="stylesheet" href="shared/styles.css">
+  <script>
+    (() => {
+      try {
+        const saved = localStorage.getItem('321-superapp-theme');
+        document.documentElement.dataset.theme = saved === 'dark' ? 'dark' : 'light';
+      } catch (_) { document.documentElement.dataset.theme = 'light'; }
+    })();
+  </script>
+  <link rel="stylesheet" href="shared/styles.css?v=20260729-cascade-fix-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous" defer></script>
   <script src="shared/runtime-config.local.js"></script>
   <script src="shared/runtime-config.js"></script>
@@ -19,6 +27,7 @@
 </head>
 <body class="portal-page">
   <main class="portal-shell">
+    <button id="theme-toggle" class="theme-toggle portal-theme-toggle" type="button" aria-label="Ativar modo escuro" aria-pressed="false"><span class="theme-toggle-icon" aria-hidden="true">☾</span><span class="theme-toggle-label">Modo escuro</span></button>
     <section id="auth-view" class="auth-view" aria-label="Login">
       <div class="login-panel">
         <img class="login-logo" src="shared/IconSuperApp.svg" alt="321 Modular">
@@ -69,7 +78,7 @@
   </main>
   <script>
     const catalog=[['gestao','Gestão','Engenharia e Indústria da Matriz','Matriz','IconGestaoEngenharia.svg'],['planta','Planta','Catálogo de plantas homologadas','Matriz e franquias','IconPlanta.svg'],['playbook','Playbook','Orientações da operação de franquias','Matriz e franquias','IconPlaybook.svg'],['checklist','Checklist','Montagem e conferência de obra','Matriz e franquias','IconChecklistObra.svg'],['financeiro','Gestão Financeira','Obras e saldos operacionais','Matriz','IconGestaoFinanceira.svg']];
-    const $=id=>document.getElementById(id), config=window.SUPERAPP_CONFIG||{}, message=$('form-message'), button=$('login-button'), authView=$('auth-view'), appsSection=$('apps-section'), adminSection=$('admin-section'), appsPanel=$('apps-panel'), adminTab=$('admin-tab'), appsTab=$('apps-tab'), appsGrid=$('apps-grid'), rememberLogin=$('remember-login');
+    const $=id=>document.getElementById(id), config=window.SUPERAPP_CONFIG||{}, message=$('form-message'), button=$('login-button'), authView=$('auth-view'), appsSection=$('apps-section'), adminSection=$('admin-section'), appsPanel=$('apps-panel'), adminTab=$('admin-tab'), appsTab=$('apps-tab'), appsGrid=$('apps-grid'), rememberLogin=$('remember-login'), themeToggle=$('theme-toggle');
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])), setMessage=(target,text,kind)=>{target.textContent=text||'';target.className='form-message '+(kind||'')}, appUrl=route=>route==='checklist'?'https://checklist.321modular.com.br/':new URL(String(config.appBasePath||'./')+route+'/',document.baseURI).href;
     let adminUsers=[],adminRoles=[],adminFranchises=[],adminUnits=[],adminCurrentUserId='';
     function showProfile(profile){const name=profile?.display_name||'Usuário', role=profile?.role_name||profile?.role_code||'Acesso operacional', scope=profile?.franchise_name?'Franquia · '+profile.franchise_name:profile?.unit_name?'Matriz · '+profile.unit_name:'Matriz · acesso global';$('profile-name').textContent=name;$('profile-scope').textContent=scope;$('profile-initials').textContent=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'3M';$('welcome-name').textContent=name.split(/\s+/)[0];$('welcome-role').textContent=role;$('welcome-scope').textContent=scope}
@@ -78,53 +87,35 @@ function renderApps(entitlements){const allowed=new Map(entitlements.map(app=>[a
     async function showSession(){if(!window.SuperAppAuth||!SuperAppAuth.isConfigured()){button.disabled=true;setMessage(message,'Homologação não configurada.','error');return}try{const session=await SuperAppAuth.getSession();if(!session)return;const profile=await SuperAppAuth.getProfile();adminCurrentUserId=profile?.user_id||'';showAuthenticated(profile,await SuperAppAuth.getEntitlements())}catch(error){setMessage(message,error.message||'Não foi possível validar a sessão.','error')}}
     $('login-form').addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;setMessage(message,'Validando acesso...');try{SuperAppAuth.setRememberLogin(rememberLogin.checked);await SuperAppAuth.signIn($('identifier').value.trim(),$('password').value);const profile=await SuperAppAuth.getProfile();adminCurrentUserId=profile?.user_id||'';showAuthenticated(profile,await SuperAppAuth.getEntitlements());event.target.reset()}catch(error){setMessage(message,error.message||'Acesso negado.','error');button.disabled=false}});
     $('logout-button').addEventListener('click',async()=>{await SuperAppAuth.signOut();location.reload()});
-    appsTab.addEventListener('click',()=>{appsTab.classList.add('active');adminTab.classList.remove('active');appsPanel.classList.remove('hidden');adminSection.classList.add('hidden')});adminTab.addEventListener('click',()=>{adminTab.classList.add('active');appsTab.classList.remove('active');appsPanel.classList.add('hidden');adminSection.classList.remove('hidden')});
+    function switchPortalView(view){const next=view==='admin'?adminSection:appsPanel;appsTab.classList.toggle('active',view!=='admin');adminTab.classList.toggle('active',view==='admin');appsTab.setAttribute('aria-selected',view!=='admin'?'true':'false');adminTab.setAttribute('aria-selected',view==='admin'?'true':'false');appsPanel.classList.add('hidden');adminSection.classList.add('hidden');next.classList.remove('portal-view-enter');void next.offsetWidth;next.classList.remove('hidden');next.classList.add('portal-view-enter');if(!matchMedia('(prefers-reduced-motion: reduce)').matches){next.getAnimations().forEach(animation=>animation.cancel());next.animate([{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:340,easing:'cubic-bezier(.16,.84,.44,1)'})}}
+    appsTab.addEventListener('click',()=>switchPortalView('apps'));adminTab.addEventListener('click',()=>switchPortalView('admin'));
     const adminUsersBody=$('admin-users'),adminMessage=$('admin-message'),adminText=v=>escapeHtml(v==null?'':v);
-    const adminOption=(value,label,selected=false)=>'<option value="'+adminText(value)+'"'+(selected?' selected':'')+'>'+adminText(label)+'</option>';
+    function adminChoices(options){return options.map(option=>({value:String(option.value??''),label:String(option.label??'')}))}
     function adminRolesForScope(scope){return adminRoles.filter(role=>scope==='FRANQUIA'?role.scope_kind==='FRANQUIA':role.scope_kind!=='FRANQUIA')}
-    function adminRoleOptions(scope,current){const roles=adminRolesForScope(scope),selected=roles.some(role=>role.code===current)?current:(roles[0]?.code||'');return roles.map(role=>adminOption(role.code,role.code+' · '+role.display_name,role.code===selected)).join('')}
-    function adminEntityOptions(scope,roleCode,user){
-      const role=adminRoles.find(item=>item.code===roleCode);
-      if(scope==='FRANQUIA')return adminOption('','Selecione a franquia',!user.franchise_id)+adminFranchises.map(item=>adminOption(item.id,item.display_name,item.id===user.franchise_id)).join('');
-      if(role?.scope_kind==='UNIT')return adminOption('','Selecione a unidade',!user.unit_id)+adminUnits.map(item=>adminOption(item.id,item.name,item.id===user.unit_id)).join('');
-      return adminOption('','Matriz · acesso global',true);
-    }
+    function adminSelect(name,options,value,disabled=false){const choices=adminChoices(options);return '<div class="admin-dropdown" data-admin-dropdown="'+adminText(name)+'"><button class="admin-inline-select" type="button" aria-haspopup="listbox" aria-expanded="false" data-admin-value="'+adminText(value||'')+'" '+(disabled?'disabled':'')+'><span class="admin-select-label">'+adminText(choices.find(option=>option.value===String(value||''))?.label||'Selecione')+'</span><span class="admin-select-chevron" aria-hidden="true">⌄</span></button><div class="admin-dropdown-menu" role="listbox">'+choices.map(option=>'<button class="admin-dropdown-option" type="button" role="option" data-value="'+adminText(option.value)+'" data-label="'+adminText(option.label)+'" '+(option.value===String(value||'')?'aria-selected="true"':'')+'>'+adminText(option.label)+'</button>').join('')+'</div></div>'}
+    function adminDropdown(row,name){return row.querySelector('[data-admin-dropdown="'+name+'"]')}
+    function adminValue(row,name){return adminDropdown(row,name)?.querySelector('[data-admin-value]')?.dataset.adminValue||''}
+    function setAdminDropdown(row,name,options,value,disabled=false){const dropdown=adminDropdown(row,name);if(!dropdown)return;const choices=adminChoices(options),trigger=dropdown.querySelector('[data-admin-value]');trigger.dataset.adminValue=String(value||'');trigger.disabled=disabled;trigger.querySelector('.admin-select-label').textContent=choices.find(option=>option.value===String(value||''))?.label||'Selecione';dropdown.querySelector('.admin-dropdown-menu').innerHTML=choices.map(option=>'<button class="admin-dropdown-option" type="button" role="option" data-value="'+adminText(option.value)+'" data-label="'+adminText(option.label)+'" '+(option.value===String(value||'')?'aria-selected="true"':'')+'>'+adminText(option.label)+'</button>').join('')}
+    function positionAdminDropdown(dropdown){const trigger=dropdown.querySelector('.admin-inline-select'),menu=dropdown.querySelector('.admin-dropdown-menu');if(!trigger||!menu)return;const rect=trigger.getBoundingClientRect();menu.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-menu.offsetWidth-8))+'px';menu.style.top=(rect.bottom+6)+'px';menu.style.minWidth=Math.max(rect.width,180)+'px'}
+    function bindAdminDropdown(row,name,onChange){const dropdown=adminDropdown(row,name);if(!dropdown||dropdown.dataset.bound)return;dropdown.dataset.bound='true';const trigger=dropdown.querySelector('.admin-inline-select');trigger.addEventListener('click',()=>{document.querySelectorAll('.admin-dropdown.is-open').forEach(item=>{if(item!==dropdown)item.classList.remove('is-open')});dropdown.classList.toggle('is-open');trigger.setAttribute('aria-expanded',dropdown.classList.contains('is-open')?'true':'false');if(dropdown.classList.contains('is-open'))requestAnimationFrame(()=>{positionAdminDropdown(dropdown);const menu=dropdown.querySelector('.admin-dropdown-menu');if(menu&&!matchMedia('(prefers-reduced-motion: reduce)').matches){menu.getAnimations().forEach(animation=>animation.cancel());menu.animate([{opacity:0,transform:'translateY(-10px) scale(.96)'},{opacity:1,transform:'translateY(0) scale(1)'}],{duration:260,easing:'cubic-bezier(.16,.84,.44,1)'})}})});dropdown.addEventListener('click',event=>{const option=event.target.closest('.admin-dropdown-option');if(!option)return;trigger.dataset.adminValue=option.dataset.value||'';trigger.querySelector('.admin-select-label').textContent=option.dataset.label||'Selecione';dropdown.querySelectorAll('.admin-dropdown-option').forEach(item=>item.setAttribute('aria-selected',item===option?'true':'false'));dropdown.classList.remove('is-open');trigger.setAttribute('aria-expanded','false');onChange?.(trigger.dataset.adminValue)});}
+    document.addEventListener('click',event=>{if(!event.target.closest('.admin-dropdown'))document.querySelectorAll('.admin-dropdown.is-open').forEach(item=>item.classList.remove('is-open'))});
+    const repositionOpenAdminDropdowns=()=>document.querySelectorAll('.admin-dropdown.is-open').forEach(positionAdminDropdown);
+    window.addEventListener('resize',repositionOpenAdminDropdowns);
+    window.addEventListener('scroll',repositionOpenAdminDropdowns,true);
     function configureAdminRow(row,user){
-      const scopeSelect=row.querySelector('[data-admin-scope]'),roleSelect=row.querySelector('[data-admin-role]'),entitySelect=row.querySelector('[data-admin-entity]'),saveButton=row.querySelector('[data-admin-save]'),isCurrent=user.user_id===adminCurrentUserId;
-      function refreshEntity(){
-        entitySelect.innerHTML=adminEntityOptions(scopeSelect.value,roleSelect.value,user);
-        const role=adminRoles.find(item=>item.code===roleSelect.value);
-        entitySelect.disabled=isCurrent||(scopeSelect.value==='MATRIZ'&&role?.scope_kind==='GLOBAL');
-      }
+      const saveButton=row.querySelector('[data-admin-save]'),isCurrent=user.user_id===adminCurrentUserId;
       function markDirty(){if(!isCurrent){row.classList.add('admin-row-dirty');saveButton.disabled=false}}
-      scopeSelect.addEventListener('change',()=>{roleSelect.innerHTML=adminRoleOptions(scopeSelect.value,user.role_code);refreshEntity();markDirty()});
-      roleSelect.addEventListener('change',()=>{refreshEntity();markDirty()});
-      entitySelect.addEventListener('change',markDirty);
-      saveButton?.addEventListener('click',async()=>{
-        const role=adminRoles.find(item=>item.code===roleSelect.value),scope=scopeSelect.value,unitId=scope==='MATRIZ'&&role?.scope_kind==='UNIT'?entitySelect.value:'',franchiseId=scope==='FRANQUIA'?entitySelect.value:'';
-        if(!role||(scope==='FRANQUIA'&&!franchiseId)||(role?.scope_kind==='UNIT'&&!unitId)){setMessage(adminMessage,'Selecione o perfil e a unidade ou franquia exigida.','error');return}
-        saveButton.disabled=true;saveButton.textContent='Salvando…';
-        try{await SuperAppAuth.adminAssignAccess(user.user_id,role.code,scope,unitId,franchiseId);setMessage(adminMessage,'Acesso de '+user.display_name+' atualizado e auditado.','success');await loadAdmin()}
-        catch(error){setMessage(adminMessage,error.message||'Operação negada.','error');saveButton.disabled=false;saveButton.textContent='Salvar'}
-      });
-      row.querySelector('[data-admin-deactivate]')?.addEventListener('click',async event=>{
-        if(!confirm('Desativar este usuário?'))return;
-        event.currentTarget.disabled=true;
-        try{await SuperAppAuth.adminDeactivateUser(user.user_id);setMessage(adminMessage,'Usuário desativado.','success');await loadAdmin()}
-        catch(error){setMessage(adminMessage,error.message||'Operação negada.','error');event.currentTarget.disabled=false}
-      });
-      refreshEntity();
+      function refreshEntity(){const scope=adminValue(row,'scope'),roleCode=adminValue(row,'role'),role=adminRoles.find(item=>item.code===roleCode),options=scope==='FRANQUIA'?[{value:'',label:'Selecione a franquia'},...adminFranchises.map(item=>({value:item.id,label:item.display_name}))]:role?.scope_kind==='UNIT'?[{value:'',label:'Selecione a unidade'},...adminUnits.map(item=>({value:item.id,label:item.name}))]:[{value:'',label:'Matriz · acesso global'}];setAdminDropdown(row,'entity',options,scope==='FRANQUIA'?user.franchise_id:role?.scope_kind==='UNIT'?user.unit_id:'',isCurrent||(scope==='MATRIZ'&&role?.scope_kind==='GLOBAL'));bindAdminDropdown(row,'entity',markDirty)}
+      function refreshRole(){const scope=adminValue(row,'scope'),options=adminRolesForScope(scope).map(role=>({value:role.code,label:role.code+' · '+role.display_name})),current=options.some(option=>option.value===user.role_code)?user.role_code:(options[0]?.value||'');setAdminDropdown(row,'role',options,current,isCurrent);bindAdminDropdown(row,'role',()=>{refreshEntity();markDirty()});refreshEntity()}
+      bindAdminDropdown(row,'scope',()=>{refreshRole();markDirty()});bindAdminDropdown(row,'role',()=>{refreshEntity();markDirty()});refreshEntity();
+      saveButton?.addEventListener('click',async()=>{const scope=adminValue(row,'scope'),role=adminRoles.find(item=>item.code===adminValue(row,'role')),entity=adminValue(row,'entity'),unitId=scope==='MATRIZ'&&role?.scope_kind==='UNIT'?entity:'',franchiseId=scope==='FRANQUIA'?entity:'';if(!role||(scope==='FRANQUIA'&&!franchiseId)||(role?.scope_kind==='UNIT'&&!unitId)){setMessage(adminMessage,'Selecione o perfil e a unidade ou franquia exigida.','error');return}saveButton.disabled=true;saveButton.textContent='Salvando…';try{await SuperAppAuth.adminAssignAccess(user.user_id,role.code,scope,unitId,franchiseId);setMessage(adminMessage,'Acesso de '+user.display_name+' atualizado e auditado.','success');await loadAdmin()}catch(error){setMessage(adminMessage,error.message||'Operação negada.','error');saveButton.disabled=false;saveButton.textContent='Salvar'}});
+      row.querySelector('[data-admin-deactivate]')?.addEventListener('click',async event=>{if(!confirm('Desativar este usuário?'))return;event.currentTarget.disabled=true;try{await SuperAppAuth.adminDeactivateUser(user.user_id);setMessage(adminMessage,'Usuário desativado.','success');await loadAdmin()}catch(error){setMessage(adminMessage,error.message||'Operação negada.','error');event.currentTarget.disabled=false}});
     }
-    function renderAdminUsers(){
-      adminUsersBody.innerHTML=adminUsers.map(user=>{
-        const scope=user.scope_kind==='FRANQUIA'?'FRANQUIA':'MATRIZ',status=user.profile_active&&user.binding_active,isCurrent=user.user_id===adminCurrentUserId;
-        const roleOptions=adminRoleOptions(scope,user.role_code);
-        return '<tr data-admin-user="'+adminText(user.user_id)+'" class="'+(isCurrent?'admin-current-row':'')+'"><td><strong>'+adminText(user.display_name)+'</strong><small>'+adminText(user.login_identifier)+'</small></td><td><select class="admin-inline-select" data-admin-scope '+(isCurrent?'disabled':'')+'>'+adminOption('MATRIZ','Matriz',scope==='MATRIZ')+adminOption('FRANQUIA','Franquia',scope==='FRANQUIA')+'</select></td><td><select class="admin-inline-select admin-role-select" data-admin-role '+(isCurrent?'disabled':'')+'>'+roleOptions+'</select></td><td><select class="admin-inline-select admin-entity-select" data-admin-entity></select></td><td><span class="status-dot '+(status?'on':'off')+'">'+(status?'Ativo':'Inativo')+'</span></td><td><div class="admin-row-actions">'+(isCurrent?'<span class="current-label">Usuário atual</span>':'<button class="table-action save" type="button" data-admin-save disabled>Salvar</button><button class="table-action danger" type="button" data-admin-deactivate>Desativar</button>')+'</div></td></tr>'
-      }).join('');
-      adminUsers.forEach(user=>{const row=adminUsersBody.querySelector('[data-admin-user="'+CSS.escape(user.user_id)+'"]');if(row)configureAdminRow(row,user)})
-    }
+    function renderAdminUsers(){adminUsersBody.innerHTML=adminUsers.map(user=>{const scope=user.scope_kind==='FRANQUIA'?'FRANQUIA':'MATRIZ',status=user.profile_active&&user.binding_active,isCurrent=user.user_id===adminCurrentUserId,roleOptions=adminRolesForScope(scope).map(role=>({value:role.code,label:role.code+' · '+role.display_name}));return '<tr data-admin-user="'+adminText(user.user_id)+'" class="'+(isCurrent?'admin-current-row':'')+'"><td><strong>'+adminText(user.display_name)+'</strong><small>'+adminText(user.login_identifier)+'</small></td><td>'+adminSelect('scope',[{value:'MATRIZ',label:'Matriz'},{value:'FRANQUIA',label:'Franquia'}],scope,isCurrent)+'</td><td>'+adminSelect('role',roleOptions,user.role_code,isCurrent)+'</td><td>'+adminSelect('entity',[], '', false)+'</td><td><span class="status-dot '+(status?'on':'off')+'">'+(status?'Ativo':'Inativo')+'</span></td><td><div class="admin-row-actions">'+(isCurrent?'<span class="current-label">Usuário atual</span>':'<button class="table-action save" type="button" data-admin-save disabled>Salvar</button><button class="table-action danger" type="button" data-admin-deactivate>Desativar</button>')+'</div></td></tr>'}).join('');adminUsers.forEach(user=>{const row=adminUsersBody.querySelector('[data-admin-user="'+CSS.escape(user.user_id)+'"]');if(row)configureAdminRow(row,user)})}
     async function loadAdmin(){adminUsers=await SuperAppAuth.adminListUsers();renderAdminUsers()}
-    async function initAdmin(){try{[adminUsers,adminRoles,adminFranchises,adminUnits]=await Promise.all([SuperAppAuth.adminListUsers(),SuperAppAuth.adminListRoles(),SuperAppAuth.adminListFranchises(),SuperAppAuth.adminListUnits()]);$('admin-refresh').onclick=loadAdmin;renderAdminUsers()}catch(error){setMessage(adminMessage,error.message||'Não foi possível carregar a administração.','error')}}    window.addEventListener('load',()=>{rememberLogin.checked=SuperAppAuth?.isRememberLoginEnabled?.()||false;showSession()});
+    function applyTheme(theme){const dark=theme==='dark';document.documentElement.dataset.theme=dark?'dark':'light';themeToggle?.setAttribute('aria-pressed',dark?'true':'false');themeToggle?.setAttribute('aria-label',dark?'Ativar modo claro':'Ativar modo escuro');if(themeToggle){themeToggle.querySelector('.theme-toggle-icon').textContent=dark?'☀':'☾';themeToggle.querySelector('.theme-toggle-label').textContent=dark?'Modo claro':'Modo escuro'}document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#15171B':'#EEF0F2')}
+    themeToggle?.addEventListener('click',()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('321-superapp-theme',next)}catch(_){}applyTheme(next)});
+    async function initAdmin(){try{[adminUsers,adminRoles,adminFranchises,adminUnits]=await Promise.all([SuperAppAuth.adminListUsers(),SuperAppAuth.adminListRoles(),SuperAppAuth.adminListFranchises(),SuperAppAuth.adminListUnits()]);$('admin-refresh').onclick=loadAdmin;renderAdminUsers()}catch(error){setMessage(adminMessage,error.message||'Não foi possível carregar a administração.','error')}}    window.addEventListener('load',()=>{applyTheme(document.documentElement.dataset.theme||'light');rememberLogin.checked=SuperAppAuth?.isRememberLoginEnabled?.()||false;showSession()});
   </script>
 </body>
 </html>
