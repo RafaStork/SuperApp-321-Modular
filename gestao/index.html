@@ -675,7 +675,17 @@ svg text{ font-family:var(--font); }
 .side-footer .side-session-role{color:var(--text-faint);line-height:1.3;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:break-word}
 .side-footer .side-session .tab-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-dim);padding:7px 10px;min-height:100%;border-radius:8px}
 .side-footer .side-session .tab-btn:hover{background:var(--bg-soft);color:var(--text);border-color:var(--text-faint)}
-</style></head>
+</style><style data-gestao-cell-gap>
+  /* Respiro visual entre os controles coloridos da mesma linha. */
+  tbody td.cell-colored{padding:2px 3px;}
+  tbody td.cell-colored > .fill,
+  tbody td.cell-colored > .sel-dd-btn{min-height:30px;}
+  tbody td:not(.cell-colored) > .cell-input,
+  tbody td:not(.cell-colored) > .cell-select,
+  tbody td:not(.cell-colored) > .cell-date,
+  tbody td:not(.cell-colored) > .cell-number{margin:1px 0;}
+</style>
+</head>
 <body>
 
 <div id="login-screen">
@@ -1003,7 +1013,13 @@ function opcoesTipoProblemaUnificadas(classeSemSubclasse=''){
   });
   return opcoes;
 }
-function opcoesDe(grupo){ return menuOpcoes[grupo] || []; }
+function opcoesDe(grupo){
+  const opcoes = menuOpcoes[grupo] || [];
+  if (grupo === 'chamados_franquia' && !opcoes.some(o=>o.valor === 'Sem definir')){
+    return [{ id:null, grupo, valor:'Sem definir', ativo:true, ordem:-1, cor:'#7f8792', franquia_id:null }, ...opcoes];
+  }
+  return opcoes;
+}
 function corDaClasseProblema(classe){ const t=reclamacoesIndustriaTipos.find(x=>x.classe===classe); return t ? t.cor : '#628852'; }
 function corDaOpcao(grupo, valor){ const o = opcoesDe(grupo).find(x=>x.valor===valor); return o ? o.cor : '#7f9a72'; }
 
@@ -1536,6 +1552,15 @@ function registroVisivel(perm, row){
 }
 
 // ── Notificações individuais (por usuário) ─────────────────────────────
+let __avisoNotificacoes = false;
+function reportarFalhaNotificacoes(context, errors){
+  console.error('[Notificações] '+context, errors);
+  if (!__avisoNotificacoes){
+    __avisoNotificacoes = true;
+    toast('O sistema de notificações está indisponível. Tente atualizar a tela.', true);
+  }
+}
+
 // Marca um ou vários eventos como lidos de uma vez pra QUEM ESTÁ LOGADO
 // agora (não afeta outras pessoas) e some com o(s) selo(s), com uma
 // pequena animação de saída. Aceita string única ou array de ids — usar
@@ -1566,14 +1591,17 @@ async function marcarNotifLida(tabelaLidos, eventoIds, badgeEls){
 async function contarNaoLidos(tableName, idsVisiveis){
   if (!idsVisiveis.size) return false;
   const cfg = TABLE_CONFIG[tableName];
-  const { data: eventos } = await sb.from(cfg.notifEventosTable).select(`id, criado_por, ${cfg.notifFk}`).in(cfg.notifFk, Array.from(idsVisiveis));
-  const relevantes = (eventos||[]).filter(e=>e.criado_por !== currentUser.id);
+  const eventosResult = await sb.from(cfg.notifEventosTable)
+    .select(`id, criado_por, ${cfg.notifFk}`)
+    .in(cfg.notifFk, Array.from(idsVisiveis));
+  if (eventosResult.error){ reportarFalhaNotificacoes(`Erro ao contar ${cfg.title}`, eventosResult.error); return false; }
+  const relevantes = (eventosResult.data||[]).filter(e=>e.criado_por !== currentUser.id);
   if (!relevantes.length) return false;
-  const { data: lidos } = await sb.from(cfg.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id);
-  const lidosSet = new Set((lidos||[]).map(l=>l.evento_id));
+  const lidosResult = await sb.from(cfg.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id);
+  if (lidosResult.error){ reportarFalhaNotificacoes(`Erro ao contar leituras de ${cfg.title}`, lidosResult.error); return false; }
+  const lidosSet = new Set((lidosResult.data||[]).map(l=>l.evento_id));
   return relevantes.some(e=>!lidosSet.has(e.id));
 }
-
 async function atualizarBolinhaNotificacoes(){
   try{
     for (const tableName of Object.keys(TABLE_CONFIG)){
@@ -2302,23 +2330,28 @@ async function viewTabela(tableName){
     const mapa = {};
     if (!cfg.notificacoes || !data.length) return mapa;
     const ids = data.map(r=>r.id);
-    const [{ data: eventos }, { data: lidos }] = await Promise.all([
+    const [eventosResult, lidosResult] = await Promise.all([
       sb.from(cfg.notifEventosTable).select('*').in(cfg.notifFk, ids),
       sb.from(cfg.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id),
     ]);
-    const lidosSet = new Set((lidos||[]).map(l=>l.evento_id));
-    (eventos||[]).forEach(ev=>{
-      if (ev.criado_por === currentUser.id) return; // ninguém é notificado da própria mudança
-      if (lidosSet.has(ev.id)) return; // já marcado como lido por esta pessoa
+    if (eventosResult.error || lidosResult.error){
+      reportarFalhaNotificacoes(`Erro ao carregar ${cfg.title}`, [eventosResult.error, lidosResult.error]);
+      return mapa;
+    }
+    const eventos = eventosResult.data || [];
+    const lidos = lidosResult.data || [];
+    const lidosSet = new Set(lidos.map(l=>l.evento_id));
+    eventos.forEach(ev=>{
+      if (ev.criado_por === currentUser.id) return;
+      if (lidosSet.has(ev.id)) return;
       const chaveReg = ev[cfg.notifFk];
       const reg = mapa[chaveReg] || (mapa[chaveReg] = { novo:[], campos:{}, detalhes:[] });
       if (ev.tipo === 'novo') reg.novo.push(ev.id);
-      else if (ev.item_id) reg.detalhes.push(ev.id); // mudança dentro do "Detalhes" (checklist/imagem)
+      else if (ev.item_id) reg.detalhes.push(ev.id);
       else if (ev.campo) (reg.campos[ev.campo] = reg.campos[ev.campo] || []).push(ev.id);
     });
     return mapa;
-  }
-  if (cfg.notificacoes) eventosPorRegistro = await carregarNotificacoes();
+  }  if (cfg.notificacoes) eventosPorRegistro = await carregarNotificacoes();
   // Todos os ids de evento não lidos da tabela inteira (linha "Novo", campos
   // editados e o que tiver pendente no Detalhes) — usado pelo botão
   // "Marcar tudo como lido" da barra de ferramentas.
@@ -2444,7 +2477,13 @@ async function viewTabela(tableName){
 
   function render(rows){
     const tbody = document.getElementById('tbody');
-    if (!rows.length){ tbody.innerHTML = `<tr class="empty-row"><td colspan="${cfg.fields.length+1+(cfg.detalhavel?1:0)+(cfg.notificacoes?1:0)}">Nenhum registro encontrado.</td></tr>`; return; }
+    if (!rows.length){
+    const avisoVazio = currentProfile?.role === 'usuario_engenharia_sac'
+      ? 'Nenhum registro atribuído a você. Um Gestor pode definir você em Responsáveis.'
+      : 'Nenhum registro encontrado.';
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="${cfg.fields.length+1+(cfg.detalhavel?1:0)+(cfg.notificacoes?1:0)}">${avisoVazio}</td></tr>`;
+    return;
+  }
     tbody.innerHTML = rows.map(r=>{
       const reg = cfg.notificacoes ? eventosPorRegistro[r.id] : null;
       const cells = cfg.fields.map(f=>{
@@ -2638,19 +2677,16 @@ async function viewTabela(tableName){
       });
       const tabelasComFranquiaObrigatoria = ['chamados_sac','reclamacoes_industria','pedidos_agendamentos_industria'];
       if (tabelasComFranquiaObrigatoria.includes(tableName)){
-        // A política RLS não aceita registro órfão. "Interno" é uma opção
-        // canônica para a Matriz e pode ser alterada na própria linha depois.
-        const opcoesFranquia = opcoesDe('chamados_franquia').filter(o=>o.valor && o.ativo !== false);
-        const inicial = opcoesFranquia.find(o=>o.valor==='Interno') || opcoesFranquia[0];
-        if (!inicial){
-          toast('Cadastre uma franquia em Opções dos Menus antes de criar.', true);
-          return;
-        }
-        defaults.franquia = inicial.valor;
-        defaults.franquia_id = inicial.franquia_id || null;
+        // Estado operacional inicial. A franquia pode ser definida depois
+        // pelo responsÃƒÂ¡vel, sem transformar Ã¢â‚¬Å“InternoÃ¢â‚¬Â em dado de negÃƒÂ³cio.
+        defaults.franquia = 'Sem definir';
+        defaults.franquia_id = null;
       }
       if (tableName==='chamados_sac'){
         defaults.status = opcoesDe('chamados_status').find(o=>o.ativo !== false)?.valor || 'Aberto';
+      }
+      if (tableName==='projetos'){
+        defaults.status = 'Sem definir';
       }
       if (['vendas_expansao','reclamacoes_industria','pedidos_agendamentos_industria'].includes(tableName)){
         defaults.criado_por = currentUser.id;
@@ -2682,11 +2718,15 @@ async function viewTabela(tableName){
         if (error) return toast('Erro ao criar: '+error.message, true);
         novaLinha = linhaCriada;
       }
+      if (novaLinha && tableName==='projetos'){
+        const { error: respError } = await sb.from('projetos_responsaveis').insert({ projeto_id: novaLinha.id, profile_id: currentUser.id });
+        if (respError) return toast('Registro criado, mas não foi possível definir o responsável: '+respError.message, true);
+      }
       if (novaLinha){
         // Insere só na tela atual (sem recarregar tudo) e já reordena/filtra
         // igual às demais linhas — é por isso que ela "se ajusta sozinha"
         // conforme você for preenchendo os campos.
-        novaLinha.__resp_ids = tableName==='chamados_sac' ? [currentUser.id] : [];
+        novaLinha.__resp_ids = ['chamados_sac','projetos'].includes(tableName) ? [currentUser.id] : [];
         data.unshift(novaLinha);
         aplicarFiltrosOrdenacao();
         toast('Registro criado — preencha os campos na linha; ela se ajusta sozinha pela ordenação e pelos filtros.');
@@ -3157,14 +3197,17 @@ async function viewMinhasTarefas(){
     const mapa = {};
     if (!dados.length) return mapa;
     const ids = dados.map(r=>r.id);
-    const [{ data: eventos }, { data: lidos }] = await Promise.all([
+    const [eventosResult, lidosResult] = await Promise.all([
       sb.from(cfgProjetos.notifEventosTable).select('*').in(cfgProjetos.notifFk, ids),
       sb.from(cfgProjetos.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id),
     ]);
-    const lidosSet = new Set((lidos||[]).map(l=>l.evento_id));
-    (eventos||[]).forEach(ev=>{
-      if (ev.criado_por === currentUser.id) return;
-      if (lidosSet.has(ev.id)) return;
+    if (eventosResult.error || lidosResult.error){
+      reportarFalhaNotificacoes('Erro ao carregar Minhas Tarefas', [eventosResult.error, lidosResult.error]);
+      return mapa;
+    }
+    const lidosSet = new Set((lidosResult.data||[]).map(l=>l.evento_id));
+    (eventosResult.data||[]).forEach(ev=>{
+      if (ev.criado_por === currentUser.id || lidosSet.has(ev.id)) return;
       const chave = ev[cfgProjetos.notifFk];
       const reg = mapa[chave] || (mapa[chave] = { novo:[], campos:{}, detalhes:[] });
       if (ev.tipo === 'novo') reg.novo.push(ev.id);
@@ -4090,6 +4133,8 @@ async function viewPendenciasLeitura(){
     }),
   ]);
   if (errUsuarios) throw errUsuarios;
+  const errosNotificacoes = resultados.flat().map(r=>r?.error).filter(Boolean);
+  if (errosNotificacoes.length) reportarFalhaNotificacoes('Erro ao carregar Pendências de Leitura', errosNotificacoes);
 
   const porTabela = {};
   tabelasNotif.forEach((t, i)=>{
@@ -4487,12 +4532,15 @@ window.abrirDetalhes = async function(tabela, id){
   let eventosItemMap = {};   // por item_id (checklist, checklist_grupo ou imagem)
   let eventosDescricao = []; // ids de evento da "Descrição da tarefa"
   if (cfg.notificacoes){
-    const [{ data: eventosDetalhe }, { data: lidosDetalhe }] = await Promise.all([
+    const [eventosDetalheResult, lidosDetalheResult] = await Promise.all([
       sb.from(cfg.notifEventosTable).select('*').eq(cfg.notifFk, id),
       sb.from(cfg.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id),
     ]);
-    const lidosSet = new Set((lidosDetalhe||[]).map(l=>l.evento_id));
-    (eventosDetalhe||[]).forEach(ev=>{
+    if (eventosDetalheResult.error || lidosDetalheResult.error){
+      reportarFalhaNotificacoes('Erro ao carregar notificações dos detalhes', [eventosDetalheResult.error, lidosDetalheResult.error]);
+    }
+    const lidosSet = new Set((lidosDetalheResult.data||[]).map(l=>l.evento_id));
+    (eventosDetalheResult.data||[]).forEach(ev=>{
       if (ev.criado_por === currentUser.id) return;
       if (lidosSet.has(ev.id)) return;
       if (ev.tipo === 'edicao' && ev.campo === cfg.campoDescricao){

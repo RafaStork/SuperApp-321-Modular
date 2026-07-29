@@ -1009,14 +1009,23 @@ let insumosMap  = {}; // Ponto 5: { painelRef: [{painelRef, nome, precoFinal, pr
 let tokenAtivoSessao = ""; // token ativo na sessão atual (independente de localStorage ou URL)
 
 // ── Constrói pricingMap e insumosMap (Ponto 5) a partir da resposta da API ──
+function chaveCatalogo(valor){
+  return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ').replace(/\s*\/\s*/g,' / ').replace(/\s*-\s*/g,' - ')
+    .trim().toUpperCase();
+}
 function aplicarPricingData(data) {
-  pricingData = data;
+  pricingData = data || {};
   pricingMap  = {};
-  (data.produtos || []).forEach(p => { pricingMap[p.nome] = p; });
+  (pricingData.produtos || []).forEach(p => {
+    pricingMap[p.nome] = p;
+    pricingMap[chaveCatalogo(p.nome)] = p;
+  });
   insumosMap = {};
-  (data.insumos || []).forEach(ins => {
-    if (!insumosMap[ins.painelRef]) insumosMap[ins.painelRef] = [];
-    insumosMap[ins.painelRef].push(ins);
+  (pricingData.insumos || []).forEach(ins => {
+    const painel = ins.painelRef || null;
+    if (!insumosMap[painel]) insumosMap[painel] = [];
+    insumosMap[painel].push(ins);
   });
 }
 
@@ -10614,16 +10623,16 @@ renderTabs();renderInv();render();fit();
 
 // ── Lookup de preço por nome de produto (O(1)) ───────────────
 function getPriceForType(typeName) {
-  const entry = pricingMap[typeName] || pricingMap[typeName.trim()];
-  return entry ? entry.precoFinal : null;
+  const entry = pricingMap[typeName] || pricingMap[String(typeName || '').trim()] || pricingMap[chaveCatalogo(typeName)];
+  return entry && Number.isFinite(Number(entry.precoFinal)) ? Number(entry.precoFinal) : null;
 }
 
 // ── Lookup de preço por nome de insumo, a partir do catálogo geral ──────
 // (pricingData.insumosCatalog — independe de estar ligado a um painel
 // já presente na planta, permite adicionar insumos "avulsos").
 function getPriceForInsumo(nome) {
-  const entry = (pricingData?.insumosCatalog || []).find(i => i.nome === nome);
-  return entry ? entry.precoFinal : null;
+  const entry = (pricingData?.insumosCatalog || []).find(i => i.nome === nome || chaveCatalogo(i.nome) === chaveCatalogo(nome));
+  return entry && Number.isFinite(Number(entry.precoFinal)) ? Number(entry.precoFinal) : null;
 }
 
 // ── BOM_CONFIG — tradutor de painéis visuais → produtos reais ─────────────
