@@ -1014,8 +1014,16 @@ function opcoesTipoProblemaUnificadas(classeSemSubclasse=''){
   return opcoes;
 }
 function opcoesDe(grupo){
-  // As opcoes sao fonte unica no banco; nao criar placeholders duplicados no frontend.
-  return menuOpcoes[grupo] || [];
+  // "Sem definir" e um sentinela visual para NULL, nao uma opcao de negocio.
+  // O banco permanece como fonte unica das opcoes reais dos menus.
+  return (menuOpcoes[grupo] || []).filter(o=>!ehSemDefinir(o.valor));
+}
+const SEM_DEFINIR = 'Sem definir';
+function ehSemDefinir(valor){
+  return valor === null || valor === undefined || String(valor).trim().toLocaleLowerCase('pt-BR') === 'sem definir';
+}
+function opcoesComSemDefinir(opcoes){
+  return [{ value:'', label:SEM_DEFINIR, dot:'var(--text-faint)' }, ...(opcoes||[]).filter(o=>!ehSemDefinir(o.value))];
 }
 function corDaClasseProblema(classe){ const t=reclamacoesIndustriaTipos.find(x=>x.classe===classe); return t ? t.cor : '#628852'; }
 function corDaOpcao(grupo, valor){ const o = opcoesDe(grupo).find(x=>x.valor===valor); return o ? o.cor : '#7f9a72'; }
@@ -2153,7 +2161,7 @@ function celulaColorida(cor, textoHtml){
 }
 
 function statusBadgeGeneric(grupo, valor){
-  if (!valor) return celulaColorida('var(--text-faint)', '—');
+  if (ehSemDefinir(valor)) return celulaColorida('var(--text-faint)', SEM_DEFINIR);
   const cor = corDaOpcao(grupo, valor);
   return celulaColorida(cor, escapeHtml(valor));
 }
@@ -2165,10 +2173,13 @@ let __ddSeq = 0;
 function buildSelDropdown({ grupo, valorAtual, onSelect, permitirVazio, boolMap, validar }){
   const id = 'dd_' + (++__ddSeq);
   const opts = opcoesDe(grupo);
-  const temSemDefinir = opts.some(o=>String(o.valor||'').trim().toLowerCase()==='sem definir');
-  let valorExibido = boolMap ? (valorAtual ? 'Sim' : (valorAtual===false ? 'Nao' : '')) : (valorAtual || '');
+  const valorNulo = !boolMap && ehSemDefinir(valorAtual);
+  let valorExibido = boolMap ? (valorAtual ? 'Sim' : (valorAtual===false ? 'Nao' : '')) : (valorNulo ? '' : (valorAtual || ''));
   const corBase = valorExibido ? corDaOpcao(grupo, valorExibido) : 'var(--text-faint)';
-  const rotulo = valorExibido || (permitirVazio ? 'Sem definir' : '—');
+  const rotulo = valorExibido || (permitirVazio ? SEM_DEFINIR : '—');
+  const opcoesRenderizadas = permitirVazio
+    ? [{ valor:'', cor:'var(--text-faint)' }, ...opts]
+    : opts.map(o=>({ valor:o.valor, cor:o.cor }));
   const html = `<button type="button" class="sel-dd-btn" id="${id}" style="background-color:${corMenuParaTema(corBase)};color:${textoParaCorDeMenu(corBase)}">${escapeHtml(rotulo)}</button>`;
   queueMicrotask(()=>{
     const btn = document.getElementById(id);
@@ -2176,10 +2187,12 @@ function buildSelDropdown({ grupo, valorAtual, onSelect, permitirVazio, boolMap,
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
       abrirFlutuante(btn, 'dd-panel-float', (painel, fechar)=>{
-        painel.innerHTML = `
-          ${permitirVazio && !temSemDefinir ? `<div class="dd-opt${!valorExibido?' dd-opt-sel':''}" data-v=""><span class="dd-dot" style="background:var(--text-faint)"></span>Sem definir</div>` : ''}
-          ${opts.map(o=>`<div class="dd-opt${o.valor===valorExibido?' dd-opt-sel':''}" data-v="${escapeHtml(o.valor)}"><span class="dd-dot" style="background:${corMenuParaTema(o.cor)}"></span>${escapeHtml(o.valor)}</div>`).join('')}
-        `;
+        painel.innerHTML = opcoesRenderizadas.map(o=>{
+          const semDefinir = o.valor === '';
+          const label = semDefinir ? SEM_DEFINIR : o.valor;
+          const dot = semDefinir ? 'var(--text-faint)' : corMenuParaTema(o.cor);
+          return `<div class="dd-opt${o.valor===valorExibido?' dd-opt-sel':''}" data-v="${escapeHtml(String(o.valor))}"><span class="dd-dot" style="background:${dot}"></span>${escapeHtml(label)}</div>`;
+        }).join('');
         painel.querySelectorAll('.dd-opt').forEach(opt=>{
           opt.addEventListener('click', async ()=>{
             fechar();
@@ -2188,15 +2201,13 @@ function buildSelDropdown({ grupo, valorAtual, onSelect, permitirVazio, boolMap,
               const motivoBloqueio = await validar(rotuloEscolhido);
               if (motivoBloqueio){ toast(motivoBloqueio, true); return; }
             }
-            // Atualiza o botão na hora (não espera o servidor confirmar pra mudar o visual)
             valorExibido = rotuloEscolhido;
             const novaCorBase = rotuloEscolhido ? corDaOpcao(grupo, rotuloEscolhido) : 'var(--text-faint)';
-            btn.textContent = rotuloEscolhido || (permitirVazio ? 'Sem definir' : '—');
+            btn.textContent = rotuloEscolhido || (permitirVazio ? SEM_DEFINIR : '—');
             btn.style.background = corMenuParaTema(novaCorBase);
             btn.style.color = textoParaCorDeMenu(novaCorBase);
-            let v = rotuloEscolhido === '' ? '' : rotuloEscolhido;
-            if (boolMap) v = v === '' ? null : (v === 'Sim');
-            else v = v === '' ? null : v;
+            let v = rotuloEscolhido === '' ? null : rotuloEscolhido;
+            if (boolMap) v = rotuloEscolhido === '' ? null : (rotuloEscolhido === 'Sim');
             await onSelect(v, btn);
           });
         });
@@ -2205,7 +2216,6 @@ function buildSelDropdown({ grupo, valorAtual, onSelect, permitirVazio, boolMap,
   });
   return html;
 }
-
 // Seletor genérico com painel flutuante — troca o <select> nativo (cujo
 // menu de opções é controlado pelo navegador/SO e não dá pra estilizar) por
 // um botão com painel próprio, no mesmo componente visual (.dd-panel-float)
@@ -2429,6 +2439,7 @@ async function viewTabela(tableName){
     if (f.edit==='multiselect') return (profilesCache.filter(p=>(r.__resp_ids||[]).includes(p.id)).map(p=>p.nome).join(', '));
     if (f.boolMap) return r[f.key] ? 'Sim' : 'Nao';
     if (f.edit==='problem-type') return rotuloTipoProblema(r[f.key]) || (r.tipo_problema_classe ? (r.tipo_problema_classe + ' — Sem definir') : 'Sem definir');
+    if (f.edit==='select' && ehSemDefinir(r[f.key])) return SEM_DEFINIR;
     return r[f.key] ?? '';
   }
 
@@ -2677,14 +2688,14 @@ async function viewTabela(tableName){
       if (tabelasComFranquiaObrigatoria.includes(tableName)){
         // Estado operacional inicial. A franquia pode ser definida depois
         // pelo responsÃƒÂ¡vel, sem transformar Ã¢â‚¬Å“InternoÃ¢â‚¬Â em dado de negÃƒÂ³cio.
-        defaults.franquia = 'Sem definir';
+        defaults.franquia = null;
         defaults.franquia_id = null;
       }
       if (tableName==='chamados_sac'){
         defaults.status = opcoesDe('chamados_status').find(o=>o.ativo !== false)?.valor || 'Aberto';
       }
       if (tableName==='projetos'){
-        defaults.status = 'Sem definir';
+        defaults.status = null;
       }
       if (['vendas_expansao','reclamacoes_industria','pedidos_agendamentos_industria'].includes(tableName)){
         defaults.criado_por = currentUser.id;
@@ -2916,7 +2927,7 @@ async function viewProgramacaoCarregamento(){
       const max = 3;
       const chips = doDia.slice(0,max).map(r=>{
         const cor = corDaOpcao('chamados_franquia', r.franquia) || '#7f9a72';
-        return `<div class="pcarg-chip" style="background:${corMenuParaTema(cor)};color:${textoParaCorDeMenu(cor)}" title="${escapeHtml(r.franquia||'')}${r.status?' — '+escapeHtml(r.status):''}">${r.status?`<span class="pcarg-chip-status" style="background:${corMenuParaTema(corDaOpcao('carregamento_status', r.status))}"></span>`:''}<span class="pcarg-chip-texto">${r.hora?escapeHtml(r.hora)+' · ':''}${escapeHtml(r.franquia||'Sem franquia')}</span></div>`;
+        return `<div class="pcarg-chip" style="background:${corMenuParaTema(cor)};color:${textoParaCorDeMenu(cor)}" title="${escapeHtml(r.franquia||'')}${r.status?' — '+escapeHtml(r.status):''}">${r.status?`<span class="pcarg-chip-status" style="background:${corMenuParaTema(corDaOpcao('carregamento_status', r.status))}"></span>`:''}<span class="pcarg-chip-texto">${r.hora?escapeHtml(r.hora)+' · ':''}${escapeHtml(ehSemDefinir(r.franquia) ? SEM_DEFINIR : r.franquia)}</span></div>`;
       }).join('');
       const mais = doDia.length>max ? `<div class="pcarg-chip-mais">+${doDia.length-max} mais</div>` : '';
       const sobrecarga = !especial && totalDoDia.length > state.capacidade;
@@ -2958,7 +2969,7 @@ async function viewProgramacaoCarregamento(){
               </div>
               <textarea class="cell-input" data-obs rows="2" placeholder="Observações">${escapeHtml(r.observacoes||'')}</textarea>
             ` : `
-              <div style="font-weight:800;font-size:13px;">${escapeHtml(r.franquia||'Sem franquia')}${r.hora?' · '+escapeHtml(r.hora):''}</div>
+              <div style="font-weight:800;font-size:13px;">${escapeHtml(ehSemDefinir(r.franquia) ? SEM_DEFINIR : r.franquia)}${r.hora?' · '+escapeHtml(r.hora):''}</div>
               ${r.observacoes ? `<div style="font-size:12px;color:var(--text-dim);">${escapeHtml(r.observacoes)}</div>` : ''}
               ${r.status ? `<div>${statusBadgeGeneric('carregamento_status', r.status)}</div>` : ''}
             `}
@@ -3021,7 +3032,7 @@ async function viewProgramacaoCarregamento(){
 
           const franquiaWrap = itemEl.querySelector('[data-franquia-wrap]');
           if (franquiaWrap){
-            franquiaWrap.innerHTML = buildSimplePicker(registro.franquia||'', opcoesDe('chamados_franquia').map(o=>({value:o.valor, label:o.valor, dot:corMenuParaTema(o.cor)})), async (v)=>{
+            franquiaWrap.innerHTML = buildSimplePicker(ehSemDefinir(registro.franquia) ? '' : registro.franquia, opcoesComSemDefinir(opcoesDe('chamados_franquia').map(o=>({value:o.valor, label:o.valor, dot:corMenuParaTema(o.cor)}))), async (v)=>{
               const opcaoFranquia = opcoesDe('chamados_franquia').find(o=>o.valor===v);
               const { error: errUp } = await sb.from('agendamentos_carregamento').update({ franquia: v, franquia_id: opcaoFranquia?.franquia_id || null }).eq('id', id);
               if (errUp) return toast('Erro: '+errUp.message, true);
