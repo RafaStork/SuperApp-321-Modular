@@ -2,12 +2,73 @@
   'use strict';
   const config = window.SUPERAPP_CONFIG || {};
   const clients = new Map();
+  const rememberPreferenceKey = '321-superapp-remember-login';
+  const authStorageKeys = new Set();
+  function storageAvailable(storage) {
+    try {
+      const key = '__321_storage_test__';
+      storage.setItem(key, '1');
+      storage.removeItem(key);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+  const hasLocalStorage = storageAvailable(window.localStorage);
+  const hasSessionStorage = storageAvailable(window.sessionStorage);
+  function isRememberLoginEnabled() {
+    if (!hasLocalStorage) return false;
+    return window.localStorage.getItem(rememberPreferenceKey) === 'true';
+  }
+  function preferredStorage() {
+    if (isRememberLoginEnabled() && hasLocalStorage) return window.localStorage;
+    if (hasSessionStorage) return window.sessionStorage;
+    return window.localStorage;
+  }
+  function secondaryStorage() {
+    return preferredStorage() === window.localStorage ? window.sessionStorage : window.localStorage;
+  }
+  const adaptiveAuthStorage = {
+    getItem(key) {
+      authStorageKeys.add(key);
+      try {
+        const preferred = preferredStorage()?.getItem(key);
+        if (preferred !== null && preferred !== undefined) return preferred;
+        return secondaryStorage()?.getItem(key) ?? null;
+      } catch (_) {
+        return null;
+      }
+    },
+    setItem(key, value) {
+      authStorageKeys.add(key);
+      const target = preferredStorage();
+      const secondary = secondaryStorage();
+      target?.setItem(key, value);
+      try { secondary?.removeItem(key); } catch (_) {}
+    },
+    removeItem(key) {
+      authStorageKeys.add(key);
+      try { window.localStorage?.removeItem(key); } catch (_) {}
+      try { window.sessionStorage?.removeItem(key); } catch (_) {}
+    }
+  };
+  function setRememberLogin(remember) {
+    if (!hasLocalStorage && remember) throw new Error('Este navegador não permite salvar a sessão.');
+    const target = remember ? window.localStorage : window.sessionStorage;
+    const source = remember ? window.sessionStorage : window.localStorage;
+    if (hasLocalStorage) window.localStorage.setItem(rememberPreferenceKey, remember ? 'true' : 'false');
+    for (const key of authStorageKeys) {
+      const value = source?.getItem(key);
+      if (value !== null && value !== undefined) target?.setItem(key, value);
+      source?.removeItem(key);
+    }
+  }
   function isConfigured() { return Boolean(config.supabaseUrl && config.supabasePublishableKey && window.supabase?.createClient); }
   function getScopedClient(schema) {
     if (!isConfigured()) return null;
     const selectedSchema = schema || config.authSchema || 'core';
     if (!clients.has(selectedSchema)) clients.set(selectedSchema, window.supabase.createClient(config.supabaseUrl, config.supabasePublishableKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storage: window.sessionStorage, storageKey: config.sessionStorageKey },
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storage: adaptiveAuthStorage, storageKey: config.sessionStorageKey },
       db: { schema: selectedSchema }
     }));
     return clients.get(selectedSchema);
@@ -49,5 +110,5 @@
   async function adminDeactivateUser(userId) { return rpc('admin_deactivate_user', { p_user_id: userId }); }
   async function signOut() { const supabase = getClient(); if (supabase) await supabase.auth.signOut(); }
   function getPortalUrl() { return new URL(config.portalBasePath || '../', document.baseURI).href; }
-  window.SuperAppAuth = { isConfigured, getClient, getScopedClient, signIn, getSession, getProfile, getEntitlements, adminListUsers, adminListRoles, adminListFranchises, adminListUnits, adminAssignAccess, adminAssignRole, adminDeactivateUser, signOut, getPortalUrl };
+  window.SuperAppAuth = { isConfigured, getClient, getScopedClient, signIn, getSession, getProfile, getEntitlements, adminListUsers, adminListRoles, adminListFranchises, adminListUnits, adminAssignAccess, adminAssignRole, adminDeactivateUser, signOut, getPortalUrl, isRememberLoginEnabled, setRememberLogin };
 }());
