@@ -1023,7 +1023,7 @@ function aplicarPricingData(data) {
   });
   insumosMap = {};
   (pricingData.insumos || []).forEach(ins => {
-    const painel = ins.painelRef || null;
+    const painel = chaveCatalogo(ins.painelRef || '');
     if (!insumosMap[painel]) insumosMap[painel] = [];
     insumosMap[painel].push(ins);
   });
@@ -10788,7 +10788,7 @@ function gerarRelatorioQuantitativo(panels) {
   // diferentes o usam) — uma única linha por insumo em toda a planta.
   const insumoOrigens = {}; // nome do insumo -> Set com os nomes dos painéis que o usam
   Object.values(acc).slice().forEach(entry => {
-    const relacionados = insumosMap[entry.nome];
+    const relacionados = insumosMap[chaveCatalogo(entry.nome)];
     if (!relacionados || !relacionados.length) return;
     relacionados.forEach(ins => {
       const key = `insumo::${ins.nome}`;

@@ -1014,11 +1014,8 @@ function opcoesTipoProblemaUnificadas(classeSemSubclasse=''){
   return opcoes;
 }
 function opcoesDe(grupo){
-  const opcoes = menuOpcoes[grupo] || [];
-  if (grupo === 'chamados_franquia' && !opcoes.some(o=>o.valor === 'Sem definir')){
-    return [{ id:null, grupo, valor:'Sem definir', ativo:true, ordem:-1, cor:'#7f8792', franquia_id:null }, ...opcoes];
-  }
-  return opcoes;
+  // As opcoes sao fonte unica no banco; nao criar placeholders duplicados no frontend.
+  return menuOpcoes[grupo] || [];
 }
 function corDaClasseProblema(classe){ const t=reclamacoesIndustriaTipos.find(x=>x.classe===classe); return t ? t.cor : '#628852'; }
 function corDaOpcao(grupo, valor){ const o = opcoesDe(grupo).find(x=>x.valor===valor); return o ? o.cor : '#7f9a72'; }
@@ -2168,6 +2165,7 @@ let __ddSeq = 0;
 function buildSelDropdown({ grupo, valorAtual, onSelect, permitirVazio, boolMap, validar }){
   const id = 'dd_' + (++__ddSeq);
   const opts = opcoesDe(grupo);
+  const temSemDefinir = opts.some(o=>String(o.valor||'').trim().toLowerCase()==='sem definir');
   let valorExibido = boolMap ? (valorAtual ? 'Sim' : (valorAtual===false ? 'Nao' : '')) : (valorAtual || '');
   const corBase = valorExibido ? corDaOpcao(grupo, valorExibido) : 'var(--text-faint)';
   const rotulo = valorExibido || (permitirVazio ? 'Sem definir' : '—');
@@ -2179,7 +2177,7 @@ function buildSelDropdown({ grupo, valorAtual, onSelect, permitirVazio, boolMap,
       e.stopPropagation();
       abrirFlutuante(btn, 'dd-panel-float', (painel, fechar)=>{
         painel.innerHTML = `
-          ${permitirVazio ? `<div class="dd-opt${!valorExibido?' dd-opt-sel':''}" data-v=""><span class="dd-dot" style="background:var(--text-faint)"></span>Sem definir</div>` : ''}
+          ${permitirVazio && !temSemDefinir ? `<div class="dd-opt${!valorExibido?' dd-opt-sel':''}" data-v=""><span class="dd-dot" style="background:var(--text-faint)"></span>Sem definir</div>` : ''}
           ${opts.map(o=>`<div class="dd-opt${o.valor===valorExibido?' dd-opt-sel':''}" data-v="${escapeHtml(o.valor)}"><span class="dd-dot" style="background:${corMenuParaTema(o.cor)}"></span>${escapeHtml(o.valor)}</div>`).join('')}
         `;
         painel.querySelectorAll('.dd-opt').forEach(opt=>{

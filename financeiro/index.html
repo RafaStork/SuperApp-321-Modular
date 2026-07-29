@@ -454,7 +454,21 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or)!impo
     .modal .btns{margin-left:-10px;margin-right:-10px;bottom:-14px;margin-bottom:-14px;}
   }
 </style>
-</head>
+<style data-financeiro-controls>
+  /* Controles de filtro, cadastro e datas usam uma unica superficie visual. */
+  select,.fg input[type="date"],.cell-date{min-height:36px;border:1.5px solid var(--bdr);border-radius:8px;background:var(--wh);color:var(--t1);font:inherit;line-height:1.2;}
+  select{padding:8px 34px 8px 11px!important;background-color:var(--wh)!important;border-color:var(--bdr)!important;}
+  select:hover,.fg input[type="date"]:hover,.cell-date:hover{border-color:var(--tm)!important;}
+  select:focus,.fg input[type="date"]:focus,.cell-date:focus{outline:none;border-color:var(--or)!important;box-shadow:0 0 0 3px var(--or-soft)!important;}
+  .dd-panel-float,.cal-dd{border:1px solid var(--bdr);background:var(--wh);color:var(--t1);}
+  .dd-opt:hover,.cal-day:hover{background:var(--gc);}
+  [data-theme="dark"] select,[data-theme="dark"] .fg input[type="date"]{color-scheme:dark;}
+  @media(max-width:880px){
+    select,.fg input[type="date"],.cell-date{width:100%;max-width:100%;min-width:0;}
+    .toolbar select,.toolbar .sel-simple-btn{min-width:0;max-width:100%;}
+    .dd-panel-float,.cal-dd{inset-inline:auto;}
+  }
+</style></head>
 <body>
 
 <!-- ── LOGIN ── -->
@@ -1295,13 +1309,19 @@ const DESP_LBL = { aluguel:'Aluguel do ponto', salarios:'Salários e pró-labore
 const OBRA_CATS = ['Kit Fábrica','Telhas','Frete','Munck (caminhão)','Alicerce / Blocos','Mão de obra montagem','Material elétrico','Pintura','Alimentação / Estadia','Outros custos de obra'];
 
 // save() grava os dados do usuário logado no Supabase (substitui o antigo localStorage)
-let saveInFlight=null;
-async function save(){
-  if(!SESSION) return;
-  try{
-    const { error } = await sb.rpc('save_app_data', { p_username: SESSION.username, p_token: SESSION.token, p_data: DB });
-    if(error) console.error('Erro ao salvar no Supabase:', error);
-  }catch(e){ console.error('Erro ao salvar no Supabase:', e); }
+let saveInFlight=Promise.resolve();
+function save(){
+  if(!SESSION) return Promise.resolve(false);
+  // Serializa snapshots para uma edicao antiga nunca sobrescrever uma nova.
+  const snapshot = JSON.parse(JSON.stringify(DB));
+  saveInFlight = saveInFlight.catch(()=>{}).then(async ()=>{
+    try{
+      const { error } = await sb.rpc('save_app_data', { p_username: SESSION.username, p_token: SESSION.token, p_data: snapshot });
+      if(error){ console.error('Erro ao salvar no Supabase:', error); toast('Erro ao salvar: ' + (error.message || 'falha de persistencia'), true); return false; }
+      return true;
+    }catch(e){ console.error('Erro ao salvar no Supabase:', e); toast('Erro ao salvar: ' + (e.message || 'falha de rede'), true); return false; }
+  });
+  return saveInFlight;
 }
 // load() não é mais usado para iniciar o app (ver doLogin/tryAutoLogin) — mantido só por compatibilidade
 function load(){}
