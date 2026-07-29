@@ -1099,7 +1099,14 @@ function hsvParaRgb(h,s,v){
 
 async function loadProfilesCache(){
   const { data, error } = await sb.rpc('listar_usuarios');
-  if (!error) profilesCache = data || [];
+  if (error){
+    console.error('Falha ao carregar usuários aptos para responsáveis', error);
+    profilesCache = [];
+    toast('Não foi possível carregar os usuários responsáveis.', true);
+    return false;
+  }
+  profilesCache = data || [];
+  return true;
 }
 
 // Ordem e rótulos fixos de todas as abas que existem no sistema — quais
@@ -1368,6 +1375,22 @@ async function saveField(table, id, field, value){
   return true;
 }
 
+// Franquia é uma fonte canônica no menu_opcoes. Sempre que o rótulo muda,
+// grava também o ID correspondente para não deixar label e vínculo divergentes.
+async function saveFranquiaField(table, id, value){
+  const opcao = opcoesDe('chamados_franquia').find(o=>o.valor===value);
+  const payload = { franquia: value || null, franquia_id: opcao?.franquia_id || null };
+  const { data, error } = await sb.from(table)
+    .update(payload)
+    .eq('id', id)
+    .select('id,franquia,franquia_id')
+    .maybeSingle();
+  if (error || !data){
+    toast('Erro ao salvar a franquia: ' + (error?.message || 'gravação não confirmada'), true);
+    return null;
+  }
+  return data;
+}
 async function saveTipoProblemaState(table, id, field, tipoId, classe){
   // A classe pode ser gravada sem uma subclasse. O update é confirmado com
   // select() para não deixar a tela afirmar que salvou quando a API recusou
@@ -1624,12 +1647,23 @@ function renderSelectCell(table, row, field){
     permitirVazio: true,
     validar: (field.key==='status' && (table==='projetos'||table==='chamados_sac')) ? validarStatusConclusao(table, row.id) : undefined,
     onSelect: async (v, btn)=>{
+      if (field.key==='franquia'){
+        const salvo = await saveFranquiaField(table, row.id, v);
+        if (!salvo) return false;
+        row.franquia = salvo.franquia;
+        row.franquia_id = salvo.franquia_id;
+        flashSavedCor(btn);
+        if (typeof aplicarFiltrosAtual === 'function') aplicarFiltrosAtual();
+        return true;
+      }
       const ok = await saveField(table, row.id, field.key, v);
       if (ok){
         row[field.key] = v;
         flashSavedCor(btn);
         if (typeof aplicarFiltrosAtual === 'function') aplicarFiltrosAtual();
+        return true;
       }
+      return false;
     },
   });
 }
@@ -2602,7 +2636,29 @@ async function viewTabela(tableName){
         if (f.edit==='percent') defaults[f.key]=0;
         if (f.edit==='text' && !f.readonly) defaults[f.key]='Novo — clique para editar';
       });
-      if (tableName==='vendas_expansao' || tableName==='reclamacoes_industria' || tableName==='pedidos_agendamentos_industria' || tableName==='agendamentos_carregamento') defaults.criado_por = currentUser.id;
+      const tabelasComFranquiaObrigatoria = ['chamados_sac','reclamacoes_industria','pedidos_agendamentos_industria'];
+      if (tabelasComFranquiaObrigatoria.includes(tableName)){
+        // A política RLS não aceita registro órfão. "Interno" é uma opção
+        // canônica para a Matriz e pode ser alterada na própria linha depois.
+        const opcoesFranquia = opcoesDe('chamados_franquia').filter(o=>o.valor && o.ativo !== false);
+        const inicial = opcoesFranquia.find(o=>o.valor==='Interno') || opcoesFranquia[0];
+        if (!inicial){
+          toast('Cadastre uma franquia em Opções dos Menus antes de criar.', true);
+          return;
+        }
+        defaults.franquia = inicial.valor;
+        defaults.franquia_id = inicial.franquia_id || null;
+      }
+      if (tableName==='chamados_sac'){
+        defaults.status = opcoesDe('chamados_status').find(o=>o.ativo !== false)?.valor || 'Aberto';
+      }
+      if (['vendas_expansao','reclamacoes_industria','pedidos_agendamentos_industria'].includes(tableName)){
+        defaults.criado_por = currentUser.id;
+      }
+      if (['chamados_sac','vendas_expansao','reclamacoes_industria','pedidos_agendamentos_industria'].includes(tableName)){
+        // Mantém compatibilidade com bases que ainda não têm default no id.
+        defaults.id = crypto.randomUUID();
+      }
       let novoId = null;
       let novaLinha = null;
       if (tableName==='chamados_sac'){
