@@ -668,7 +668,14 @@ svg text{ font-family:var(--font); }
 .tipo-problema-cell{display:flex;flex-direction:column;gap:4px;min-width:210px;}
 .tipo-problema-cell .sel-simple-btn{width:100%;min-width:0;text-align:left;font-size:11px;padding:6px 8px;}
 .tipo-problema-unico .sel-simple-btn{font-weight:700;}</style>
-</head>
+<style data-superapp-sidebar-standard>
+.side-footer{gap:10px}
+.side-footer .side-session-copy{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 9px}
+.side-footer .side-session-name{color:var(--text);line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:break-word}
+.side-footer .side-session-role{color:var(--text-faint);line-height:1.3;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:break-word}
+.side-footer .side-session .tab-btn{border:1px solid var(--border);background:var(--surface);color:var(--text-dim);padding:7px 10px;min-height:100%;border-radius:8px}
+.side-footer .side-session .tab-btn:hover{background:var(--bg-soft);color:var(--text);border-color:var(--text-faint)}
+</style></head>
 <body>
 
 <div id="login-screen">
