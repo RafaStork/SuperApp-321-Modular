@@ -101,6 +101,10 @@
   async function adminListRoles() { const data = await rpc('admin_list_roles'); return Array.isArray(data) ? data : []; }
   async function adminListFranchises() { const data = await rpc('admin_list_franchises'); return Array.isArray(data) ? data : []; }
   async function adminListUnits() { const data = await rpc('admin_list_units'); return Array.isArray(data) ? data : []; }
+  async function adminListAppRolePermissions() { const data = await rpc('admin_list_app_role_permissions'); return Array.isArray(data) ? data : []; }
+  async function adminSetAppRolePermission(appCode, roleCode, canView) {
+    return rpc('admin_set_app_role_permission', { p_app_code: appCode, p_role_code: roleCode, p_can_view: Boolean(canView) });
+  }
   async function adminAssignAccess(userId, roleCode, scopeKind, unitId, franchiseId) {
     return rpc('admin_assign_access', { p_user_id: userId, p_role_code: roleCode, p_scope_kind: scopeKind, p_unit_id: unitId || null, p_franchise_id: franchiseId || null });
   }
@@ -110,5 +114,5 @@
   async function adminDeactivateUser(userId) { return rpc('admin_deactivate_user', { p_user_id: userId }); }
   async function signOut() { const supabase = getClient(); if (supabase) await supabase.auth.signOut(); }
   function getPortalUrl() { return new URL(config.portalBasePath || '../', document.baseURI).href; }
-  window.SuperAppAuth = { isConfigured, getClient, getScopedClient, signIn, getSession, getProfile, getEntitlements, adminListUsers, adminListRoles, adminListFranchises, adminListUnits, adminAssignAccess, adminAssignRole, adminDeactivateUser, signOut, getPortalUrl, isRememberLoginEnabled, setRememberLogin };
+  window.SuperAppAuth = { isConfigured, getClient, getScopedClient, signIn, getSession, getProfile, getEntitlements, adminListUsers, adminListRoles, adminListFranchises, adminListUnits, adminListAppRolePermissions, adminSetAppRolePermission, adminAssignAccess, adminAssignRole, adminDeactivateUser, signOut, getPortalUrl, isRememberLoginEnabled, setRememberLogin };
 }());

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR" data-app-code="financeiro">
 <head>
 <link rel="icon" type="image/svg+xml" href="../shared/IconGestaoFinanceira.svg">
@@ -12,8 +12,8 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" integrity="sha384-bs/nf9FbdNouRbMiFcrcZfLXYPKiPaGVGplVbv7dLGECccEXDW+S3zjqSKR5ZEaD" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
 <script src="../shared/runtime-config.local.js"></script>
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js"></script>
@@ -1340,7 +1340,8 @@ const BRL = v => 'R$ '+(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,ma
 const PCT = v => (v||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
 const fmtDate = s => s ? s.split('-').reverse().join('/') : '—';
 const addMonths = (dateStr, m) => { const d=new Date(dateStr+'T00:00:00'); d.setMonth(d.getMonth()+m); return d.toISOString().slice(0,10); };
-const escapeAttr = s => String(s).replace(/"/g,'&quot;');
+const escapeHtml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const escapeAttr = s => escapeHtml(s);
 
 // ═══════════════════════════════════════════════════
 // TABELAS COM BUSCA, FILTRO POR COLUNA E ORDENAÇÃO (igual ao index.html)
@@ -1417,7 +1418,7 @@ function ligarEventosCabecalho(tableKey, colunas, linhasTodas, valorDe, onChange
       const atuais = st.filtros[key] || new Set(valores);
       abrirFlutuante(btn, 'dd-panel-float', (painel)=>{
         painel.innerHTML = `<div style="padding:4px 8px 8px;font-size:10.5px;font-weight:700;color:var(--tm);text-transform:uppercase;letter-spacing:.05em">Filtrar ${col.label}</div>` +
-          valores.map(v=>`<label class="dd-opt"><input type="checkbox" class="flt-cb" value="${escapeAttr(v)}" ${atuais.has(v)?'checked':''} style="margin-right:2px">${v||'—'}</label>`).join('') +
+          valores.map(v=>`<label class="dd-opt"><input type="checkbox" class="flt-cb" value="${escapeAttr(v)}" ${atuais.has(v)?'checked':''} style="margin-right:2px">${escapeHtml(v||'—')}</label>`).join('') +
           `<div style="display:flex;gap:10px;padding:8px 8px 2px;border-top:1px solid var(--bdr);margin-top:6px">
              <button type="button" class="link-btn" data-a="all">Marcar todos</button>
              <button type="button" class="link-btn" data-a="none">Desmarcar todos</button>
@@ -1770,10 +1771,10 @@ function sbadge(s){
     'Em negociação':'b-gray','Contrato assinado':'b-purple','Em produção':'b-blue',
     'Em montagem':'b-yellow','Entregue':'b-green','Cancelado':'b-red'
   };
-  return `<span class="badge ${m[s]||'b-gray'}">${s}</span>`;
+  return `<span class="badge ${m[s]||'b-gray'}">${escapeHtml(s)}</span>`;
 }
 function pbadge(s){
-  return `<span class="badge ${{Recebido:'b-green',Pago:'b-green',Pendente:'b-purple',Vencido:'b-red','Em atraso':'b-red'}[s]||'b-gray'}">${s}</span>`;
+  return `<span class="badge ${{Recebido:'b-green',Pago:'b-green',Pendente:'b-purple',Vencido:'b-red','Em atraso':'b-red'}[s]||'b-gray'}">${escapeHtml(s)}</span>`;
 }
 
 // ── STATUS EDITÁVEL DIRETO NA LINHA — "A Receber" ──
@@ -1781,7 +1782,7 @@ const REC_STATUS_CLASS = { 'Pendente':'b-purple', 'Recebido':'b-green', 'Em atra
 const REC_STATUS_DOT = { 'Pendente':'#A855F7', 'Recebido':'#10B981', 'Em atraso':'#EF4444' };
 function recStatusPickHtml(r){
   const cls = REC_STATUS_CLASS[r.status] || 'b-gray';
-  return `<button type="button" class="status-pick badge ${cls}" data-rid="${r.id}">${r.status}</button>`;
+  return `<button type="button" class="status-pick badge ${cls}" data-rid="${escapeAttr(r.id)}">${escapeHtml(r.status)}</button>`;
 }
 function ligarStatusPickersRec(){
   document.querySelectorAll('.status-pick[data-rid]').forEach(btn=>{
@@ -1922,8 +1923,8 @@ function renderDash(){
     : rec.map(o=>{
         const c=calcObra(o);
         return `<tr>
-          <td><strong>${o.cliente}</strong><div class="tdim">${o.cidade||''}</div></td>
-          <td>${o.modelo}</td>
+          <td><strong>${escapeHtml(o.cliente)}</strong><div class="tdim">${escapeHtml(o.cidade||'')}</div></td>
+          <td>${escapeHtml(o.modelo)}</td>
           <td>${sbadge(o.status)}</td>
           <td class="tr mono">${BRL(n(o.venda))}</td>
           <td class="tr mono">${BRL(c.custos)}</td>
@@ -1973,7 +1974,7 @@ function populateCustosFiltro(){
   sel.style.display='';
   if(modo==='obra'){
     sel.innerHTML = DB.obras.length
-      ? DB.obras.slice().sort((a,b)=>(b.dtC||'')>(a.dtC||'')?1:-1).map(o=>`<option value="${o.id}">${o.cliente} — ${o.modelo}</option>`).join('')
+      ? DB.obras.slice().sort((a,b)=>(b.dtC||'')>(a.dtC||'')?1:-1).map(o=>`<option value="${escapeAttr(o.id)}">${escapeHtml(o.cliente)} — ${escapeHtml(o.modelo)}</option>`).join('')
       : '<option value="">Nenhuma obra cadastrada</option>';
   } else if(modo==='mes'){
     const meses=getMeses();
@@ -2061,8 +2062,8 @@ function renderObras(){
     const custosLancados=DB.pagar.filter(p=>p.obraId===o.id&&isObraCat(p.cat)).length;
     return `<tr>
       <td style="color:var(--tm);font-size:11px">${list.length-i}</td>
-      <td><strong>${o.cliente}</strong><div class="tdim">${o.cidade||''} ${o.dtC?'· '+fmtDate(o.dtC):''}</div></td>
-      <td>${o.modelo}</td>
+      <td><strong>${escapeHtml(o.cliente)}</strong><div class="tdim">${escapeHtml(o.cidade||'')} ${o.dtC?'· '+fmtDate(o.dtC):''}</div></td>
+      <td>${escapeHtml(o.modelo)}</td>
       <td>${fmtDate(o.dtC)}</td>
       <td>${sbadge(o.status)}</td>
       <td class="tr mono">${BRL(n(o.venda))}</td>
@@ -2070,9 +2071,9 @@ function renderObras(){
       <td class="tr mono ${o.status==='Entregue'?(c.resultado>=0?'pos':'neg'):''}">${o.status==='Entregue'?BRL(c.resultado):'—'}</td>
       <td class="tr ${o.status==='Entregue'?mCls:''}">${o.status==='Entregue'?PCT(c.margem):'—'}</td>
       <td><div style="display:flex;gap:6px;white-space:nowrap">
-        <button class="btn bs bsm" onclick="verResultadoObra('${o.id}')">📊 Resultado</button>
-        <button class="btn bs bsm" onclick="editObra('${o.id}')">Editar</button>
-        <button class="btn bs bsm" onclick="openPagModal('${o.id}')">+ Custo</button>
+        <button class="btn bs bsm" onclick="verResultadoObra('${escapeAttr(o.id)}')">📊 Resultado</button>
+        <button class="btn bs bsm" onclick="editObra('${escapeAttr(o.id)}')">Editar</button>
+        <button class="btn bs bsm" onclick="openPagModal('${escapeAttr(o.id)}')">+ Custo</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -2310,11 +2311,11 @@ function renderFornecedores(){
   em.style.display='none';
   tb.innerHTML=list.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||'')).map(f=>`
     <tr>
-      <td><strong>${f.nome}</strong>${f.obs?`<div class="tdim">${f.obs}</div>`:''}</td>
-      <td>${f.telefone||''}</td>
-      <td>${f.categoria||'—'}</td>
-      <td>${f.cnpj||'—'}</td>
-      <td><button class="btn bs bsm" onclick="openFornecedorModal('${f.id}')">Editar</button></td>
+      <td><strong>${escapeHtml(f.nome)}</strong>${f.obs?`<div class="tdim">${escapeHtml(f.obs)}</div>`:''}</td>
+      <td>${escapeHtml(f.telefone||'')}</td>
+      <td>${escapeHtml(f.categoria||'—')}</td>
+      <td>${escapeHtml(f.cnpj||'—')}</td>
+      <td><button class="btn bs bsm" onclick="openFornecedorModal('${escapeAttr(f.id)}')">Editar</button></td>
     </tr>`).join('');
   badges();
 }
@@ -2410,12 +2411,12 @@ function renderFluxoCaixa(){
 
   document.getElementById('tbFcEntradas').innerHTML = entradas.length ? entradas.map(r=>{
     const obra=DB.obras.find(o=>o.id===r.obraId);
-    return `<tr><td>${fmtDate(r.venc)}</td><td>${obra?obra.cliente:(r.desc||'Avulso')}</td><td>${r.forma||'—'}</td><td class="tr mono">${BRL(n(r.rec))}</td></tr>`;
+    return `<tr><td>${fmtDate(r.venc)}</td><td>${escapeHtml(obra?obra.cliente:(r.desc||'Avulso'))}</td><td>${escapeHtml(r.forma||'—')}</td><td class="tr mono">${BRL(n(r.rec))}</td></tr>`;
   }).join('') : '<tr><td colspan="4" class="tc" style="padding:16px;color:var(--tm)">Nenhuma entrada no período</td></tr>';
 
   document.getElementById('tbFcSaidas').innerHTML = saidas.length ? saidas.map(p=>{
     const forn=(DB.fornecedores||[]).find(f=>f.id===p.fornecedorId);
-    return `<tr><td>${fmtDate(p.venc)}</td><td>${forn?forn.nome:(p.desc||p.cat)}</td><td>${p.forma||'—'}</td><td class="tr mono">${BRL(n(p.pago))}</td></tr>`;
+    return `<tr><td>${fmtDate(p.venc)}</td><td>${escapeHtml(forn?forn.nome:(p.desc||p.cat))}</td><td>${escapeHtml(p.forma||'—')}</td><td class="tr mono">${BRL(n(p.pago))}</td></tr>`;
   }).join('') : '<tr><td colspan="4" class="tc" style="padding:16px;color:var(--tm)">Nenhuma saída no período</td></tr>';
 
   document.getElementById('fcRazaoKpis').innerHTML = `
@@ -2429,7 +2430,7 @@ function renderFluxoCaixa(){
   const chequesCarteira=totalChequesCarteira();
   const permutasAtivas=totalPermutasAtivas();
   const totalGeral=dinheiro+chequesCarteira+permutasAtivas;
-  const linhasContas=(DB.contas||[]).map(c=>`<tr><td>${c.nome}</td><td class="tr mono">${BRL(saldoConta(c.id))}</td></tr>`).join('');
+  const linhasContas=(DB.contas||[]).map(c=>`<tr><td>${escapeHtml(c.nome)}</td><td class="tr mono">${BRL(saldoConta(c.id))}</td></tr>`).join('');
   document.getElementById('tbRazao').innerHTML = `
     ${linhasContas || '<tr><td colspan="2" style="color:var(--tm)">Nenhuma conta cadastrada</td></tr>'}
     <tr style="background:var(--gp)"><td><strong>Dinheiro disponível</strong></td><td class="tr mono"><strong>${BRL(dinheiro)}</strong></td></tr>
@@ -2515,12 +2516,12 @@ function renderCheques(){
     <tr>
       <td class="mono">${BRL(c.valor)}</td>
       <td>${fmtDate(c.vencimento)}</td>
-      <td>${c.banco||'—'}</td>
-      <td><span class="badge ${{'Em carteira':'b-purple','Depositado':'b-green','Repassado':'b-blue','Devolvido':'b-red'}[c.status]||'b-gray'}">${c.status}</span></td>
+      <td>${escapeHtml(c.banco||'—')}</td>
+      <td><span class="badge ${{'Em carteira':'b-purple','Depositado':'b-green','Repassado':'b-blue','Devolvido':'b-red'}[c.status]||'b-gray'}">${escapeHtml(c.status)}</span></td>
       <td>${c.status==='Em carteira' ? `
         <div style="display:flex;gap:6px;white-space:nowrap">
-          <button class="btn bs bsm" onclick="abrirDepositoCheque('${c.id}')">Depositar</button>
-          <button class="btn brd bsm" onclick="devolverCheque('${c.id}')">Devolvido</button>
+          <button class="btn bs bsm" onclick="abrirDepositoCheque('${escapeAttr(c.id)}')">Depositar</button>
+          <button class="btn brd bsm" onclick="devolverCheque('${escapeAttr(c.id)}')">Devolvido</button>
         </div>` : '—'}</td>
     </tr>`).join('');
 }
@@ -2563,9 +2564,9 @@ function renderPermutas(){
   tb.innerHTML=list.map(p=>`
     <tr>
       <td class="mono">${BRL(p.valor)}</td>
-      <td>${p.descricao}</td>
-      <td><span class="badge ${{'Ativa':'b-purple','Usada':'b-blue','Baixada':'b-gray'}[p.status]||'b-gray'}">${p.status}</span></td>
-      <td>${p.status==='Ativa' ? `<button class="btn brd bsm" onclick="baixarPermuta('${p.id}')">Dar baixa</button>` : '—'}</td>
+      <td>${escapeHtml(p.descricao)}</td>
+      <td><span class="badge ${{'Ativa':'b-purple','Usada':'b-blue','Baixada':'b-gray'}[p.status]||'b-gray'}">${escapeHtml(p.status)}</span></td>
+      <td>${p.status==='Ativa' ? `<button class="btn brd bsm" onclick="baixarPermuta('${escapeAttr(p.id)}')">Dar baixa</button>` : '—'}</td>
     </tr>`).join('');
 }
 
@@ -2661,10 +2662,10 @@ function renderContas(){
   tb.innerHTML=list.map(c=>{
     const tipoNome=(DB.tiposConta||[]).find(t=>t.id===c.tipo)?.nome || c.tipo || '—';
     return `<tr>
-      <td><strong>${c.nome}</strong></td>
-      <td>${tipoNome}</td>
+      <td><strong>${escapeHtml(c.nome)}</strong></td>
+      <td>${escapeHtml(tipoNome)}</td>
       <td class="tr mono">${BRL(n(c.saldoInicial))}</td>
-      <td><button class="btn bs bsm" onclick="openContaModal('${c.id}')">Editar</button></td>
+      <td><button class="btn bs bsm" onclick="openContaModal('${escapeAttr(c.id)}')">Editar</button></td>
     </tr>`;
   }).join('');
 }
@@ -2716,7 +2717,7 @@ function fillTiposContaSelect(){
   const sel=document.getElementById('ctTipo');
   if(!sel) return;
   const cur=sel.value;
-  sel.innerHTML=(DB.tiposConta||[]).map(t=>`<option value="${t.id}">${t.nome}</option>`).join('');
+  sel.innerHTML=(DB.tiposConta||[]).map(t=>`<option value="${escapeAttr(t.id)}">${escapeHtml(t.nome)}</option>`).join('');
   if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
 }
 
@@ -2731,8 +2732,8 @@ function renderTiposContaList(){
   const list=DB.tiposConta||[];
   wrap.innerHTML = list.length ? list.map(t=>`
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <input value="${t.nome}" onchange="renomearTipoConta('${t.id}',this.value)" style="flex:1">
-      <button class="btn bs bsm" type="button" title="Remover" onclick="removeTipoConta('${t.id}')">🗑️</button>
+      <input value="${escapeAttr(t.nome)}" onchange="renomearTipoConta('${escapeAttr(t.id)}',this.value)" style="flex:1">
+      <button class="btn bs bsm" type="button" title="Remover" onclick="removeTipoConta('${escapeAttr(t.id)}')">🗑️</button>
     </div>`).join('') : '<p style="color:var(--tm);font-size:13px">Nenhum tipo cadastrado.</p>';
 }
 
@@ -2812,14 +2813,14 @@ function renderRec(){
     const sl=saldo(r);
     return `<tr>
       <td><strong>${obra?obra.cliente:'Avulso'}</strong><div class="tdim">${obra?obra.modelo:''}</div></td>
-      <td>${r.tipo}</td>
-      <td>${r.desc||'—'}</td>
+      <td>${escapeHtml(r.tipo)}</td>
+      <td>${escapeHtml(r.desc||'—')}</td>
       <td>${fmtDate(r.venc)}</td>
       <td class="tr mono">${BRL(n(r.prev))}</td>
       <td class="tr mono pos">${n(r.rec)>0?BRL(n(r.rec)):'—'}</td>
       <td class="tr mono ${sl>0?'neg':''}">${BRL(sl)}</td>
       <td>${recStatusPickHtml(r)}</td>
-      <td><button class="btn bs bsm" onclick="editRec('${r.id}')">Editar</button></td>
+      <td><button class="btn bs bsm" onclick="editRec('${escapeAttr(r.id)}')">Editar</button></td>
     </tr>`;
   }).join('');
   ligarStatusPickersRec();
@@ -3009,15 +3010,15 @@ function renderPag(){
     const isRoy=p.cat==='Royalties';
     const isCom=p.cat==='Comissão';
     return `<tr class="${isRoy||isCom?'row-highlight':''}">
-      <td><strong>${p.desc||p.cat}</strong>${isRoy?'<span class="badge b-orange" style="margin-left:6px;font-size:10px">Royalties</span>':''}${isCom?'<span class="badge b-orange" style="margin-left:6px;font-size:10px">Comissão</span>':''}
-      <div class="tdim">${p.nf||''}</div></td>
-      <td><span class="badge b-gray" style="font-size:10px">${p.cat}</span></td>
-      <td>${obra?`<strong>${obra.cliente}</strong><div class="tdim">${obra.modelo}</div>`:'<span style="color:var(--tm);font-size:12px">Operacional</span>'}</td>
+      <td><strong>${escapeHtml(p.desc||p.cat)}</strong>${isRoy?'<span class="badge b-orange" style="margin-left:6px;font-size:10px">Royalties</span>':''}${isCom?'<span class="badge b-orange" style="margin-left:6px;font-size:10px">Comissão</span>':''}
+      <div class="tdim">${escapeHtml(p.nf||'')}</div></td>
+      <td><span class="badge b-gray" style="font-size:10px">${escapeHtml(p.cat)}</span></td>
+      <td>${obra?`<strong>${escapeHtml(obra.cliente)}</strong><div class="tdim">${escapeHtml(obra.modelo)}</div>`:'<span style="color:var(--tm);font-size:12px">Operacional</span>'}</td>
       <td>${fmtDate(p.venc)}</td>
       <td class="tr mono">${BRL(n(p.valor))}</td>
       <td class="tr mono ${p.pago?'pos':''}">${p.pago?BRL(n(p.pago)):'—'}</td>
       <td>${pbadge(p.status)}</td>
-      <td><button class="btn bs bsm" onclick="editPag('${p.id}')">Editar</button></td>
+      <td><button class="btn bs bsm" onclick="editPag('${escapeAttr(p.id)}')">Editar</button></td>
     </tr>`;
   }).join('');
   badges();
@@ -3059,7 +3060,7 @@ function fillChequeCarteiraSelect(selId, currentPagarId){
   if(!sel) return;
   const cur=sel.value;
   const list=(DB.cheques||[]).filter(c=>c.status==='Em carteira' || (currentPagarId && c.pagarId===currentPagarId));
-  sel.innerHTML = list.length ? list.map(c=>`<option value="${c.id}">${BRL(c.valor)} — venc. ${fmtDate(c.vencimento)}${c.banco?' — '+c.banco:''}</option>`).join('') : '<option value="">Nenhum cheque em carteira</option>';
+  sel.innerHTML = list.length ? list.map(c=>`<option value="${escapeAttr(c.id)}">${BRL(c.valor)} — venc. ${fmtDate(c.vencimento)}${c.banco?' — '+escapeHtml(c.banco):''}</option>`).join('') : '<option value="">Nenhum cheque em carteira</option>';
   if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
 }
 function fillPermutaAtivaSelect(selId, currentPagarId){
@@ -3067,7 +3068,7 @@ function fillPermutaAtivaSelect(selId, currentPagarId){
   if(!sel) return;
   const cur=sel.value;
   const list=(DB.permutas||[]).filter(p=>p.status==='Ativa' || (currentPagarId && p.pagarId===currentPagarId));
-  sel.innerHTML = list.length ? list.map(p=>`<option value="${p.id}">${BRL(p.valor)} — ${p.descricao}</option>`).join('') : '<option value="">Nenhuma permuta ativa</option>';
+  sel.innerHTML = list.length ? list.map(p=>`<option value="${escapeAttr(p.id)}">${BRL(p.valor)} — ${escapeHtml(p.descricao)}</option>`).join('') : '<option value="">Nenhuma permuta ativa</option>';
   if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
 }
 function onPagStatusChange(){
@@ -3385,17 +3386,17 @@ function renderDREObra(){
 
   let alertHtml='';
   if(emAndamento){
-    alertHtml = `<div class="box bx-blue" style="margin-bottom:16px"><div class="box-icon">🚧</div><div><strong>Obra em andamento (${o.status}).</strong> O resultado abaixo é parcial — pode haver custos e/ou receitas ainda não lançados no sistema.</div></div>`;
+    alertHtml = `<div class="box bx-blue" style="margin-bottom:16px"><div class="box-icon">🚧</div><div><strong>Obra em andamento (${escapeHtml(o.status)}).</strong> O resultado abaixo é parcial — pode haver custos e/ou receitas ainda não lançados no sistema.</div></div>`;
   }
 
   const header = `
     <div class="obra-detail">
       <div class="od-header">
         <div class="od-title">
-          <h2>${o.cliente} — ${o.modelo}</h2>
-          <p>${sbadge(o.status)} &nbsp; ${o.cidade?o.cidade+' · ':''}${o.dtC?'Contrato em '+fmtDate(o.dtC):''}${o.dtE?' · Entregue em '+fmtDate(o.dtE):''}</p>
+          <h2>${escapeHtml(o.cliente)} — ${escapeHtml(o.modelo)}</h2>
+          <p>${sbadge(o.status)} &nbsp; ${o.cidade?escapeHtml(o.cidade)+' · ':''}${o.dtC?'Contrato em '+fmtDate(o.dtC):''}${o.dtE?' · Entregue em '+fmtDate(o.dtE):''}</p>
         </div>
-        <button class="btn bs bsm" onclick="editObra('${o.id}')">Editar obra</button>
+        <button class="btn bs bsm" onclick="editObra('${escapeAttr(o.id)}')">Editar obra</button>
       </div>
       ${alertHtml}
       <div class="od-kpis">
@@ -3456,7 +3457,7 @@ function renderDesp(){
   }).join('');
   const linhasExtras=(DB.despesasExtras||[]).filter(x=>n(x.valor)>0).map(x=>{
     const v=n(x.valor);
-    return `<tr><td>${x.nome||'(sem nome)'}</td><td class="tr mono">${BRL(v)}</td><td class="tr mono">${BRL(v*12)}</td><td class="tr">${tot>0?(v/tot*100).toFixed(1)+'%':'—'}</td></tr>`;
+    return `<tr><td>${escapeHtml(x.nome||'(sem nome)')}</td><td class="tr mono">${BRL(v)}</td><td class="tr mono">${BRL(v*12)}</td><td class="tr">${tot>0?(v/tot*100).toFixed(1)+'%':'—'}</td></tr>`;
   }).join('');
   document.getElementById('tbDesp').innerHTML=(linhasFixas+linhasExtras)||'<tr><td colspan="4" class="tc" style="padding:20px;color:var(--tm)">Nenhuma despesa configurada</td></tr>';
   document.getElementById('despTot').textContent=BRL(tot);
@@ -3473,9 +3474,9 @@ function renderDespExtras(){
   }
   wrap.innerHTML=DB.despesasExtras.map(x=>`
     <div class="fg" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:10px">
-      <div style="flex:2"><label>Nome da despesa</label><input id="dx_nome_${x.id}" placeholder="Ex: Manutenção do showroom"></div>
-      <div style="flex:1"><label>Valor mensal (R$)</label><input id="dx_valor_${x.id}" placeholder="R$ 0,00"></div>
-      <button class="btn bs bsm" type="button" title="Remover despesa" onclick="removeDespesaExtra('${x.id}')" style="height:38px">🗑️</button>
+      <div style="flex:2"><label>Nome da despesa</label><input id="dx_nome_${escapeAttr(x.id)}" placeholder="Ex: Manutenção do showroom"></div>
+      <div style="flex:1"><label>Valor mensal (R$)</label><input id="dx_valor_${escapeAttr(x.id)}" placeholder="R$ 0,00"></div>
+      <button class="btn bs bsm" type="button" title="Remover despesa" onclick="removeDespesaExtra('${escapeAttr(x.id)}')" style="height:38px">🗑️</button>
     </div>
   `).join('');
   DB.despesasExtras.forEach(x=>{
