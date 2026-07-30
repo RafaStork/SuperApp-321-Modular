@@ -1,0 +1,1 @@
+(function(){ try{ var t=localStorage.getItem('321modular_theme') || localStorage.getItem('321pb_theme'); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();

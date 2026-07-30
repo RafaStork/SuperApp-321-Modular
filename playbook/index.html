@@ -5,245 +5,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Playbook de Operação · 321 Modular</title>
-<script>
-(function(){ try{ var t=localStorage.getItem('321modular_theme') || localStorage.getItem('321pb_theme'); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();
-</script>
+<script src="./theme-bootstrap.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --gd:#3B5132;--gm:#638854;--gl:#8BA872;
-  --or:#EE6B1B;--go:#F9B218;--bl:#2A5EA9;
-  --red:#C0392B;--sbg:#15171B;
-  --sw:270px;
-  --ease-out: cubic-bezier(.16,.84,.44,1);
-}
-[data-theme="light"]{
-  --bg:#EEF0F2;--wh:#fff;--t1:#1C1F24;--t2:#5A626C;--tm:#9099A3;
-  --bdr:#E2E5E9;--gc:#EFF3ED;--gp:#D8E1D4;
-  --or-soft:rgba(238,107,27,.10);--red-soft:rgba(192,57,43,.08);
-  --shadow-sm: 0 1px 2px rgba(20,24,30,.05);
-  --shadow: 0 1px 2px rgba(20,24,30,.05), 0 8px 24px rgba(20,24,30,.07);
-}
-[data-theme="dark"]{
-  --bg:#15171B;--wh:#20242A;--t1:#EDEFF2;--t2:#AAB1BC;--tm:#6E7683;
-  --bdr:#31363E;--gc:#1D2620;--gp:#28352A;
-  --or-soft:rgba(241,120,58,.16);--red-soft:rgba(248,113,113,.14);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
-  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.32);
-}
-*{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--t1);font-size:14.5px;line-height:1.62;transition:background .25s ease,color .25s ease}
-
-/* ── SIDEBAR ── */
-nav{position:fixed;top:0;left:0;bottom:0;width:var(--sw);background:var(--wh);border-right:1px solid var(--bdr);display:flex;flex-direction:column;z-index:200;transition:background .25s ease,border-color .25s ease,transform .3s var(--ease-out),box-shadow .3s var(--ease-out)}
-.side-brand{display:flex;align-items:center;gap:10px;padding:18px 16px 18px;border-bottom:1px solid var(--bdr);flex-shrink:0;background:var(--wh)}
-.brand-logo-wrap{background:var(--wh);border:1px solid var(--bdr);padding:7px 9px;border-radius:9px;display:inline-flex;align-items:center;flex-shrink:0;box-shadow:var(--shadow-sm)}
-.brand-mark-img{height:30px;width:auto;display:block}
-.brand-sub{color:var(--t1);font-size:9.5px;font-weight:800;letter-spacing:.03em;line-height:1.3;flex:1;min-width:0}
-.nav-scroll{flex:1;min-height:0;overflow-y:auto;padding:14px 10px 0}
-.nav-group-lbl{color:var(--tm);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:14px 12px 8px}
-.nav-group-lbl:first-child{padding-top:4px}
-nav a{display:flex;align-items:center;gap:11px;padding:10.5px 14px;margin-bottom:2px;color:var(--t2);text-decoration:none;font-size:13px;font-weight:600;border-radius:10px;cursor:pointer;transition:background .2s var(--ease-out),color .2s var(--ease-out),padding-left .22s var(--ease-out);position:relative}
-nav a .nnum{width:20px;height:20px;border-radius:6px;background:var(--gp);display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex-shrink:0;color:var(--t2)}
-nav a:hover{color:var(--t1);background:var(--gc);padding-left:18px}
-nav a.active{color:#fff;background:linear-gradient(135deg,var(--or),var(--go));font-weight:700;box-shadow:0 6px 16px -4px var(--or-soft),0 2px 6px -2px rgba(238,107,27,.25)}
-nav a.active .nnum{background:rgba(255,255,255,.25);color:#fff}
-nav a.pending{opacity:.45}
-nav a.pending:hover{padding-left:14px;background:transparent;color:var(--t2)}
-.nav-parent-link{position:relative}
-.nav-caret{margin-left:auto;font-size:9px;transition:transform .25s var(--ease-out);color:var(--tm)}
-.nav-parent.expanded .nav-caret{transform:rotate(180deg)}
-.subnav{max-height:0;overflow:hidden;opacity:0;transform:translateY(-4px);transition:max-height .3s var(--ease-out),opacity .2s ease,transform .3s var(--ease-out)}
-.subnav.open{max-height:700px;opacity:1;transform:none}
-.subnav a{font-size:12px;padding:8px 14px 8px 20px}
-.subnav a .nnum{width:26px;height:16px;font-size:9px;border-radius:5px}
-.nav-parent.expanded .nav-parent-link{color:var(--t1);background:var(--gc)}
-.side-footer{flex-shrink:0;padding:14px 16px 16px;border-top:1px solid var(--bdr);display:flex;flex-direction:column;align-items:stretch;gap:10px;background:var(--wh)}
-.side-footer .theme-toggle{align-self:flex-start}
-.side-session{display:flex;align-items:stretch;gap:8px;min-width:0;margin:0}
-.side-session-copy{display:grid;gap:2px;min-width:0;flex:1;background:var(--bg);border:1px solid var(--bdr);border-radius:9px;padding:7px 9px}
-.side-session-name{display:block;min-width:0;color:var(--t1);font-size:11.5px;font-weight:800;line-height:1.25;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:break-word}
-.side-session-role{display:block;min-width:0;color:var(--tm);font-size:10px;font-weight:600;line-height:1.3;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:break-word}
-.side-session button{align-self:stretch;border:1px solid var(--bdr);background:var(--wh);color:var(--t2);border-radius:8px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;flex:0 0 auto;transition:background .15s,color .15s,border-color .15s}
-.side-session button:hover{background:var(--gc);color:var(--t1);border-color:var(--tm)}
-.hamburger-btn{display:none;position:fixed;top:14px;left:14px;z-index:150;width:38px;height:38px;align-items:center;justify-content:center;background:var(--wh);border:1px solid var(--bdr);color:var(--t1);border-radius:9px;font-size:17px;box-shadow:var(--shadow-sm)}
-.hamburger-btn:hover{border-color:var(--or);color:var(--or)}
-.aside-backdrop{display:none;position:fixed;inset:0;background:rgba(10,12,15,.5);backdrop-filter:blur(2px);z-index:190}
-.aside-backdrop.active{display:block;animation:backdropIn .22s ease both}
-@media(max-width:880px){
-  nav{transform:translateX(-100%);box-shadow:none}
-  nav.aside-open{transform:translateX(0);box-shadow:16px 0 48px -8px rgba(0,0,0,.32)}
-  .hamburger-btn{display:flex}
-}
-
-/* ── MAIN ── */
-main{margin-left:var(--sw);padding:40px 56px 100px;max-width:none;width:calc(100% - var(--sw));min-height:100vh;box-sizing:border-box}
-@media(max-width:880px){main{margin-left:0;padding:58px 16px 70px;width:100%;}}
-.sec{display:none}
-.sec.active{display:block;animation:fadein .35s var(--ease-out)}
-@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-
-/* ── PAGE HEADER ── */
-.ph{margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid var(--gd)}
-.ph-eyebrow{color:var(--gm);font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
-.ph h1{font-size:28px;font-weight:800;color:var(--t1);letter-spacing:-.01em}
-.ph p{color:var(--t2);font-size:14px;margin-top:8px;max-width:640px}
-
-/* ── TYPOGRAPHY ── */
-.sec h2{font-size:19px;font-weight:700;color:var(--gd);margin:36px 0 14px;padding-top:4px}
-.sec h2:first-of-type{margin-top:0}
-.sec h3{font-size:15px;font-weight:700;color:var(--t1);margin:22px 0 10px}
-.sec p{margin-bottom:13px;color:var(--t1)}
-.sec ul,.sec ol{margin:0 0 14px 22px}
-.sec li{margin-bottom:7px}
-.sec strong{color:var(--gd);font-weight:700}
-.muted{color:var(--t2)}
-
-/* ── CALLOUTS ── */
-.callout{background:var(--gc);border-left:4px solid var(--gm);border-radius:8px;padding:16px 20px;margin:18px 0}
-.callout p:last-child{margin-bottom:0}
-.callout.warn{background:var(--or-soft);border-left-color:var(--or)}
-.callout.critical{background:var(--red-soft);border-left-color:var(--red)}
-.callout-lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;display:block}
-.callout .callout-lbl{color:var(--gm)}
-.callout.warn .callout-lbl{color:var(--or)}
-.callout.critical .callout-lbl{color:var(--red)}
-
-/* ── CARDS ── */
-.card{background:var(--wh);border:1px solid var(--bdr);border-radius:12px;padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow-sm)}
-.card h3{margin-top:0}
-.card-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
-@media (max-width:760px){.card-grid{grid-template-columns:1fr}}
-
-/* ── TABLES ── */
-table{width:100%;border-collapse:collapse;margin:16px 0 22px;font-size:13.5px}
-table caption{caption-side:top;text-align:left;font-size:12.5px;font-weight:700;color:var(--gd);margin-bottom:8px}
-th{background:var(--gc);color:var(--gd);font-weight:700;text-align:left;padding:10px 14px;font-size:12px;text-transform:uppercase;letter-spacing:.03em;border-bottom:2px solid var(--gp)}
-td{padding:10px 14px;border-bottom:1px solid var(--bdr);vertical-align:top}
-tr:last-child td{border-bottom:none}
-tbody tr:nth-child(even){background:rgba(20,24,30,.02)}
-
-/* ── CHECKLIST TABLE ── */
-.chk-table th:first-child,.chk-table td:first-child{width:36px;text-align:center}
-.chk-table th:nth-child(3),.chk-table td:nth-child(3){width:170px}
-.chk-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:var(--gc);color:var(--gm)}
-
-/* ── SCRIPT / QUOTE BLOCK ── */
-blockquote{background:var(--sbg);color:#fff;border-radius:10px;padding:18px 22px;margin:16px 0;font-size:13.5px;line-height:1.7}
-blockquote p{color:#fff;margin-bottom:0}
-
-/* ── STEP LIST (numbered process) ── */
-.steps{counter-reset:step;list-style:none;margin:18px 0}
-.steps li{counter-increment:step;position:relative;padding-left:44px;margin-bottom:16px}
-.steps li::before{content:counter(step);position:absolute;left:0;top:0;width:30px;height:30px;background:var(--gd);color:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
-.steps li strong{display:block;color:var(--t1);font-weight:700;margin-bottom:2px}
-
-/* ── IMAGE FIGURES ── */
-.fig{margin:18px 0 26px;border:1px solid var(--bdr);border-radius:12px;overflow:hidden;box-shadow:var(--shadow-sm)}
-.fig img{width:100%;display:block}
-.fig figcaption{background:var(--gc);padding:12px 18px;font-size:12.5px;color:var(--gd);font-weight:600}
-
-/* ── TOOL BADGE ── */
-.tool-ref{display:inline-flex;align-items:center;gap:8px;background:var(--gc);color:var(--gd);font-size:12.5px;font-weight:700;padding:6px 14px;border-radius:20px;margin:4px 0}
-
-/* ── PILL LIST ── */
-.pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:16px 0 22px}
-.pillar{background:var(--wh);border:1px solid var(--bdr);border-radius:10px;padding:14px 16px}
-.pillar .plbl{font-size:11px;font-weight:800;color:var(--or);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
-.pillar .pfreq{font-size:11.5px;color:var(--tm);margin-top:6px}
-
-/* ── OVERVIEW / HOME ── */
-.chain{display:flex;flex-direction:column;gap:10px;margin:24px 0}
-.chain-item{display:flex;align-items:center;gap:16px;background:var(--wh);border:1px solid var(--bdr);border-radius:10px;padding:14px 18px;cursor:pointer;transition:transform .15s var(--ease-out),box-shadow .15s var(--ease-out)}
-.chain-item:hover{transform:translateX(4px);box-shadow:var(--shadow)}
-.chain-item .cnum{width:36px;height:36px;border-radius:9px;background:var(--gd);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex-shrink:0}
-.chain-item.pending .cnum{background:var(--tm)}
-.chain-item h4{font-size:14.5px;font-weight:700;color:var(--t1)}
-.chain-item p{font-size:12.5px;color:var(--tm);margin:0}
-.chain-item .ctag{margin-left:auto;font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--gc);color:var(--gm);white-space:nowrap}
-.chain-item.pending .ctag{background:#F3F4F6;color:var(--tm)}
-
-footer.note{margin-top:50px;padding-top:20px;border-top:1px solid var(--bdr);color:var(--tm);font-size:12px}
-
-/* ── PERFIL CARDS (ICP) ── */
-.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:16px 0 22px}
-.profile-card{background:var(--wh);border:1px solid var(--bdr);border-radius:12px;padding:16px 18px;border-top:4px solid var(--gm)}
-.profile-card.c-orange{border-top-color:var(--or)}
-.profile-card.c-gold{border-top-color:var(--go)}
-.profile-card.c-blue{border-top-color:var(--bl)}
-.profile-card h4{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.profile-card .plbl2{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--tm);margin:8px 0 4px}
-.profile-card ul{margin:0 0 0 18px}
-.profile-card li{font-size:12.5px;margin-bottom:3px}
-
-/* ── MESSAGE BUBBLES ── */
-.msg2{border-radius:10px;padding:13px 16px;margin-bottom:10px;border-left:4px solid var(--gm);background:var(--gc)}
-.msg2.c-gold{border-left-color:var(--go);background:rgba(249,178,24,.08)}
-.msg2.c-blue{border-left-color:var(--bl);background:var(--bl-soft,rgba(42,94,169,.08))}
-.msg2.c-orange{border-left-color:var(--or);background:var(--or-soft)}
-.msg2.c-green{border-left-color:#16A34A;background:rgba(22,163,74,.08)}
-.msg2 .who{display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--gd);margin-bottom:5px}
-.msg2 p{font-size:13px;margin-bottom:6px}
-.msg2 p:last-child{margin-bottom:0}
-
-/* ── SCRIPT ACCORDION ── */
-details.script{background:var(--wh);border:1px solid var(--bdr);border-radius:10px;margin-bottom:8px;overflow:hidden}
-details.script summary{padding:12px 16px;font-weight:700;font-size:13px;cursor:pointer;color:var(--gd);list-style:none;display:flex;align-items:center;gap:8px}
-details.script summary::before{content:'▸';transition:transform .18s var(--ease-out)}
-details.script[open] summary::before{transform:rotate(90deg)}
-details.script summary::-webkit-details-marker{display:none}
-details.script .script-body{padding:0 16px 14px}
-
-/* ── PILLS ── */
-.pill{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px;margin:2px 4px 2px 0}
-.pill-blue{background:var(--bl-soft,rgba(42,94,169,.12));color:var(--bl)}
-.pill-red{background:rgba(192,57,43,.12);color:var(--red)}
-.pill-yellow{background:rgba(249,178,24,.15);color:#946600}
-.pill-orange{background:var(--or-soft);color:var(--or)}
-.pill-green{background:rgba(22,163,74,.12);color:#16803D}
-
-/* ── OBJEÇÃO ROWS ── */
-.obj-row2{display:grid;grid-template-columns:220px 1fr;gap:14px;padding:12px 0;border-bottom:1px solid var(--bdr)}
-.obj-row2:last-child{border-bottom:none}
-.obj-row2 .q2{font-weight:700;color:var(--t1);font-size:13px}
-.obj-row2 .a2{font-size:13px;color:var(--t2)}
-@media (max-width:640px){.obj-row2{grid-template-columns:1fr}}
-
-/* ── TECH OBJ CARD ── */
-.tech-card{background:var(--wh);border:1px solid var(--bdr);border-radius:12px;padding:18px 20px;margin-bottom:14px}
-.tech-card h4{font-size:14px;margin-bottom:8px}
-.tech-fear{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--or);margin:8px 0 3px}
-.tech-resp{background:var(--gc);border-radius:8px;padding:12px 14px;font-size:13px;font-style:italic;color:var(--t1);margin:8px 0}
-.tech-data{font-size:12px;color:var(--tm);margin-top:6px}
-
-/* ── CHECKLIST INLINE ── */
-.chk-inline{display:flex;align-items:flex-start;gap:8px;font-size:12.5px;margin-bottom:6px;color:var(--t1)}
-.chk-inline::before{content:'☐';color:var(--gm);font-size:14px;line-height:1.3}
-
-</style>
+<link rel="stylesheet" href="./styles-external.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
 <script src="../shared/runtime-config.local.js"></script>
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js"></script>
 <script src="../shared/app-guard.js"></script>
-<style>.superapp-route-pending body > *{visibility:hidden!important}</style>
-<style data-superapp-theme-standard>
-.theme-toggle{width:46px;height:25px;border-radius:999px;border:1px solid var(--bdr);background:var(--bg);position:relative;padding:0;cursor:pointer;flex-shrink:0;transition:background .2s,border-color .2s}
-.theme-toggle:hover{border-color:var(--or)}
-.theme-toggle .knob{position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:var(--wh);box-shadow:0 1px 3px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;font-size:11px;line-height:1;transition:left .28s var(--ease-out),background .2s ease}
-[data-theme="dark"] .theme-toggle{background:rgba(241,120,58,.18);border-color:var(--bdr)}
-[data-theme="dark"] .theme-toggle .knob{left:24px}
-</style><style data-superapp-playbook-polish>
-.brand-logo-wrap{background:#fff!important}
-.nav-scroll{scrollbar-width:thin;scrollbar-color:var(--tm) var(--wh)}
-.nav-scroll::-webkit-scrollbar{width:8px}
-.nav-scroll::-webkit-scrollbar-track{background:var(--wh)}
-.nav-scroll::-webkit-scrollbar-thumb{background:var(--tm);border:2px solid var(--wh);border-radius:999px}
-.nav-scroll::-webkit-scrollbar-thumb:hover{background:var(--t2)}
-</style></head>
+<link rel="stylesheet" href="./styles-external.css">
+<link rel="stylesheet" href="./styles-external.css"><link rel="stylesheet" href="./styles-external.css"></head>
 <body>
 
 <div class="aside-backdrop" id="playbook-aside-backdrop"></div>
@@ -316,28 +88,28 @@ details.script .script-body{padding:0 16px 14px}
 
   <h2>Cadeia de Valor</h2>
   <div class="chain">
-    <div class="chain-item" onclick="goTo('marketing')"><div class="cnum">1</div><div><h4>Marketing</h4><p>Redes sociais, marca, ações de inauguração</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('comercial')"><div class="cnum">2</div><div><h4>Comercial</h4><p>ICP, scripts, funil, follow-up, objeções</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('formalizacao')"><div class="cnum">3</div><div><h4>Formalização da Venda</h4><p>Cadastro e preenchimento do contrato</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('suprimentos')"><div class="cnum">4</div><div><h4>Suprimentos da Obra</h4><p>Gestor de Obras, pedidos, orçamentos</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('planejamento')"><div class="cnum">5</div><div><h4>Planejamento da Obra</h4><p>Programação, prazos, comunicação</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('montagem')"><div class="cnum">6</div><div><h4>Montagem</h4><p>Execução, checklist de qualidade</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('entrega')"><div class="cnum">7</div><div><h4>Entrega Técnica</h4><p>Checklist final, manual, termos</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('posvenda')"><div class="cnum">8</div><div><h4>Pós-venda</h4><p>Régua de 30 dias, NPS e satisfação</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="marketing"><div class="cnum">1</div><div><h4>Marketing</h4><p>Redes sociais, marca, ações de inauguração</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="comercial"><div class="cnum">2</div><div><h4>Comercial</h4><p>ICP, scripts, funil, follow-up, objeções</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="formalizacao"><div class="cnum">3</div><div><h4>Formalização da Venda</h4><p>Cadastro e preenchimento do contrato</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="suprimentos"><div class="cnum">4</div><div><h4>Suprimentos da Obra</h4><p>Gestor de Obras, pedidos, orçamentos</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="planejamento"><div class="cnum">5</div><div><h4>Planejamento da Obra</h4><p>Programação, prazos, comunicação</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="montagem"><div class="cnum">6</div><div><h4>Montagem</h4><p>Execução, checklist de qualidade</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="entrega"><div class="cnum">7</div><div><h4>Entrega Técnica</h4><p>Checklist final, manual, termos</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="posvenda"><div class="cnum">8</div><div><h4>Pós-venda</h4><p>Régua de 30 dias, NPS e satisfação</p></div><span class="ctag">Pronto</span></div>
   </div>
 
   <h2>Processos de Apoio</h2>
   <div class="chain">
-    <div class="chain-item" onclick="goTo('financeiro')"><div class="cnum">•</div><div><h4>Financeiro e Administrativo</h4><p>Obras, a receber, a pagar, DRE e despesas fixas</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="financeiro"><div class="cnum">•</div><div><h4>Financeiro e Administrativo</h4><p>Obras, a receber, a pagar, DRE e despesas fixas</p></div><span class="ctag">Pronto</span></div>
     <div class="chain-item pending"><div class="cnum">•</div><div><h4>RH</h4><p>A desenvolver</p></div><span class="ctag">Pendente</span></div>
     <div class="chain-item pending"><div class="cnum">•</div><div><h4>Gestão de Indicadores</h4><p>A desenvolver</p></div><span class="ctag">Pendente</span></div>
   </div>
 
   <h2>Ferramentas</h2>
   <div class="chain">
-    <div class="chain-item" onclick="goTo('anexo-trello')"><div class="cnum">A</div><div><h4>Manual de Uso do Trello</h4><p>Jornada do Cliente — colunas e checklists</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('anexo-leezi')"><div class="cnum">B</div><div><h4>Manual de Uso do Leezi (CRM)</h4><p>Funil de 9 etapas, ficha do cliente e suporte com IA</p></div><span class="ctag">Pronto</span></div>
-    <div class="chain-item" onclick="goTo('anexo-checklist')"><div class="cnum">C</div><div><h4>Manual do Checklist de Qualidade</h4><p>Preenchimento das 6 fases de vistoria pela equipe de montagem</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="anexo-trello"><div class="cnum">A</div><div><h4>Manual de Uso do Trello</h4><p>Jornada do Cliente — colunas e checklists</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="anexo-leezi"><div class="cnum">B</div><div><h4>Manual de Uso do Leezi (CRM)</h4><p>Funil de 9 etapas, ficha do cliente e suporte com IA</p></div><span class="ctag">Pronto</span></div>
+    <div class="chain-item" data-pb-go-to="anexo-checklist"><div class="cnum">C</div><div><h4>Manual do Checklist de Qualidade</h4><p>Preenchimento das 6 fases de vistoria pela equipe de montagem</p></div><span class="ctag">Pronto</span></div>
   </div>
 
   <div class="callout">
@@ -567,18 +339,18 @@ details.script .script-body{padding:0 16px 14px}
   </div>
   <h2>Subseções</h2>
   <div class="chain">
-    <div class="chain-item" onclick="goTo('comercial-21')"><div class="cnum">1</div><div><h4>Cliente Ideal (ICP)</h4><p>Os 4 perfis de cliente e as perguntas de qualificação obrigatórias</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-22')"><div class="cnum">2</div><div><h4>Script — Formulário</h4><p>Script completo para leads de tráfego pago e indicação</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-23')"><div class="cnum">3</div><div><h4>Script — WhatsApp</h4><p>Script completo para leads espontâneos pelo WhatsApp</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-24')"><div class="cnum">4</div><div><h4>Visita ao Showroom</h4><p>Roteiro de 5 etapas, checklist de ambiente e frases-âncora</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-25')"><div class="cnum">5</div><div><h4>Proposta e Fechamento</h4><p>Estrutura da proposta e processo de fechamento</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-26')"><div class="cnum">6</div><div><h4>Funil de Venda</h4><p>Visão geral do funil e etapas do pipeline com status</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-27')"><div class="cnum">7</div><div><h4>Follow-up</h4><p>Régua de follow-up, scripts por objeção e cadência detalhada</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-28')"><div class="cnum">8</div><div><h4>Objeções</h4><p>Respostas para objeções de produto e de decisão</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-29')"><div class="cnum">9</div><div><h4>Objeções Técnicas — Madeira</h4><p>Respostas técnicas sobre durabilidade da madeira</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-210')"><div class="cnum">10</div><div><h4>Reativação de Leads Parados</h4><p>Scripts e meta de reativação da base de leads parados</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-211')"><div class="cnum">11</div><div><h4>Registro no Trello</h4><p>Registro da venda no card do cliente</p></div><span class="ctag">Ver</span></div>
-    <div class="chain-item" onclick="goTo('comercial-212')"><div class="cnum">12</div><div><h4>Aprovação Prévia à Formalização</h4><p>Regra de governança sobre pagamento, prazos e valores</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-21"><div class="cnum">1</div><div><h4>Cliente Ideal (ICP)</h4><p>Os 4 perfis de cliente e as perguntas de qualificação obrigatórias</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-22"><div class="cnum">2</div><div><h4>Script — Formulário</h4><p>Script completo para leads de tráfego pago e indicação</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-23"><div class="cnum">3</div><div><h4>Script — WhatsApp</h4><p>Script completo para leads espontâneos pelo WhatsApp</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-24"><div class="cnum">4</div><div><h4>Visita ao Showroom</h4><p>Roteiro de 5 etapas, checklist de ambiente e frases-âncora</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-25"><div class="cnum">5</div><div><h4>Proposta e Fechamento</h4><p>Estrutura da proposta e processo de fechamento</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-26"><div class="cnum">6</div><div><h4>Funil de Venda</h4><p>Visão geral do funil e etapas do pipeline com status</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-27"><div class="cnum">7</div><div><h4>Follow-up</h4><p>Régua de follow-up, scripts por objeção e cadência detalhada</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-28"><div class="cnum">8</div><div><h4>Objeções</h4><p>Respostas para objeções de produto e de decisão</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-29"><div class="cnum">9</div><div><h4>Objeções Técnicas — Madeira</h4><p>Respostas técnicas sobre durabilidade da madeira</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-210"><div class="cnum">10</div><div><h4>Reativação de Leads Parados</h4><p>Scripts e meta de reativação da base de leads parados</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-211"><div class="cnum">11</div><div><h4>Registro no Trello</h4><p>Registro da venda no card do cliente</p></div><span class="ctag">Ver</span></div>
+    <div class="chain-item" data-pb-go-to="comercial-212"><div class="cnum">12</div><div><h4>Aprovação Prévia à Formalização</h4><p>Regra de governança sobre pagamento, prazos e valores</p></div><span class="ctag">Ver</span></div>
   </div>
 </section>
 
@@ -587,7 +359,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.1</div>
     <h1>Cliente Ideal (ICP)</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.1 Cliente Ideal (ICP)</h2>
   <p>Não dá pra abordar todo mundo do mesmo jeito. O mesmo chalé resolve quatro vidas diferentes — e cada uma decide por um motivo diferente.</p>
 
@@ -648,7 +420,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.2</div>
     <h1>Script — Formulário</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.2 Script — Formulário (Leads de Tráfego/Indicação)</h2>
   <p>Para leads que chegam por tráfego pago, Instagram ou indicação. O tempo de resposta é tudo — lead que espera demais vai para o concorrente.</p>
 
@@ -753,7 +525,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.3</div>
     <h1>Script — WhatsApp</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.3 Script — WhatsApp (Lead Espontâneo)</h2>
   <p>Para quando o cliente chega direto pelo WhatsApp — espontâneo, sem passar pelo formulário. Prioridade: levar para ligação o mais rápido possível.</p>
   <div class="callout"><span class="callout-lbl">Regra</span><p>A primeira tentativa de contato é sempre por ligação. Caso o cliente não atenda, responda no mesmo canal em que foi chamado.</p></div>
@@ -834,7 +606,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.4</div>
     <h1>Visita ao Showroom</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.4 Visita ao Showroom</h2>
   <p>Criar uma experiência emocional que faça o cliente se imaginar vivendo no chalé <strong>antes</strong> de qualquer conversa sobre preço. Siga o roteiro de 5 etapas sem pular.</p>
 
@@ -961,7 +733,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.5</div>
     <h1>Proposta e Fechamento</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.5 Proposta e Fechamento</h2>
   <p>A proposta é apresentada ao vivo, no tablet, ao final da visita. Nunca enviada de surpresa por mensagem. O preço aparece no item 5 — depois que o cliente entendeu o que está comprando.</p>
 
@@ -1020,13 +792,13 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.6</div>
     <h1>Funil de Venda</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.6 Funil de Venda</h2>
   <p>Cada etapa entrega só uma coisa: a pessoa chegar inteira na próxima. Decisão de R$60 mil a R$80 mil não fecha em texto.</p>
 
   <div class="callout warn">
     <span class="callout-lbl">⚠️ Nomenclatura oficial no Leezi</span>
-    <p>O funil abaixo é a visão geral do processo comercial. O Leezi (CRM) implementa oficialmente <strong>9 etapas com nomes e regras de transição próprias</strong> (Entrada do Lead, Primeiro Contato, Qualificação, Visita Agendada, Proposta Enviada, Objeção, Manter Contato/Notícias, Ganhou, Perdeu), incluindo SLAs e critérios de avanço específicos. <span class="tool-ref" onclick="goTo('anexo-leezi')" style="cursor:pointer">📋 Ver detalhamento completo no Manual de Uso do Leezi</span></p>
+    <p>O funil abaixo é a visão geral do processo comercial. O Leezi (CRM) implementa oficialmente <strong>9 etapas com nomes e regras de transição próprias</strong> (Entrada do Lead, Primeiro Contato, Qualificação, Visita Agendada, Proposta Enviada, Objeção, Manter Contato/Notícias, Ganhou, Perdeu), incluindo SLAs e critérios de avanço específicos. <span class="tool-ref pb-csp-002" data-pb-go-to="anexo-leezi">📋 Ver detalhamento completo no Manual de Uso do Leezi</span></p>
   </div>
 
   <h3>Visão Geral do Funil</h3>
@@ -1062,7 +834,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.7</div>
     <h1>Follow-up</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.7 Follow-up</h2>
   <p>A maioria das vendas não fecha na visita — fecha no follow-up. Nenhum lead some sem uma resposta definitiva. Todo lead tem um próximo passo definido e data marcada.</p>
 
@@ -1115,7 +887,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.8</div>
     <h1>Objeções</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.8 Objeções</h2>
   <p>As de produto se respondem em uma frase. As de decisão exigem escutar o que está por trás da frase.</p>
 
@@ -1142,7 +914,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.9</div>
     <h1>Objeções Técnicas — Madeira</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.9 Objeções Técnicas — Madeira</h2>
   <p>Clientes que chegam pela primeira vez têm dúvidas legítimas sobre a durabilidade da madeira. Estas respostas combinam técnica com tranquilidade — o objetivo é transformar a dúvida em confiança.</p>
   <div class="callout"><span class="callout-lbl">Como usar</span><p>Ouça a objeção até o fim sem interromper. Valide o sentimento ("é uma dúvida muito comum") e só então responda com naturalidade — não como se estivesse recitando um script.</p></div>
@@ -1205,7 +977,7 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.10</div>
     <h1>Reativação de Leads Parados</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.10 Reativação de Leads Parados</h2>
   <p>Ouro enterrado na sua base. Leads que sumiram não desistiram — a vida atrapalhou.</p>
 
@@ -1240,10 +1012,10 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.11</div>
     <h1>Registro no Trello</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.11 Registro da Venda no Trello (Jornada do Cliente)</h2>
   <p>Ao fechar a venda, o Comercial cria o card do cliente no Trello (coluna "Novo cliente") e preenche o Checklist da Etapa Comercial (contrato assinado, cadastro completo, conferência da venda, validação de peças, planta baixa, informações do terreno).</p>
-  <span class="tool-ref" onclick="goTo('anexo-trello')" style="cursor:pointer">📋 Ver Manual de Uso do Trello</span>
+  <span class="tool-ref pb-csp-002" data-pb-go-to="anexo-trello">📋 Ver Manual de Uso do Trello</span>
 </section>
 
 <section class="sec" id="comercial-212">
@@ -1251,17 +1023,17 @@ details.script .script-body{padding:0 16px 14px}
     <div class="ph-eyebrow">Comercial · 2.12</div>
     <h1>Aprovação Prévia à Formalização</h1>
   </div>
-  <p><a href="#" onclick="goTo('comercial');return false;" class="tool-ref" style="text-decoration:none">← Voltar para Comercial</a></p>
+  <p><a href="#" data-pb-go-to="comercial" class="tool-ref pb-csp-001">← Voltar para Comercial</a></p>
   <h2>2.12 Aprovação Prévia à Formalização</h2>
   <div class="callout critical">
     <span class="callout-lbl">Regra de governança</span>
     <p>Antes de seguir para a formalização do contrato, a equipe Comercial <strong>não pode definir sozinha</strong> forma de pagamento, prazos e valores. Esses pontos precisam estar previamente alinhados e aprovados:</p>
-    <ul style="margin-top:8px">
+    <ul class="pb-csp-003">
       <li>Forma de pagamento (Pix, depósito, cheque, parcelamento)</li>
       <li>Datas (prazos de entrega, vencimentos)</li>
       <li>Valores (valor total, serviços adicionais)</li>
     </ul>
-    <p style="margin-top:8px">O Comercial deve estar sempre em comunicação com o <strong>Administrativo/Financeiro</strong> e obter a <strong>aprovação da Gerência da loja</strong> sobre esses pontos antes de formalizar a venda. Nenhuma decisão sobre forma de pagamento, prazo ou valor deve ser tomada isoladamente pelo vendedor.</p>
+    <p class="pb-csp-003">O Comercial deve estar sempre em comunicação com o <strong>Administrativo/Financeiro</strong> e obter a <strong>aprovação da Gerência da loja</strong> sobre esses pontos antes de formalizar a venda. Nenhuma decisão sobre forma de pagamento, prazo ou valor deve ser tomada isoladamente pelo vendedor.</p>
   </div>
 </section>
 
@@ -1382,11 +1154,11 @@ details.script .script-body{padding:0 16px 14px}
     <li><strong>Pedido dos Materiais</strong>Pedido dos painéis modulares junto à 321 Modular (fábrica) e de todos os demais insumos necessários à montagem.</li>
     <li><strong>Orçamentos de Infraestrutura</strong>Telhas, blocos e demais itens complementares.</li>
     <li><strong>Avaliação de Acesso e Logística</strong>Condições de acesso ao terreno e questões logísticas da obra.</li>
-    <li><strong>Comunicação com o Administrativo/Financeiro</strong>Atualizar andamento e programação de início da obra.<div class="callout" style="margin-top:10px"><span class="callout-lbl">Por que é crítico</span><p>O Administrativo/Financeiro depende dessas atualizações para iniciar as cobranças ao cliente, conforme as etapas de evolução da obra e o planejamento definido.</p></div></li>
+    <li><strong>Comunicação com o Administrativo/Financeiro</strong>Atualizar andamento e programação de início da obra.<div class="callout pb-csp-004"><span class="callout-lbl">Por que é crítico</span><p>O Administrativo/Financeiro depende dessas atualizações para iniciar as cobranças ao cliente, conforme as etapas de evolução da obra e o planejamento definido.</p></div></li>
     <li><strong>Informação de Custos Previstos</strong>Informar ao Administrativo/Financeiro todos os valores previstos dos gastos (materiais, insumos, mão de obra). Com base nisso, o Financeiro lança os custos com datas de pagamento, planeja o fluxo de caixa e, posteriormente, usa esses dados para a Demonstração do Resultado (DRE).</li>
-    <li><strong>Registro no Trello</strong>Localizar o card na coluna "+1 chalé no mapa" e preencher o checklist correspondente (terreno liberado, agendamento de entrega com a fábrica, avaliação de mão de obra). <span class="tool-ref" onclick="goTo('anexo-trello')" style="cursor:pointer">📋 Ver Manual de Uso do Trello</span></li>
+    <li><strong>Registro no Trello</strong>Localizar o card na coluna "+1 chalé no mapa" e preencher o checklist correspondente (terreno liberado, agendamento de entrega com a fábrica, avaliação de mão de obra). <span class="tool-ref pb-csp-002" data-pb-go-to="anexo-trello">📋 Ver Manual de Uso do Trello</span></li>
     <li><strong>Criação do Grupo da Obra (WhatsApp)</strong>Grupo nomeado com o nome do cliente, com planta baixa, localização do terreno e demais informações anexadas.
-      <ul style="margin-top:8px">
+      <ul class="pb-csp-003">
         <li>Composição: Gestor Operacional das Obras + Administrativo/Financeiro (fixos) + equipe de montagem (apenas durante a execução, saindo ao concluir)</li>
         <li>Após a conclusão, o grupo permanece ativo como <strong>histórico</strong> da obra</li>
       </ul>
@@ -1415,14 +1187,14 @@ details.script .script-body{padding:0 16px 14px}
     <li><strong>Compra e Entrega de Materiais</strong>Organizar compra e logística de entrega dos materiais na obra.</li>
     <li><strong>Organização das Equipes de Mão de Obra</strong>Organizar as equipes responsáveis pela execução da montagem.</li>
     <li><strong>Comunicação</strong>Frente fundamental, com três públicos:
-      <ul style="margin-top:8px">
+      <ul class="pb-csp-003">
         <li><strong>Equipes de mão de obra:</strong> orientações das características específicas de cada montagem</li>
         <li><strong>Cliente:</strong> comunicação constante sobre o andamento — etapa fundamental do processo</li>
         <li><strong>Financeiro:</strong> a data de planejamento/início impacta recebimentos e pagamentos (inclusive mão de obra)</li>
       </ul>
     </li>
-    <li><strong>Ferramenta de Programação</strong>O Trello é a ferramenta de gestão nesta etapa. O card evolui pelas colunas: <strong>+1 chalé no mapa → Pedido realizado na fábrica → Carregamento agendado</strong>. <span class="tool-ref" onclick="goTo('anexo-trello')" style="cursor:pointer">📋 Ver Manual de Uso do Trello</span>
-      <div class="callout" style="margin-top:10px"><span class="callout-lbl">Ferramenta futura</span><p>Está em desenvolvimento uma ferramenta de calendário dedicada à programação das obras, para o franqueado visualizar melhor o andamento. Ainda não existe — por ora, o Trello segue sendo a ferramenta oficial.</p></div>
+    <li><strong>Ferramenta de Programação</strong>O Trello é a ferramenta de gestão nesta etapa. O card evolui pelas colunas: <strong>+1 chalé no mapa → Pedido realizado na fábrica → Carregamento agendado</strong>. <span class="tool-ref pb-csp-002" data-pb-go-to="anexo-trello">📋 Ver Manual de Uso do Trello</span>
+      <div class="callout pb-csp-004"><span class="callout-lbl">Ferramenta futura</span><p>Está em desenvolvimento uma ferramenta de calendário dedicada à programação das obras, para o franqueado visualizar melhor o andamento. Ainda não existe — por ora, o Trello segue sendo a ferramenta oficial.</p></div>
     </li>
   </ol>
 </section>
@@ -1648,10 +1420,10 @@ details.script .script-body{padding:0 16px 14px}
   </ul>
 
   <h2>Referência Cruzada — Contrato</h2>
-  <p>Esta etapa se conecta a informações já definidas no contrato (ver <span class="tool-ref" onclick="goTo('formalizacao')" style="cursor:pointer">Formalização da Venda</span>): <strong>III. Do Prazo</strong> (Vigência, Início e Conclusão previstos) e <strong>Item V.e) Entrega</strong>, que já prevê "verificação final, ajustes, limpeza do local e entrega acompanhada do Manual".</p>
+  <p>Esta etapa se conecta a informações já definidas no contrato (ver <span class="tool-ref pb-csp-002" data-pb-go-to="formalizacao">Formalização da Venda</span>): <strong>III. Do Prazo</strong> (Vigência, Início e Conclusão previstos) e <strong>Item V.e) Entrega</strong>, que já prevê "verificação final, ajustes, limpeza do local e entrega acompanhada do Manual".</p>
 
   <h2>Registro no Trello</h2>
-  <p>Ao concluir a entrega, o card é movido para a coluna <strong>"Finalizado"</strong>. <span class="tool-ref" onclick="goTo('anexo-trello')" style="cursor:pointer">📋 Ver Manual de Uso do Trello</span></p>
+  <p>Ao concluir a entrega, o card é movido para a coluna <strong>"Finalizado"</strong>. <span class="tool-ref pb-csp-002" data-pb-go-to="anexo-trello">📋 Ver Manual de Uso do Trello</span></p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════ -->
@@ -1794,8 +1566,8 @@ details.script .script-body{padding:0 16px 14px}
 
   <h2>NPS — Pesquisa de Satisfação</h2>
   <div class="card-grid">
-    <div class="callout" style="border-left-color:#16A34A;background:rgba(22,163,74,.08)">
-      <span class="callout-lbl" style="color:#16803D">9–10 · Promotor</span>
+    <div class="callout pb-csp-005">
+      <span class="callout-lbl pb-csp-006">9–10 · Promotor</span>
       <p>Agradecer + ativar programa de indicação imediatamente.</p>
     </div>
     <div class="callout warn">
@@ -1814,7 +1586,7 @@ details.script .script-body{padding:0 16px 14px}
   </div>
 
   <h2>Referência Cruzada — Trello e Entrega Técnica</h2>
-  <p>O ciclo de Pós-venda começa no momento em que o card do cliente chega à coluna <strong>"Finalizado"</strong> no Trello (ver <span class="tool-ref" onclick="goTo('anexo-trello')" style="cursor:pointer">Manual de Uso do Trello</span>), logo após a conclusão da <span class="tool-ref" onclick="goTo('entrega')" style="cursor:pointer">Entrega Técnica</span>.</p>
+  <p>O ciclo de Pós-venda começa no momento em que o card do cliente chega à coluna <strong>"Finalizado"</strong> no Trello (ver <span class="tool-ref pb-csp-002" data-pb-go-to="anexo-trello">Manual de Uso do Trello</span>), logo após a conclusão da <span class="tool-ref pb-csp-002" data-pb-go-to="entrega">Entrega Técnica</span>.</p>
 </section>
 
 <!-- ═══════════════════════════════════════════════════ -->
@@ -1859,7 +1631,7 @@ details.script .script-body{padding:0 16px 14px}
   <div class="callout">
     <span class="callout-lbl">💼 Comissão automática</span>
     <p>A comissão de venda também é lançada automaticamente em <strong>A Pagar</strong>, vinculada à obra, com base no percentual configurado em Configurações.</p>
-    <p style="margin-top:8px"><strong>Importante:</strong> se o valor de venda for alterado posteriormente, a comissão é recalculada. Caso já tenha havido pagamento parcial da comissão, esse valor pago é preservado — apenas o status volta para "Pendente", para facilitar a conferência da diferença.</p>
+    <p class="pb-csp-003"><strong>Importante:</strong> se o valor de venda for alterado posteriormente, a comissão é recalculada. Caso já tenha havido pagamento parcial da comissão, esse valor pago é preservado — apenas o status volta para "Pendente", para facilitar a conferência da diferença.</p>
   </div>
   <div class="callout warn"><span class="callout-lbl">Regra de governança (ver Comercial 2.12)</span><p>Forma de pagamento, prazos e valores registrados aqui já devem estar previamente aprovados pela Gerência — o cadastro no sistema formaliza o que já foi definido, não é o momento de decidir esses pontos.</p></div>
 
@@ -1917,7 +1689,7 @@ details.script .script-body{padding:0 16px 14px}
   </div>
   <div class="callout">
     <span class="callout-lbl">🧮 Cálculo automático do saldo</span>
-    <p style="font-family:monospace;font-size:12.5px;line-height:1.8">Saldo = saldo inicial<br>&nbsp;&nbsp;&nbsp;+ recebimentos lançados nessa conta<br>&nbsp;&nbsp;&nbsp;+ cheques depositados nessa conta<br>&nbsp;&nbsp;&nbsp;− pagamentos saídos dessa conta</p>
+    <p class="pb-csp-007">Saldo = saldo inicial<br>&nbsp;&nbsp;&nbsp;+ recebimentos lançados nessa conta<br>&nbsp;&nbsp;&nbsp;+ cheques depositados nessa conta<br>&nbsp;&nbsp;&nbsp;− pagamentos saídos dessa conta</p>
   </div>
   <p class="muted">Os tipos de conta (Caixa, Conta Corrente, Poupança etc.) podem ser personalizados pelo botão "Tipos de conta".</p>
 
@@ -2037,54 +1809,54 @@ details.script .script-body{padding:0 16px 14px}
   <p class="muted">Consultivo · sempre por ligação</p>
   <div class="callout critical"><span class="callout-lbl">Regra de ouro</span><p>O primeiro contato é sempre feito através de ligação.</p></div>
   <div class="card-grid">
-    <div><h4 style="font-size:13px;margin-bottom:6px">Informações a levantar</h4><ul><li>Finalidade do imóvel: investidor, moradia, lazer ou locação</li><li>Região onde pretende construir</li><li>Se possui terreno ou não</li></ul></div>
-    <div><h4 style="font-size:13px;margin-bottom:6px">Ação nesta etapa</h4><ul><li>Apresentação institucional breve da 321 Modular</li><li>Vídeo estratégico com o diferencial da empresa</li><li>Menção aos 40 anos de história no segmento de contenção em madeira</li></ul></div>
+    <div><h4 class="pb-csp-008">Informações a levantar</h4><ul><li>Finalidade do imóvel: investidor, moradia, lazer ou locação</li><li>Região onde pretende construir</li><li>Se possui terreno ou não</li></ul></div>
+    <div><h4 class="pb-csp-008">Ação nesta etapa</h4><ul><li>Apresentação institucional breve da 321 Modular</li><li>Vídeo estratégico com o diferencial da empresa</li><li>Menção aos 40 anos de história no segmento de contenção em madeira</li></ul></div>
   </div>
 
   <h3>03 · Qualificação</h3>
   <p class="muted">Material de apoio · decisores · diagnóstico</p>
   <div class="card-grid">
-    <div><h4 style="font-size:13px;margin-bottom:6px">Materiais a enviar</h4><ul><li>Portfólio de projetos/obras alinhados ao perfil do cliente</li><li>Vídeos de obra</li><li>Cases relevantes</li></ul></div>
-    <div><h4 style="font-size:13px;margin-bottom:6px">Reunião de diagnóstico</h4><ul><li>Preferencialmente presencial, no showroom</li><li>Alternativa: reunião virtual</li><li>Objetivo: proximidade e contato próximo</li></ul></div>
+    <div><h4 class="pb-csp-008">Materiais a enviar</h4><ul><li>Portfólio de projetos/obras alinhados ao perfil do cliente</li><li>Vídeos de obra</li><li>Cases relevantes</li></ul></div>
+    <div><h4 class="pb-csp-008">Reunião de diagnóstico</h4><ul><li>Preferencialmente presencial, no showroom</li><li>Alternativa: reunião virtual</li><li>Objetivo: proximidade e contato próximo</li></ul></div>
   </div>
   <div class="callout warn"><span class="callout-lbl">Critério de avanço</span><p>Mapear todos os decisores envolvidos na compra. O agendamento da próxima etapa só deve ocorrer com os decisores confirmados na reunião.</p></div>
 
   <h3>04 · Visita Agendada</h3>
   <p class="muted">Definição do produto · terreno · orçamento</p>
   <div class="card-grid">
-    <div><h4 style="font-size:13px;margin-bottom:6px">Definição do chalé</h4><ul><li>Modelo desejado</li><li>Metragem</li><li>Características</li></ul></div>
-    <div><h4 style="font-size:13px;margin-bottom:6px">Levantamento do terreno</h4><ul><li>Se está nivelado</li><li>Se tem acesso</li><li>Tamanho do terreno</li></ul></div>
-    <div><h4 style="font-size:13px;margin-bottom:6px">Se investidor</h4><ul><li>Expectativa de retorno</li><li>Valor de diária média pretendida na região</li></ul></div>
-    <div><h4 style="font-size:13px;margin-bottom:6px">Orçamento &amp; pagamento</h4><ul><li>Entrega de orçamento ao cliente</li><li>Forma de pagamento: recurso próprio, financiamento ou misto</li></ul></div>
+    <div><h4 class="pb-csp-008">Definição do chalé</h4><ul><li>Modelo desejado</li><li>Metragem</li><li>Características</li></ul></div>
+    <div><h4 class="pb-csp-008">Levantamento do terreno</h4><ul><li>Se está nivelado</li><li>Se tem acesso</li><li>Tamanho do terreno</li></ul></div>
+    <div><h4 class="pb-csp-008">Se investidor</h4><ul><li>Expectativa de retorno</li><li>Valor de diária média pretendida na região</li></ul></div>
+    <div><h4 class="pb-csp-008">Orçamento &amp; pagamento</h4><ul><li>Entrega de orçamento ao cliente</li><li>Forma de pagamento: recurso próprio, financiamento ou misto</li></ul></div>
   </div>
 
   <h3>05 · Proposta Enviada</h3>
   <p class="muted">Rapidez de entrega · acompanhamento</p>
   <p>A proposta é elaborada com base em todas as informações do diagnóstico levantadas nas etapas anteriores e deve ser encaminhada com rapidez.</p>
   <div class="card-grid">
-    <div><h4 style="font-size:13px;margin-bottom:6px">Formato de entrega</h4><ul><li>Presencial no showroom — cliente sai com a proposta em mãos</li><li>Se ausente: envio + apresentação por ligação, esclarecendo dúvidas técnicas e financeiras</li></ul></div>
-    <div><h4 style="font-size:13px;margin-bottom:6px">Acompanhamento</h4><ul><li>Registrar o prazo combinado com o cliente para retorno da decisão de compra</li></ul></div>
+    <div><h4 class="pb-csp-008">Formato de entrega</h4><ul><li>Presencial no showroom — cliente sai com a proposta em mãos</li><li>Se ausente: envio + apresentação por ligação, esclarecendo dúvidas técnicas e financeiras</li></ul></div>
+    <div><h4 class="pb-csp-008">Acompanhamento</h4><ul><li>Registrar o prazo combinado com o cliente para retorno da decisão de compra</li></ul></div>
   </div>
 
   <h3>06 · Objeção</h3>
   <p class="muted">Acolhimento · resposta assertiva</p>
   <div class="callout critical"><span class="callout-lbl">Mindset da etapa</span><p>Toda objeção é tratada como manifestação de interesse do cliente na aquisição do chalé — sejam objeções técnicas, de investimento ou de prazo.</p></div>
   <div class="card-grid">
-    <div><h4 style="font-size:13px;margin-bottom:6px">Processo</h4><ul><li>Registrar as objeções nas notas do CRM</li><li>Pesquisar informações para responder de forma técnica</li></ul></div>
-    <div><h4 style="font-size:13px;margin-bottom:6px">Regra de qualidade</h4><ul><li>Respostas pontuais e assertivas</li><li>Nunca gerar mais dúvida do que a que foi trazida pelo cliente</li></ul></div>
+    <div><h4 class="pb-csp-008">Processo</h4><ul><li>Registrar as objeções nas notas do CRM</li><li>Pesquisar informações para responder de forma técnica</li></ul></div>
+    <div><h4 class="pb-csp-008">Regra de qualidade</h4><ul><li>Respostas pontuais e assertivas</li><li>Nunca gerar mais dúvida do que a que foi trazida pelo cliente</li></ul></div>
   </div>
 
   <h3>07 · Manter Contato / Notícias</h3>
   <p class="muted">Cadência personalizada de follow-up</p>
   <p>Reúne leads que ainda não tomaram a decisão, cujo terreno ainda não está liberado, ou que têm algum outro fator travando a decisão.</p>
   <div class="card-grid">
-    <div><h4 style="font-size:13px;margin-bottom:6px">Regra de personalização</h4><ul><li>O tipo de notícia/conteúdo enviado e o tipo de contato acompanham o histórico já levantado do lead nas etapas anteriores</li></ul></div>
-    <div><h4 style="font-size:13px;margin-bottom:6px">Disciplina de CRM</h4><ul><li>Manter sempre um histórico das principais observações de cada contato</li><li>Cadência ajustada individualmente por cliente</li></ul></div>
+    <div><h4 class="pb-csp-008">Regra de personalização</h4><ul><li>O tipo de notícia/conteúdo enviado e o tipo de contato acompanham o histórico já levantado do lead nas etapas anteriores</li></ul></div>
+    <div><h4 class="pb-csp-008">Disciplina de CRM</h4><ul><li>Manter sempre um histórico das principais observações de cada contato</li><li>Cadência ajustada individualmente por cliente</li></ul></div>
   </div>
 
   <div class="card-grid">
-    <div class="callout" style="border-left-color:#16A34A;background:rgba(22,163,74,.08)">
-      <span class="callout-lbl" style="color:#16803D">08 · Ganhou</span>
+    <div class="callout pb-csp-005">
+      <span class="callout-lbl pb-csp-006">08 · Ganhou</span>
       <p>Etapa final de fechamento — venda concluída.</p>
     </div>
     <div class="callout critical">
@@ -2169,91 +1941,7 @@ details.script .script-body{padding:0 16px 14px}
      Basta copiar do <section class="m321-manual"> até o </section> final.
 ====================================================================== -->
 <section class="m321-manual">
-<style>
-.m321-manual{
-  --gd:#3B5132;--gm:#638854;--gl:#8BA872;
-  --or:#EE6B1B;--go:#F9B218;--red:#C0392B;
-  --bg:#F5F6F7;--wh:#ffffff;--t1:#1C1F24;--t2:#5A626C;--tm:#9099A3;
-  --bdr:#E2E5E9;--gc:#EFF3ED;--gp:#D8E1D4;
-  --or-soft:rgba(238,107,27,.10);--red-soft:rgba(192,57,43,.08);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-  color:var(--t1);
-  background:var(--bg);
-  padding:32px 20px 56px;
-  line-height:1.6;
-  max-width:900px;
-  margin:0 auto;
-  box-sizing:border-box;
-}
-.m321-manual *{box-sizing:border-box;}
-.m321-manual h1{font-size:26px;font-weight:800;color:var(--gd);margin:0 0 6px;}
-.m321-manual .m321-subtitle{font-size:15px;color:var(--t2);margin:0 0 28px;}
-.m321-manual h2{
-  font-size:18px;font-weight:700;color:#fff;background:var(--gd);
-  padding:10px 16px;border-radius:8px;margin:40px 0 16px;
-  display:flex;align-items:center;gap:10px;
-}
-.m321-manual h2 .m321-num{
-  background:rgba(255,255,255,.18);width:26px;height:26px;border-radius:50%;
-  display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;
-}
-.m321-manual h3{font-size:15px;font-weight:700;color:var(--gd);margin:20px 0 8px;}
-.m321-manual p{margin:0 0 12px;font-size:14.5px;color:var(--t1);}
-.m321-manual ul, .m321-manual ol{margin:0 0 14px;padding-left:22px;font-size:14.5px;}
-.m321-manual li{margin-bottom:6px;}
-.m321-manual .m321-card{
-  background:var(--wh);border:1px solid var(--bdr);border-radius:12px;
-  padding:18px 20px;margin-bottom:18px;
-}
-.m321-manual .m321-shot{
-  text-align:center;margin:14px 0 20px;
-}
-.m321-manual .m321-shot img{
-  max-width:340px;width:100%;border:1px solid var(--bdr);border-radius:14px;
-  box-shadow:0 6px 18px rgba(0,0,0,.10);
-}
-.m321-manual .m321-shot span{
-  display:block;margin-top:8px;font-size:12.5px;color:var(--tm);font-style:italic;
-}
-.m321-manual .m321-shot-wide img{max-width:520px;}
-.m321-manual .m321-note{
-  background:var(--or-soft);border-left:4px solid var(--go);border-radius:6px;
-  padding:12px 14px;margin:14px 0;font-size:14px;color:#7a5400;
-}
-.m321-manual .m321-note strong{color:#946600;}
-.m321-manual .m321-critical{
-  background:var(--red-soft);border-left:4px solid var(--red);border-radius:6px;
-  padding:12px 14px;margin:14px 0;font-size:14px;color:var(--red);font-weight:600;
-}
-.m321-manual .m321-tip{
-  background:var(--gc);border-left:4px solid var(--gm);border-radius:6px;
-  padding:12px 14px;margin:14px 0;font-size:14px;color:var(--gd);
-}
-.m321-manual table{width:100%;border-collapse:collapse;margin:10px 0 20px;font-size:13.5px;}
-.m321-manual th{
-  background:var(--gd);color:#fff;text-align:left;padding:9px 10px;font-weight:600;
-}
-.m321-manual td{padding:9px 10px;border-bottom:1px solid var(--bdr);color:var(--t1);}
-.m321-manual tr:nth-child(even) td{background:var(--gc);}
-.m321-manual .m321-badge-critico{
-  display:inline-block;background:var(--red);color:#fff;font-size:11px;font-weight:700;
-  padding:2px 8px;border-radius:99px;
-}
-.m321-manual .m321-step-grid{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start;}
-.m321-manual .m321-step-text{flex:1 1 320px;min-width:260px;}
-.m321-manual .m321-step-img{flex:0 0 260px;text-align:center;}
-.m321-manual .m321-step-img img{max-width:100%;border:1px solid var(--bdr);border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.10);}
-.m321-manual .m321-step-img span{display:block;margin-top:8px;font-size:12px;color:var(--tm);font-style:italic;}
-.m321-manual .m321-faq-q{font-weight:700;color:var(--gd);margin-top:16px;}
-.m321-manual .m321-faq-a{margin:4px 0 0;}
-.m321-manual .m321-toc{background:var(--wh);border:1px solid var(--bdr);border-radius:12px;padding:16px 20px;margin-bottom:8px;}
-.m321-manual .m321-toc a{color:var(--gd);text-decoration:none;font-size:14px;}
-.m321-manual .m321-toc a:hover{text-decoration:underline;}
-.m321-manual .m321-toc ol{margin:0;padding-left:20px;}
-.m321-manual .m321-toc li{margin-bottom:4px;}
-.m321-manual hr.m321-sep{border:none;border-top:1px solid var(--bdr);margin:36px 0;}
-.m321-manual .m321-footer{font-size:12.5px;color:var(--tm);text-align:center;margin-top:30px;}
-</style>
+<link rel="stylesheet" href="./styles-external.css">
 
 <h1>📋 Manual de Uso — Checklist de Qualidade 321Modular</h1>
 <p class="m321-subtitle">Guia rápido para carpinteiros e responsáveis de montagem preencherem corretamente o checklist digital de conclusão de obra.</p>
@@ -2422,7 +2110,7 @@ texto também é incluído no relatório em PDF.</p>
 <strong>⚠ Os dados preenchidos não são salvos automaticamente.</strong> Apenas a preferência de tema (claro/escuro)
 fica salva no aparelho. Se a página for fechada ou recarregada antes de gerar o PDF, todo o preenchimento
 (itens marcados, fotos, observações) será perdido. Por isso:
-<ul style="margin-top:8px;">
+<ul class="pb-csp-009">
   <li>Preencha o checklist de uma só vez, sem sair da página no meio do processo;</li>
   <li>Gere o PDF <strong>assim que terminar</strong> o preenchimento de todas as fases;</li>
   <li>Use o botão <strong>Limpar</strong> apenas quando tiver certeza — ele não pode ser desfeito.</li>
@@ -2458,94 +2146,6 @@ isso facilita a conferência posterior do relatório e evita retrabalho.</div>
 
 </main>
 
-<script>
-function goTo(id){
-  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
-  const section=document.getElementById(id);
-  if(section) section.classList.add('active');
-  const link=document.querySelector('nav a[data-target="' + id + '"]');
-  if(link) link.classList.add('active');
-
-  const subnav=document.getElementById('subnav-comercial');
-  const navParent=document.getElementById('navp-comercial');
-  const isComercial=(id==='comercial' || id.indexOf('comercial-')===0);
-  if(isComercial){
-    subnav.classList.add('open');
-    navParent.classList.add('expanded');
-    if(id==='comercial') document.querySelector('a[data-target="comercial"]').classList.add('active');
-  }else{
-    subnav.classList.remove('open');
-    navParent.classList.remove('expanded');
-  }
-  window.scrollTo(0,0);
-}
-document.querySelectorAll('nav a[data-target]').forEach(a=>{
-  if(a.classList.contains('nav-parent-link')) return;
-  a.addEventListener('click', ()=>{
-    goTo(a.dataset.target);
-    fecharMenuPlaybook();
-  });
-});
-const comercialLink=document.querySelector('#navp-comercial > .nav-parent-link');
-if(comercialLink){
-  comercialLink.addEventListener('click',(event)=>{
-    event.preventDefault();
-    const subnav=document.getElementById('subnav-comercial');
-    const navParent=document.getElementById('navp-comercial');
-    const wasOpen=subnav.classList.contains('open');
-    goTo('comercial');
-    if(wasOpen){
-      subnav.classList.remove('open');
-      navParent.classList.remove('expanded');
-    }
-  });
-}
-function applyTheme(t){
-  document.documentElement.setAttribute('data-theme', t);
-  const knob=document.getElementById('themeKnob'); if(knob) knob.textContent = t==='dark' ? '🌙' : '☀️';
-  try{ localStorage.setItem('321modular_theme', t); }catch(e){}
-}
-(function initTheme(){
-  const atual = document.documentElement.getAttribute('data-theme') || 'light';
-  applyTheme(atual);
-})();
-document.getElementById('themeToggle').addEventListener('click', ()=>{
-  const atual = document.documentElement.getAttribute('data-theme');
-  applyTheme(atual==='dark' ? 'light' : 'dark');
-});function fecharMenuPlaybook(){
-  document.getElementById('playbook-sidebar').classList.remove('aside-open');
-  document.getElementById('playbook-aside-backdrop').classList.remove('active');
-}
-function abrirMenuPlaybook(){
-  document.getElementById('playbook-sidebar').classList.add('aside-open');
-  document.getElementById('playbook-aside-backdrop').classList.add('active');
-}
-document.getElementById('playbook-menu-toggle').addEventListener('click',()=>{
-  const aberto=document.getElementById('playbook-sidebar').classList.contains('aside-open');
-  aberto ? fecharMenuPlaybook() : abrirMenuPlaybook();
-});
-document.getElementById('playbook-aside-backdrop').addEventListener('click',fecharMenuPlaybook);
-async function carregarSessaoPlaybook(){
-  try{
-    const session = await window.SuperAppAuth.getSession();
-    if (!session) return;
-    const profile = await window.SuperAppAuth.getProfile();
-    const label = profile?.display_name || session.user.email || 'Usuário';
-    const nameEl = document.getElementById('side-user-name');
-    if(nameEl) nameEl.textContent = label;
-    const roleLabel = profile?.role_name || profile?.role_code || 'Acesso operacional';
-    const scopeLabel = profile?.franchise_name ? `Franquia · ${profile.franchise_name}` : profile?.unit_name ? `Matriz · ${profile.unit_name}` : 'Matriz · acesso global';
-    const roleEl = document.getElementById('side-user-role');
-    if(roleEl) roleEl.textContent = `${roleLabel} · ${scopeLabel}`;
-  }catch(e){ console.warn('Sessão do Playbook não carregada', e); }
-}
-const playbookLogout = document.getElementById('side-logout-playbook');
-if(playbookLogout) playbookLogout.addEventListener('click', ()=>{
-  location.href = window.SuperAppAuth.getPortalUrl();
-});
-window.addEventListener('superapp:authorized', carregarSessaoPlaybook, {once:true});
-carregarSessaoPlaybook();
-</script>
+<script src="./theme-bootstrap.js"></script>
 </body>
 </html>
