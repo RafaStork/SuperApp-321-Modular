@@ -767,7 +767,7 @@ let reclamacoesIndustriaTiposPorId = new Map();
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
   document.querySelector('#theme-toggle .knob').textContent = t==='dark' ? '🌙' : '☀️';
-  localStorage.setItem('tema-tarefas-app', t);
+  localStorage.setItem('321modular_theme', t);
 }
 document.getElementById('theme-toggle').addEventListener('click', ()=>{
   const atual = document.documentElement.getAttribute('data-theme');
@@ -776,7 +776,7 @@ document.getElementById('theme-toggle').addEventListener('click', ()=>{
   // desenhadas — recarrega a aba atual pra recalcular certinho.
   if (currentView) navigateTo(currentView);
 });
-applyTheme(localStorage.getItem('tema-tarefas-app') || 'light');
+applyTheme(localStorage.getItem('321modular_theme') || localStorage.getItem('tema-tarefas-app') || 'light');
 document.getElementById('login-logo').src = DEFAULT_LOGO;
 document.getElementById('side-logo').src = DEFAULT_LOGO;
 

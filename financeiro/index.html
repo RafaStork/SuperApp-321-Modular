@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-app-code="financeiro">
 <head>
 <link rel="icon" type="image/svg+xml" href="../shared/IconGestaoFinanceira.svg">
@@ -8,7 +8,7 @@
 <script>
 // Define o tema (claro/escuro) o quanto antes, antes do CSS pintar a tela,
 // pra evitar um "flash" da cor errada ao carregar a página.
-(function(){ try{ var t=localStorage.getItem('321fin_theme'); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();
+(function(){ try{ var t=localStorage.getItem('321modular_theme') || localStorage.getItem('321fin_theme'); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1256,7 +1256,7 @@ document.getElementById('loginLogo').src = LOGO_321;
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
   const knob=document.getElementById('themeKnob'); if(knob) knob.textContent = t==='dark' ? '🌙' : '☀️';
-  try{ localStorage.setItem('321fin_theme', t); }catch(e){}
+  try{ localStorage.setItem('321modular_theme', t); }catch(e){}
 }
 (function initTheme(){
   const atual = document.documentElement.getAttribute('data-theme') || 'light';

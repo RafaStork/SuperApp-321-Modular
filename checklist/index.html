@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-app-code="checklist">
 <head>
 <link rel="icon" type="image/svg+xml" href="../shared/IconChecklistObra.svg">
@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="321Modular">
 <title>321Modular — Checklist de Qualidade</title>
 <script>
-(function(){ try{ var t=localStorage.getItem('321chk_theme'); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();
+(function(){ try{ var t=localStorage.getItem('321modular_theme') || localStorage.getItem('321chk_theme'); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -528,7 +528,7 @@ document.getElementById('btnPDF').addEventListener('click',function(){
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
   var knob=document.getElementById('themeKnob'); if(knob) knob.innerHTML = t==='dark' ? '&#127769;' : '&#9728;&#65039;';
-  try{ localStorage.setItem('321chk_theme', t); }catch(e){}
+  try{ localStorage.setItem('321modular_theme', t); }catch(e){}
 }
 (function initTheme(){
   var atual = document.documentElement.getAttribute('data-theme') || 'light';

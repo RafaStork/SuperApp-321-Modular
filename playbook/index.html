@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-app-code="playbook">
 <head>
 <link rel="icon" type="image/svg+xml" href="../shared/IconPlaybook.svg">
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Playbook de Operação · 321 Modular</title>
 <script>
-(function(){ try{ var t=localStorage.getItem('321pb_theme'); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();
+(function(){ try{ var t=localStorage.getItem('321modular_theme') || localStorage.getItem('321pb_theme'); document.documentElement.setAttribute('data-theme', t==='dark'?'dark':'light'); }catch(e){ document.documentElement.setAttribute('data-theme','light'); } })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2504,7 +2504,7 @@ if(comercialLink){
 function applyTheme(t){
   document.documentElement.setAttribute('data-theme', t);
   const knob=document.getElementById('themeKnob'); if(knob) knob.textContent = t==='dark' ? '🌙' : '☀️';
-  try{ localStorage.setItem('321pb_theme', t); }catch(e){}
+  try{ localStorage.setItem('321modular_theme', t); }catch(e){}
 }
 (function initTheme(){
   const atual = document.documentElement.getAttribute('data-theme') || 'light';
