@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR" data-app-code="planta">
 <head>
 <link rel="icon" type="image/svg+xml" href="../shared/IconPlanta.svg">
@@ -6051,23 +6051,34 @@ function render(){
     const tyR=typeOf(p.typeId);
     if(tyR&&tyR.rede){
       const rd=tyR.rede;
-      const r=rectOf(p);
-      // Coordenadas locais (relativas ao canto inferior-esquerdo do piso)
-      const wx0=r.x+rd.x0, wy0=r.y+(r.h-rd.y1), rW=rd.x1-rd.x0, rH=rd.y1-rd.y0;
+      // A rede usa o mesmo sistema local do piso: isso faz o recorte e
+      // a trama acompanharem p.rot, inclusive em 90/180/270 graus.
+      const localX0=-tyR.w/2+rd.x0, localX1=-tyR.w/2+rd.x1;
+      const localY0=tyR.d/2-rd.y1, localY1=tyR.d/2-rd.y0;
+      const rW=localX1-localX0, rH=localY1-localY0;
       if(rW>0&&rH>0){
-        const[sx,sy]=toScreen(wx0,wy0);
-        const pw=rW*view.scale, ph=rH*view.scale;
-        // Clip path para conter as linhas dentro do rect
+        const toRedeScreen=(lx,ly)=>{
+          const [rx,ry]=rotPoint(lx,ly,p.rot);
+          return toScreen(p.cx+rx,p.cy+ry);
+        };
         const clipId=`rede-clip-${p.id}`;
         const cp=el("clipPath",{id:clipId});
-        cp.appendChild(el("rect",{x:sx,y:sy,width:pw,height:ph}));
+        const clipPoints=[[localX0,localY0],[localX1,localY0],[localX1,localY1],[localX0,localY1]]
+          .map(([lx,ly])=>toRedeScreen(lx,ly).join(",")).join(" ");
+        cp.appendChild(el("polygon",{points:clipPoints}));
         svgDefs.appendChild(cp);
-        // Sem fundo — área totalmente vazada
-        // Trama: linhas a cada ~10cm, cor escura para visibilidade
-        const spacing=Math.max(3, 0.10*view.scale);
+        // Mantém a mesma densidade aproximada da trama anterior, mas em
+        // coordenadas locais, para que as linhas girem junto com o piso.
+        const spacing=Math.max(0.10,3/view.scale);
         const trama=el("g",{stroke:"rgba(0,0,0,0.50)","stroke-width":"0.8","vector-effect":"non-scaling-stroke","clip-path":`url(#${clipId})`});
-        for(let y=sy;y<=sy+ph+spacing;y+=spacing)trama.appendChild(el("line",{x1:sx,y1:y,x2:sx+pw,y2:y}));
-        for(let x=sx;x<=sx+pw+spacing;x+=spacing)trama.appendChild(el("line",{x1:x,y1:sy,x2:x,y2:sy+ph}));
+        for(let ly=localY0;ly<=localY1+spacing*0.5;ly+=spacing){
+          const [x1,y1]=toRedeScreen(localX0,ly),[x2,y2]=toRedeScreen(localX1,ly);
+          trama.appendChild(el("line",{x1,y1,x2,y2}));
+        }
+        for(let lx=localX0;lx<=localX1+spacing*0.5;lx+=spacing){
+          const [x1,y1]=toRedeScreen(lx,localY0),[x2,y2]=toRedeScreen(lx,localY1);
+          trama.appendChild(el("line",{x1,y1,x2,y2}));
+        }
         grp.appendChild(trama);
       }
     }
