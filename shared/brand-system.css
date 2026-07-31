@@ -221,3 +221,103 @@ html[data-app-code="checklist"] .bottom {
     animation-duration: .01ms !important;
   }
 }
+/* Fixed application shells: only the content area scrolls. */
+@media screen {
+  html[data-app-code="gestao"],
+  html[data-app-code="planta"],
+  html[data-app-code="playbook"],
+  html[data-app-code="financeiro"],
+  html[data-app-code="simulacao"],
+  html[data-app-code="gestao"] body,
+  html[data-app-code="planta"] body,
+  html[data-app-code="playbook"] body,
+  html[data-app-code="financeiro"] body,
+  html[data-app-code="simulacao"] body {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  html[data-app-code="gestao"] #app-shell,
+  html[data-app-code="gestao"] main {
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  html[data-app-code="gestao"] aside {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+
+  html[data-app-code="planta"] main {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  html[data-app-code="planta"] #aside {
+    position: sticky;
+    top: 0;
+    align-self: stretch;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  html[data-app-code="planta"] #aside .inv {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  html[data-app-code="playbook"] main,
+  html[data-app-code="financeiro"] main {
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  html[data-app-code="simulacao"] .app {
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+  html[data-app-code="simulacao"] .side {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+  html[data-app-code="simulacao"] .main {
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+/* Preserve mobile drawer positioning after the shared desktop shell rules. */
+@media screen and (max-width: 880px) {
+  html[data-app-code="gestao"] aside {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+  }
+}
+@media screen and (max-width: 760px) {
+  html[data-app-code="planta"] #aside {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    height: auto;
+    max-height: 100%;
+  }
+}
