@@ -65,6 +65,7 @@ async function rpc(name, token) {
   return response.json();
 }
 const one = (value) => Array.isArray(value) ? value[0] : value;
+const asList = (value) => Array.isArray(value) ? value : (value === null || value === undefined ? [] : [value]);
 
 async function validateNoSession() {
   const missing = await request('/rest/v1/rpc/get_my_profile', { method: 'POST', body: {}, schema: 'core' });
@@ -86,8 +87,8 @@ async function loginAndValidate(user) {
   const role = profile?.role_code;
   const apps = new Set((Array.isArray(entitlements) ? entitlements : []).map((item) => item.app_code));
   if (role !== user.expectedRole) fail(`${label}: papel divergente; esperado ${safe(user.expectedRole)}, recebido ${safe(role)}.`);
-  for (const app of user.expectedApps || []) if (!apps.has(app)) fail(`${label}: entitlement obrigatório ausente (${safe(app)}).`);
-  for (const app of user.deniedApps || []) if (apps.has(app)) fail(`${label}: entitlement proibido presente (${safe(app)}).`);
+  for (const app of asList(user.expectedApps)) if (!apps.has(app)) fail(`${label}: entitlement obrigatório ausente (${safe(app)}).`);
+  for (const app of asList(user.deniedApps)) if (apps.has(app)) fail(`${label}: entitlement proibido presente (${safe(app)}).`);
   const admin = await request('/rest/v1/rpc/admin_list_users', { method: 'POST', token: session.access_token, body: {}, schema: 'core' });
   const shouldAdmin = user.expectedAdmin === true || user.expectedRole === 'ADM';
   if (shouldAdmin && !admin.ok) fail(`${label}: RPC administrativo negado para ADM (HTTP ${admin.status}).`);
