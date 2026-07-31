@@ -206,7 +206,6 @@ async function bootAfterLogin(){
   const preferida = ['UEng','UInd'].includes(currentProfile.role) ? 'minhas-tarefas' : 'dashboard';
   const firstView = abasPermitidas.includes(preferida) ? preferida : (abasPermitidas[0] || 'minhas-tarefas');
   navigateTo(firstView);
-  document.getElementById('login-screen').classList.add('login-screen-hidden');
   return true;
 }
 
@@ -5060,5 +5059,6 @@ if (document.body){
   applyCspDynamicStyles(document);
   cspDynamicStyleObserver.observe(document.body, { childList:true, subtree:true });
 }window.addEventListener('superapp:authorized', () => {
+  document.getElementById('login-screen')?.classList.add('login-screen-hidden');
   bootAfterLogin().finally(() => window.SuperAppAuth.releaseAppGuard?.());
 }, { once: true });

@@ -1,5 +1,5 @@
 .superapp-route-pending body > *{visibility:hidden!important}
-.login-screen.login-screen-hidden{display:none!important}
+#login-screen.login-screen-hidden{display:none!important}
 
 :root{
   --font:'Montserrat', sans-serif;
