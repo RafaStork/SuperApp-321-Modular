@@ -170,3 +170,16 @@ html[data-theme="dark"] .header-theme-toggle .knob{left:24px}
 html[data-theme="dark"] .profile-avatar{border:1px solid #59616e;color:#fff;background:#343a43}
 .login-theme-toggle.hidden{display:none!important}
 @media(max-width:620px){.portal-sticky-header{width:100vw;margin-right:calc(50% - 50vw);margin-left:calc(50% - 50vw);padding-right:12px;padding-left:12px}.portal-header-actions{padding-right:0}.header-theme-toggle.theme-toggle{flex-basis:46px}}
+/* Hide landing page scrollbars without disabling wheel/touch scrolling */
+html,
+body.portal-page {
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+html::-webkit-scrollbar,
+body.portal-page::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
