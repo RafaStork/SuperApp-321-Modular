@@ -1,0 +1,4 @@
+html.superapp-route-pending body > *,
+html.superapp-session-pending body.portal-page > * {
+  visibility: hidden !important;
+}

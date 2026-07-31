@@ -4,7 +4,11 @@
   if (!code) return;
   document.documentElement.classList.add('superapp-route-pending');
   function releaseAppGuard() {
-    document.documentElement.classList.remove('superapp-route-pending');
+    var root = document.documentElement;
+    root.classList.remove('superapp-route-ready');
+    void root.offsetWidth;
+    root.classList.add('superapp-route-ready');
+    root.classList.remove('superapp-route-pending');
   }
   window.SuperAppAuth = window.SuperAppAuth || {};
   window.SuperAppAuth.releaseAppGuard = releaseAppGuard;

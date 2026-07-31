@@ -25,7 +25,6 @@
 [data-season]{width:58px!important}[data-sc]{width:65px!important}.cat .btn.ghost{margin-top:8px}.cat + .formgrid{margin-top:12px}.card > .kpis{margin-top:16px}
 
 /* Padrões compartilhados com o app Gestão */
-@font-face{font-family:'Montserrat';src:url('./vendor/Montserrat-Variable.ttf') format('truetype-variations');font-style:normal;font-weight:100 900;font-display:swap}
 :root{--font:'Montserrat',sans-serif;--surface:var(--card);--surface-2:var(--soft);--border:var(--line);--border-soft:var(--line);--text:var(--ink);--text-faint:var(--muted);--accent:var(--orange);--accent-soft:rgba(232,89,12,.12);--ease-out:cubic-bezier(.16,.84,.44,1);--ease-spring:cubic-bezier(.34,1.56,.64,1);--shadow-lg:0 12px 20px -8px rgba(20,24,30,.10),0 26px 52px -12px rgba(20,24,30,.16);--ring:0 0 0 3.5px var(--accent-soft)}
 [data-theme=dark]{--accent-soft:rgba(241,120,58,.16);--shadow-lg:0 12px 22px -8px rgba(0,0,0,.42),0 28px 54px -12px rgba(0,0,0,.55)}
 body,button,input,select{font-family:var(--font)}

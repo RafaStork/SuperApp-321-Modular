@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https://drive.google.com https://lh3.googleusercontent.com https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https://drive.google.com https://lh3.googleusercontent.com https://*.supabase.co; object-src 'none'; base-uri 'self'; form-action 'self'" />
 <link rel="icon" type="image/svg+xml" href="../shared/IconGestaoEngenharia.svg">
 <link rel="apple-touch-icon" href="./IconVarOrig.png">
 <link rel="manifest" href="./manifest.json">
@@ -11,13 +11,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Gestão de Tarefas 321</title>
 <meta name="description" content="Sistema de gestão de tarefas de Engenharia e Indústria — SAC, Vendas, Projetos e Programação de Carregamento." />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="../shared/boot.css?v=20260731-entry-2">
+<script src="../shared/theme-bootstrap.js"></script>
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
-<script src="../shared/app-guard.js?v=20260731-notifications-fix-4"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260731-notifications-fix-4">
+<script src="../shared/app-guard.js?v=20260731-entry-2"></script>
+<link rel="stylesheet" href="./styles-external.css?v=20260731-entry-1">
+<link rel="stylesheet" href="../shared/brand-system.css?v=20260731-entry-1">
 
 
 </head>
@@ -26,7 +27,7 @@
 <div id="login-screen">
   <div class="login-card">
     <div class="login-head">
-      <img class="brand-logo" id="login-logo" alt="321 Modular" />
+      <img class="brand-logo superapp-brand-logo" id="login-logo" alt="321 Modular" />
       <div><div class="brand-eyebrow">Engenharia &amp; Indústria</div><div class="brand-title">Gestão de Tarefas</div></div>
     </div>
     <form id="login-form">
@@ -43,7 +44,7 @@
   <div class="aside-backdrop" id="aside-backdrop"></div>
   <aside id="aside">
     <div class="side-brand">
-      <img class="brand-logo" id="side-logo" alt="321 Modular" style="height:28px;width:auto;" />
+      <img class="brand-logo superapp-brand-logo" id="side-logo" alt="321 Modular" />
       <div class="brand-name">Gestão de<br>Tarefas</div>
     </div>
     <div class="nav-scroll"><nav class="tabs" id="nav-tabs"></nav></div>

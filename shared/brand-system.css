@@ -1,0 +1,223 @@
+@font-face {
+  font-family: "Montserrat";
+  src: url("./Montserrat-Variable.ttf") format("truetype-variations");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --superapp-font: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --superapp-entry-ease: cubic-bezier(.16, .84, .44, 1);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--superapp-font);
+}
+
+html.superapp-route-pending body > *,
+html.superapp-session-pending body.portal-page > * {
+  visibility: hidden !important;
+}
+
+html.superapp-route-ready body,
+html.superapp-portal-ready body.portal-page {
+  animation: superappAppEnter .36s var(--superapp-entry-ease) both;
+}
+
+.superapp-brand-logo {
+  display: block;
+  width: 112px !important;
+  height: 36px !important;
+  min-width: 112px;
+  max-width: 112px !important;
+  max-height: 36px !important;
+  object-fit: contain;
+  object-position: center;
+  flex: 0 0 112px;
+}
+
+@keyframes superappAppEnter {
+  from { opacity: 0; transform: translateY(8px) scale(.997); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Checklist alinhado à identidade visual do app Gestão. */
+html[data-app-code="checklist"] body {
+  background: var(--bg);
+  color: var(--t1);
+}
+
+html[data-app-code="checklist"] header {
+  padding: 13px 16px 11px;
+  color: var(--t1);
+  background: var(--wh);
+  border-top: 3px solid var(--or);
+  border-bottom: 1px solid var(--bdr);
+  box-shadow: 0 8px 24px rgba(20, 24, 30, .07);
+}
+
+html[data-app-code="checklist"] .header-inner {
+  width: min(100%, 980px);
+  margin: 0 auto;
+}
+
+html[data-app-code="checklist"] .checklist-brand-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border: 1px solid var(--bdr);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .12);
+  flex: 0 0 auto;
+}
+
+html[data-app-code="checklist"] .checklist-brand-copy {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+html[data-app-code="checklist"] .checklist-brand-copy strong {
+  color: var(--t1);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+html[data-app-code="checklist"] .checklist-brand-copy small {
+  color: var(--tm);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+html[data-app-code="checklist"] .header-right {
+  gap: 10px;
+}
+
+html[data-app-code="checklist"] .prog-bar {
+  width: 82px;
+  height: 5px;
+  background: var(--bdr);
+}
+
+html[data-app-code="checklist"] .prog-fill {
+  background: linear-gradient(90deg, var(--or), var(--go));
+}
+
+html[data-app-code="checklist"] .prog-label {
+  color: var(--t2);
+  font-weight: 700;
+}
+
+html[data-app-code="checklist"] .theme-toggle {
+  width: 46px;
+  height: 25px;
+  border: 1px solid var(--bdr);
+  background: var(--bg);
+}
+
+html[data-app-code="checklist"] .theme-toggle:hover {
+  border-color: var(--or);
+}
+
+html[data-app-code="checklist"] .theme-toggle .knob {
+  top: 2px;
+  left: 2px;
+  width: 19px;
+  height: 19px;
+  font-size: 11px;
+  background: var(--wh);
+  transition: left .28s cubic-bezier(.34, 1.56, .64, 1), background .2s ease;
+}
+
+html[data-app-code="checklist"][data-theme="dark"] .theme-toggle {
+  border-color: var(--or);
+  background: rgba(238, 107, 27, .18);
+}
+
+html[data-app-code="checklist"][data-theme="dark"] .theme-toggle .knob {
+  left: 24px;
+}
+
+html[data-app-code="checklist"] .container {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  padding: 18px 16px 0;
+}
+
+html[data-app-code="checklist"] .card {
+  margin-bottom: 14px;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(20, 24, 30, .07);
+}
+
+html[data-app-code="checklist"] .sec-head {
+  color: var(--or);
+}
+
+html[data-app-code="checklist"] .phase-header {
+  border-left: 3px solid var(--or);
+  background: color-mix(in srgb, var(--or) 6%, var(--wh));
+}
+
+html[data-app-code="checklist"] .ph-num {
+  color: #fff;
+  background: linear-gradient(135deg, var(--or), var(--go));
+}
+
+html[data-app-code="checklist"] .field input:focus,
+html[data-app-code="checklist"] .field select:focus,
+html[data-app-code="checklist"] .obs-wrap textarea:focus {
+  border-color: var(--or);
+  box-shadow: 0 0 0 3px var(--or-soft);
+}
+
+html[data-app-code="checklist"] .btn {
+  font-weight: 700;
+}
+
+html[data-app-code="checklist"] .btn-green {
+  color: #fff;
+  background: linear-gradient(135deg, var(--or), var(--go));
+  box-shadow: 0 7px 17px -7px rgba(238, 107, 27, .7);
+}
+
+html[data-app-code="checklist"] .btn-green:active {
+  background: var(--or);
+}
+
+html[data-app-code="checklist"] .bottom {
+  background: color-mix(in srgb, var(--wh) 96%, transparent);
+  box-shadow: 0 -8px 24px rgba(20, 24, 30, .08);
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 620px) {
+  html[data-app-code="checklist"] .checklist-brand-copy small { display: none; }
+  html[data-app-code="checklist"] .checklist-brand-copy strong { font-size: 11px; }
+  html[data-app-code="checklist"] .prog-bar { width: 56px; }
+  html[data-app-code="checklist"] .container { padding: 12px 12px 0; }
+}
+
+@media (max-width: 430px) {
+  html[data-app-code="checklist"] .checklist-brand-copy { display: none; }
+  html[data-app-code="checklist"] .header-inner { gap: 8px; }
+  html[data-app-code="checklist"] .header-right { gap: 7px; }
+  html[data-app-code="checklist"] .prog-bar { width: 46px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.superapp-route-ready body,
+  html.superapp-portal-ready body.portal-page {
+    animation-duration: .01ms !important;
+  }
+}
