@@ -116,15 +116,32 @@ document.getElementById('login-form').addEventListener('submit', async (e)=>{
   const errBox = document.getElementById('login-error');
   errBox.textContent = '';
   btn.disabled = true; btn.textContent = 'Entrando...';
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error){
+
+  try {
+    await window.SuperAppAuth.signIn(email, password);
+  } catch (error) {
     btn.disabled = false; btn.textContent = 'Entrar';
     errBox.textContent = 'Falha no login: e-mail ou senha inválidos.';
     return;
   }
-  const iniciou = await bootAfterLogin();
-  btn.disabled = false; btn.textContent = 'Entrar';
-  if (!iniciou) await sb.auth.signOut();
+
+  let iniciou = false;
+  try {
+    iniciou = await bootAfterLogin();
+    if (iniciou){
+      document.getElementById('login-screen')?.classList.add('login-screen-hidden');
+      window.SuperAppAuth.releaseAppGuard?.();
+    } else {
+      await window.SuperAppAuth.signOut();
+    }
+  } catch (error) {
+    console.error('Falha ao inicializar o app Gestão:', error);
+    errBox.textContent = 'Falha ao abrir o app. Retorne ao SuperApp e tente novamente.';
+    try { await window.SuperAppAuth.signOut(); } catch (_) {}
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
+  }
 });
 document.getElementById('login-token-toggle').addEventListener('click', ()=>{
   const input = document.getElementById('login-token');
@@ -159,9 +176,8 @@ document.getElementById('nav-tabs').addEventListener('click', (e)=>{
 });
 
 async function bootAfterLogin(){
-  const { data: sessionData, error: sessionError } = await sb.auth.getSession();
-  const session = sessionData && sessionData.session;
-  if (sessionError || !session) return false;
+  const session = await window.SuperAppAuth.getSession();
+  if (!session) return false;
 
   const entitlements = await window.SuperAppAuth.getEntitlements();
   if (!entitlements.some(item => item.app_code === 'gestao')){

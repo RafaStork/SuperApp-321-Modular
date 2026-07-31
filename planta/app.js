@@ -13446,6 +13446,7 @@ async function autenticarECarregar() {
 }
 // Inicia autenticação ao carregar a página
 window.addEventListener('superapp:authorized', () => {
+  document.getElementById('authOverlay')?.classList.add('hidden');
   autenticarECarregar().finally(() => window.SuperAppAuth.releaseAppGuard?.());
 }, { once: true });
 document.getElementById("authLogo").src = DEFAULT_LOGO;
