@@ -1,0 +1,48 @@
+name: Security checks
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository:
+    name: Repository security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Check repository policy
+        run: node security/check-repository.mjs
+      - name: Scan current files and Git history
+        run: node security/scan-secrets.mjs --history
+
+  published:
+    name: Published security
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Check public routes
+        env:
+          SUPERAPP_BASE_URL: https://superapp.321modular.com.br/
+        run: node security/smoke-public.mjs
+      - name: Check published security headers
+        env:
+          SUPERAPP_BASE_URL: https://superapp.321modular.com.br/
+        run: node security/check-live-headers.mjs
