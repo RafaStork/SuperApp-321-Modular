@@ -83,8 +83,9 @@ const playbookLogout = document.getElementById('side-logout-playbook');
 if(playbookLogout) playbookLogout.addEventListener('click', ()=>{
   location.href = window.SuperAppAuth.getPortalUrl();
 });
-window.addEventListener('superapp:authorized', carregarSessaoPlaybook, {once:true});
-carregarSessaoPlaybook();
+window.addEventListener('superapp:authorized', () => {
+  carregarSessaoPlaybook().finally(() => window.SuperAppAuth.releaseAppGuard?.());
+}, {once:true});
 // Playbook: navegação delegada para compatibilidade com CSP.
 document.addEventListener('click', (event) => {
   const target = event.target.closest?.('[data-pb-go-to]');

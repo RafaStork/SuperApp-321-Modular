@@ -1,3 +1,4 @@
+.superapp-route-pending body > *{visibility:hidden!important}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --gd:#3B5132;--gm:#638854;--gl:#8BA872;

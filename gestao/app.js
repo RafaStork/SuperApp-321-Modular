@@ -189,7 +189,6 @@ async function bootAfterLogin(){
   currentUser = { id: perfil.id, nome: perfil.nome, usuario: perfil.usuario, role: perfil.role };
   currentProfile = currentUser;
 
-  document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-shell').classList.add('active');
   document.getElementById('side-user-name').textContent = currentProfile.nome;
   const roleLabel = centralProfile?.role_name || centralProfile?.role_code || ROTULO_PAPEL[currentProfile.role] || currentProfile.role;
@@ -207,6 +206,7 @@ async function bootAfterLogin(){
   const preferida = ['UEng','UInd'].includes(currentProfile.role) ? 'minhas-tarefas' : 'dashboard';
   const firstView = abasPermitidas.includes(preferida) ? preferida : (abasPermitidas[0] || 'minhas-tarefas');
   navigateTo(firstView);
+  document.getElementById('login-screen').classList.add('login-screen-hidden');
   return true;
 }
 
@@ -5059,4 +5059,6 @@ const cspDynamicStyleObserver = new MutationObserver(mutations => {
 if (document.body){
   applyCspDynamicStyles(document);
   cspDynamicStyleObserver.observe(document.body, { childList:true, subtree:true });
-}window.addEventListener('superapp:authorized', () => { bootAfterLogin(); }, { once: true });
+}window.addEventListener('superapp:authorized', () => {
+  bootAfterLogin().finally(() => window.SuperAppAuth.releaseAppGuard?.());
+}, { once: true });

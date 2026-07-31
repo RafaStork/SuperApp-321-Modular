@@ -13435,7 +13435,6 @@ async function autenticarECarregar() {
   aplicarPricingData(data);
   const overlay = document.getElementById('authOverlay');
   overlay.classList.add('hidden');
-  setTimeout(() => { overlay.style.display = 'none'; }, 450);
   renderInv();
   iniciarPollingPrecos();
   const perfil = pricingData.perfil || '—';
@@ -13446,7 +13445,9 @@ async function autenticarECarregar() {
   document.getElementById('jsonAdminBtns').style.display = perfil === 'Admin' ? 'flex' : 'none';
 }
 // Inicia autenticação ao carregar a página
-autenticarECarregar();
+window.addEventListener('superapp:authorized', () => {
+  autenticarECarregar().finally(() => window.SuperAppAuth.releaseAppGuard?.());
+}, { once: true });
 document.getElementById("authLogo").src = DEFAULT_LOGO;
 // Planta: fechamento do preview delegado para compatibilidade com CSP.
 document.addEventListener('click', (event) => {

@@ -36,8 +36,8 @@ async function loadCentralFinanceSession(){
   if (error) { showLoginError(error.message || 'Acesso ao financeiro negado.'); return false; }
   SESSION = { username: session.user.email, token: 'central-session' };
   if (data && typeof data === 'object') DB = { ...DB, ...data };
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('appRoot').style.display='block';
+  document.getElementById('loginScreen').classList.add('login-screen-hidden');
+  document.getElementById('appRoot').classList.remove('fin-csp-002');
   const profile = await window.SuperAppAuth.getProfile();
   const sessionLabel = profile?.display_name || session.user.email || 'Usuário';
 
@@ -2472,7 +2472,9 @@ function startApp(){
   if (document.body) observer.observe(document.body, { childList: true, subtree: true });
 })();
 initCalendarios();
-tryAutoLogin();
+window.addEventListener('superapp:authorized', () => {
+  tryAutoLogin().finally(() => window.SuperAppAuth.releaseAppGuard?.());
+}, { once: true });
 // Financeiro: eventos delegados para compatibilidade com CSP sem handlers inline.
 (function wireFinanceiroDelegatedEvents() {
   function callFinanceiro(name, element) {

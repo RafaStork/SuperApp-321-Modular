@@ -1,8 +1,13 @@
-﻿(function () {
+(function () {
   'use strict';
   var code = document.documentElement.getAttribute('data-app-code');
   if (!code) return;
   document.documentElement.classList.add('superapp-route-pending');
+  function releaseAppGuard() {
+    document.documentElement.classList.remove('superapp-route-pending');
+  }
+  window.SuperAppAuth = window.SuperAppAuth || {};
+  window.SuperAppAuth.releaseAppGuard = releaseAppGuard;
   function deny(message) {
     document.documentElement.classList.remove('superapp-route-pending');
     var safe = String(message || 'Acesso negado.').replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]; });
@@ -16,8 +21,9 @@
       if (!session) return deny('Sessão ausente. Retorne ao SuperApp para entrar.');
       var apps = await SuperAppAuth.getEntitlements();
       if (!apps.some(function (item) { return item.app_code === code; })) return deny('Acesso negado para este módulo.');
-      document.documentElement.classList.remove('superapp-route-pending');
+
       window.dispatchEvent(new CustomEvent('superapp:authorized', { detail: { appCode: code, session: session } }));
+      if (code === 'checklist') releaseAppGuard();
     } catch (error) { deny(error && error.message ? error.message : 'Não foi possível validar o acesso.'); }
   }, { once: true });
 }());
