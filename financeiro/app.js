@@ -24,7 +24,7 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
 });
 
 const sb = window.SuperAppAuth.getClient();
-let SESSION = null;
+let SESSION_READY = false;
 
 function showFinanceLoadFailure(message){
   const page = document.createElement('main');
@@ -50,7 +50,7 @@ async function loadCentralFinanceSession(){
   }
   const { data, error } = await sb.rpc('load_app_data', {});
   if (error) throw error;
-  SESSION = { username: session.user.email, token: 'central-session' };
+  SESSION_READY = true;
   if (data && typeof data === 'object') DB = { ...DB, ...data };
   document.getElementById('appRoot').classList.remove('fin-csp-002');
   const profile = await window.SuperAppAuth.getProfile();
@@ -81,12 +81,12 @@ const OBRA_CATS = ['Kit Fábrica','Telhas','Frete','Munck (caminhão)','Alicerce
 // save() grava os dados do usuário logado no Supabase (substitui o antigo localStorage)
 let saveInFlight=Promise.resolve();
 function save(){
-  if(!SESSION) return Promise.resolve(false);
+  if(!SESSION_READY) return Promise.resolve(false);
   // Serializa snapshots para uma edicao antiga nunca sobrescrever uma nova.
   const snapshot = JSON.parse(JSON.stringify(DB));
   saveInFlight = saveInFlight.catch(()=>{}).then(async ()=>{
     try{
-      const { error } = await sb.rpc('save_app_data', { p_username: SESSION.username, p_token: SESSION.token, p_data: snapshot });
+      const { error } = await sb.rpc('save_app_data', { p_data: snapshot });
       if(error){ console.error('Erro ao salvar no Supabase:', error); toast('Erro ao salvar: ' + (error.message || 'falha de persistencia'), true); return false; }
       return true;
     }catch(e){ console.error('Erro ao salvar no Supabase:', e); toast('Erro ao salvar: ' + (e.message || 'falha de rede'), true); return false; }
@@ -1580,7 +1580,7 @@ function renderRec(){
     const obra=DB.obras.find(o=>o.id===r.obraId);
     const sl=saldo(r);
     return `<tr>
-      <td><strong>${obra?obra.cliente:'Avulso'}</strong><div class="tdim">${obra?obra.modelo:''}</div></td>
+      <td><strong>${obra?escapeHtml(obra.cliente):'Avulso'}</strong><div class="tdim">${obra?escapeHtml(obra.modelo):''}</div></td>
       <td>${escapeHtml(r.tipo)}</td>
       <td>${escapeHtml(r.desc||'—')}</td>
       <td>${fmtDate(r.venc)}</td>
@@ -2008,7 +2008,7 @@ function renderDRE(){
 
   const pct=v=>fat>0?PCT(v/fat*100):'—';
   const row=(lbl,val,cls='',sub=false,bold=false)=>
-    `<tr class="${cls}"><td ${sub?'data-csp-style="padding-left:28px;color:var(--tm);font-size:12px"':''}>${bold?`<strong>${lbl}</strong>`:lbl}</td><td class="dv">${BRL(val)}</td><td class="dp">${pct(val)}</td></tr>`;
+    `<tr class="${cls}"><td ${sub?'data-csp-style="padding-left:28px;color:var(--tm);font-size:12px"':''}>${bold?`<strong>${escapeHtml(lbl)}</strong>`:escapeHtml(lbl)}</td><td class="dv">${BRL(val)}</td><td class="dp">${pct(val)}</td></tr>`;
 
   let html=`
     <tr class="dsec"><td colspan="3">1. RECEITA BRUTA</td></tr>
@@ -2178,7 +2178,7 @@ function renderDREObra(){
 
   const pct = v => c.venda>0 ? PCT(v/c.venda*100) : '—';
   const row=(lbl,val,sub=false,bold=false)=>
-    `<tr><td ${sub?'data-csp-style="padding-left:28px;color:var(--tm);font-size:12px"':''}>${bold?`<strong>${lbl}</strong>`:lbl}</td><td class="dv">${BRL(val)}</td><td class="dp">${pct(val)}</td></tr>`;
+    `<tr><td ${sub?'data-csp-style="padding-left:28px;color:var(--tm);font-size:12px"':''}>${bold?`<strong>${escapeHtml(lbl)}</strong>`:escapeHtml(lbl)}</td><td class="dv">${BRL(val)}</td><td class="dp">${pct(val)}</td></tr>`;
 
   const tableHtml = `
     <tr class="dsec"><td colspan="3">1. RECEITA DA OBRA (VALOR CONTRATADO)</td></tr>
@@ -2306,7 +2306,6 @@ function saveConfig(){
   DB.config.marketing=n(document.getElementById('cfgMkt').value);
   DB.config.limitePermuta=n(document.getElementById('cfgLimitePermuta').value);
   save();
-  document.getElementById('hLoja').textContent=DB.config.nome||'Minha Loja';
   renderDash();
   toast('Configurações salvas com sucesso.');
 }
@@ -2403,8 +2402,6 @@ async function loadDemo(){
     {id:uid(),cat:'Salários',desc:'Salários + pró-labore',obraId:'',venc:d(0,10),valor:5300,pago:0,status:'Pendente',nf:''},
     {id:uid(),cat:'Contabilidade',desc:'Escritório ABC Contabilidade',obraId:'',venc:d(0,15),valor:600,pago:600,status:'Pago',nf:''},
   ];
-
-  document.getElementById('hLoja').textContent=DB.config.nome;
   save().then(()=>location.reload());
 }
 
@@ -2431,7 +2428,6 @@ async function clearAll(){
 // INIT
 // ═══════════════════════════════════════════════════
 function startApp(){
-  document.getElementById('hLoja').textContent=DB.config.nome||'Minha Loja';
   ['oModelo','oStatus','oTipoEnt','rObra','rTipo','rStatus','pCat','pObra','pStatus','dashPer','drePer','dreObraSel','dreObraPer','custosModo','custosFiltro'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) enhanceSelect(el);

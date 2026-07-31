@@ -69,11 +69,29 @@ const legacyFinanceAuth = [
   ['campo de token legado', /id=["']lgToken["']/i, financeHtml],
   ['handler de login legado', /\bdoLogin\b/, financeHtml + '\n' + financeJs],
   ['chave de sessão legada', /321fin_session/, financeJs],
+  ['parâmetro público de identidade', /\bp_(?:username|token)\b/, financeJs],
+  ['marcador central-session', /central-session/, financeJs],
 ];
 for (const [label, pattern, source] of legacyFinanceAuth) {
   if (pattern.test(source)) failures.push(`financeiro: ${label} voltou ao código ativo`);
 }
 
+const financeXssRegressions = [
+  ['cliente/modelo de obra sem escape', '${obra?obra.cliente'],
+  ['rótulo dinâmico da DRE sem escape', '${bold?`<strong>${lbl}</strong>`:lbl}'],
+];
+for (const [label, fragment] of financeXssRegressions) {
+  if (financeJs.includes(fragment)) failures.push(`financeiro: ${label}`);
+}
+const plantaJs = readFileSync(join(root, 'planta', 'app.js'), 'utf8');
+const legacyPlantaAuth = [
+  ['parâmetro p_token', /\bp_token\b/, plantaJs],
+  ['storage de token legado', /321modular_token/, plantaJs],
+  ['autenticação por token legado', /autenticarECarregarToken/, plantaJs],
+];
+for (const [label, pattern, source] of legacyPlantaAuth) {
+  if (pattern.test(source)) failures.push(`planta: ${label} voltou ao código ativo`);
+}
 let headers = '';
 try { headers = readFileSync(join(root, '_headers'), 'utf8').toLowerCase(); } catch { failures.push('_headers ausente'); }
 for (const name of ['content-security-policy:', 'x-frame-options:', 'x-content-type-options:', 'referrer-policy:', 'permissions-policy:', 'strict-transport-security:']) {

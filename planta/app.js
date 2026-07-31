@@ -36,7 +36,7 @@ async function callRPC(fn, params) {
 let pricingData = null;
 let pricingMap  = {};
 let insumosMap  = {}; // Ponto 5: { painelRef: [{painelRef, nome, precoFinal, precoBase?}, ...] }
-let tokenAtivoSessao = ""; // token ativo na sessão atual (independente de localStorage ou URL)
+let sessaoCentralAtiva = false;
 
 // ── Constrói pricingMap e insumosMap (Ponto 5) a partir da resposta da API ──
 function chaveCatalogo(valor){
@@ -66,10 +66,10 @@ function aplicarPricingData(data) {
 // um Vendedor estava com o app aberto).
 async function recarregarPrecos(opts) {
   opts = opts || {};
-  if (!tokenAtivoSessao) return;
+  if (!sessaoCentralAtiva) return;
   try {
     const antes = pricingData ? JSON.stringify(pricingData.produtos) : null;
-    const data = await callRPC("autenticar", { p_token: tokenAtivoSessao });
+    const data = await callRPC("autenticar", {});
     if (!data.ok) return;
     aplicarPricingData(data);
     // Atualiza modal do quantitativo se estiver aberto
@@ -100,7 +100,7 @@ function iniciarPollingPrecos() {
     if (document.visibilityState === "visible") recarregarPrecos();
   }, PRICING_POLL_MS);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && tokenAtivoSessao) recarregarPrecos();
+    if (document.visibilityState === "visible" && sessaoCentralAtiva) recarregarPrecos();
   });
 }
 // Estado do modal de quantitativo — persiste entre aberturas na mesma sessão
@@ -8307,7 +8307,7 @@ let pmGen=0;
 const PM_STAGGER_MS=90;
 
 async function abrirPlantasModelo(){
-  if(!tokenAtivoSessao){ toastError("Aguardando autenticação."); return; }
+  if(!sessaoCentralAtiva){ toastError("Aguardando autenticação."); return; }
   const gen=++pmGen;
   modalBody.dataset.modal = ""; // marca qual modal está aberto (evita hijack pelo polling de preços)
   modalBody.classList.add("pm-modal");
@@ -8339,7 +8339,7 @@ async function abrirPlantasModelo(){
 
   let plantas=[], erro=null;
   try{
-    const data=await callRPC("listar_plantas", { p_token: tokenAtivoSessao });
+    const data=await callRPC("listar_plantas", {});
     if(!data.ok) throw new Error(data.erro||"Falha ao listar plantas.");
     plantas=(data.plantas||[]).slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR',{sensitivity:'base'}));
   }catch(err){ erro=err; }
@@ -8389,7 +8389,7 @@ async function abrirPlantasModelo(){
       }
       btn.disabled=true; btn.textContent="Carregando…";
       try{
-        const data=await callRPC("carregar_planta", { p_token: tokenAtivoSessao, p_id: btn.dataset.use });
+        const data=await callRPC("carregar_planta", { p_id: btn.dataset.use });
         if(!data.ok) throw new Error(data.erro||"Falha ao carregar planta.");
         closeModal();
         loadModelo(data.dados);
@@ -8407,7 +8407,7 @@ async function abrirPlantasModelo(){
       if(!ok) return;
       btn.disabled=true; const textoOriginal=btn.textContent; btn.textContent="Sobrescrevendo…";
       try{
-        const data=await callRPC("sobrescrever_planta", { p_token: tokenAtivoSessao, p_id: btn.dataset.overwrite, p_dados: serializeModelo() });
+        const data=await callRPC("sobrescrever_planta", { p_id: btn.dataset.overwrite, p_dados: serializeModelo() });
         if(!data.ok) throw new Error(data.erro||"Falha ao sobrescrever planta.");
         toast("Planta sobrescrita com sucesso.");
         abrirPlantasModelo();
@@ -8421,7 +8421,7 @@ async function abrirPlantasModelo(){
       const ok=await confirmDialog("Excluir esta planta do catálogo? Essa ação não pode ser desfeita.", { titulo:"Excluir planta", textoConfirmar:"Excluir", perigo:true });
       if(!ok) return;
       try{
-        const data=await callRPC("excluir_planta", { p_token: tokenAtivoSessao, p_id: btn.dataset.remove });
+        const data=await callRPC("excluir_planta", { p_id: btn.dataset.remove });
         if(!data.ok) throw new Error(data.erro||"Falha ao excluir.");
         toast("Planta excluída.");
         abrirPlantasModelo();
@@ -8454,7 +8454,7 @@ function montarAreaSalvarPlantas(){
     const btn=document.getElementById("pm_salvar");
     btn.disabled=true; btn.textContent="Salvando…";
     try{
-      const data=await callRPC("salvar_planta", { p_token: tokenAtivoSessao, p_nome: nome, p_dados: serializeModelo() });
+      const data=await callRPC("salvar_planta", { p_nome: nome, p_dados: serializeModelo() });
       if(!data.ok) throw new Error(data.erro||"Falha ao salvar planta.");
       toast("Planta salva com sucesso.");
       abrirPlantasModelo();
@@ -10384,11 +10384,11 @@ function mostrarEditorMargens() {
     if(imp>=100){status.textContent="⚠ Imposto não pode ser ≥100%.";status.style.color="#c62828";return;}
     const btn = document.getElementById("gc_salvar");
     btn.disabled=true; btn.textContent="Salvando…";
-    const token = tokenAtivoSessao;
-    if (!token) { status.textContent = "⚠ Erro: Token de autenticação não encontrado."; status.style.color = "#c62828"; return; }
+    const sessaoPronta = sessaoCentralAtiva;
+    if (!sessaoPronta) { status.textContent = "⚠ Sessão de autenticação não encontrada."; status.style.color = "#c62828"; return; }
     let data;
     try {
-      data = await callRPC("salvar_margens", { p_token: token, p_mg: mg, p_mv: mv, p_imp: imp, p_roy: roy });
+      data = await callRPC("salvar_margens", { p_mg: mg, p_mv: mv, p_imp: imp, p_roy: roy });
     } catch(fetchErr) {
       // Erro de rede/conexão com o Supabase
       status.textContent = `⚠ Erro de rede: ${fetchErr.message}`;
@@ -10508,11 +10508,11 @@ function mostrarEditorInsumos() {
 
     const btn = document.getElementById("gci_salvar");
     btn.disabled=true; btn.textContent="Salvando…";
-    const token = tokenAtivoSessao;
-    if (!token) { status.textContent = "⚠ Erro: Token de autenticação não encontrado."; status.style.color = "#c62828"; return; }
+    const sessaoPronta = sessaoCentralAtiva;
+    if (!sessaoPronta) { status.textContent = "⚠ Sessão de autenticação não encontrada."; status.style.color = "#c62828"; return; }
     let data;
     try {
-      data = await callRPC("salvar_insumos", { p_token: token, p_insumos: lista });
+      data = await callRPC("salvar_insumos", { p_insumos: lista });
     } catch(fetchErr) {
       status.textContent = `⚠ Erro de rede: ${fetchErr.message}`;
       status.style.color = "#c62828";
@@ -10535,102 +10535,6 @@ function mostrarEditorInsumos() {
       btn.disabled=false; btn.textContent="Salvar Custos";
     }
   };
-}
-
-// ── Autenticação via Token na URL ─────────────────────────────
-async function autenticarECarregarToken() {
-  const overlay  = document.getElementById("authOverlay");
-  const spinner  = document.getElementById("authSpinner");
-  const msg      = document.getElementById("authMsg");
-  const form     = document.getElementById("authForm");
-  const input    = document.getElementById("tokenInput");
-  const btnOk    = document.getElementById("btnEntrar");
-  const remember = document.getElementById("rememberToken");
-
-  // ── Helpers de UI ───────────────────────────────────────────
-  const showSpinner = (texto = "Autenticando…") => {
-    form.style.display    = "none";
-    msg.style.display     = "none";
-    spinner.style.display = "";
-    msg.innerHTML = texto;
-  };
-  const showForm = (errHTML = "") => {
-    spinner.style.display = "none";
-    form.style.display    = "";
-    if (errHTML) {
-      msg.innerHTML      = `<div class="auth-error">${errHTML}</div>`;
-      msg.style.display  = "";
-    } else {
-      msg.style.display  = "none";
-    }
-    input.focus();
-  };
-  const unlockApp = () => {
-    overlay.classList.add("hidden");
-    setTimeout(() => { overlay.style.display = "none"; }, 450);
-    renderInv();
-    iniciarPollingPrecos(); // mantém preços/margens sincronizados enquanto o app fica aberto
-    // Preenche chip de sessão no cabeçalho
-    const perfil  = pricingData.perfil    || "—";
-    const franquia= pricingData.franquia  || "—";
-    const icon    = perfil === 'Admin'   ? '🏛️' :
-                    (perfil === 'Gestor' || perfil === 'Gestor Matriz')  ? '👔' : '🛒';
-    document.getElementById("userPerfilBadge").textContent = `${icon} ${perfil}`;
-    document.getElementById("userFranquia").textContent    = franquia;
-    document.getElementById("userInfoBar").style.display  = "flex";
-    // Ponto 10: botões de exportar/importar JSON completo (estrutura toda,
-    // incluindo cadastro de tipos) só ficam visíveis para o Admin.
-    document.getElementById("jsonAdminBtns").style.display = (perfil === 'Admin') ? 'flex' : 'none';
-  };
-
-  // ── Núcleo de autenticação ──────────────────────────────────
-  const autenticar = async (token, fromForm) => {
-    tokenAtivoSessao = token; // guarda na sessão independente do checkbox
-    showSpinner("Autenticando e carregando tabela de preços…");
-    try {
-      const data = await callRPC("autenticar", { p_token: token });
-
-      if (!data.ok) {
-        // Token inválido → limpa storage e volta ao form
-        localStorage.removeItem("321modular_token");
-        showForm(`⛔ ${esc(data.erro || "Token inválido.")} <small>Contate seu gestor.</small>`);
-        return;
-      }
-
-      // ── Sucesso ──────────────────────────────────────────────
-      // Salva no localStorage somente se o usuário veio pelo form e marcou "lembrar"
-      if (fromForm && remember.checked) {
-        localStorage.setItem("321modular_token", token);
-      }
-      aplicarPricingData(data);
-      unlockApp();
-
-    } catch (err) {
-      localStorage.removeItem("321modular_token"); // descarta token possivelmente inválido
-      showForm(`⚠ Falha de conexão: <small>${err.message}</small>`);
-    }
-  };
-
-  // ── Passo 1: busca token no localStorage → fallback URL ─────
-  const savedToken = localStorage.getItem("321modular_token") || "";
-  const urlToken   = new URLSearchParams(location.search).get("token") || "";
-  const autoToken  = savedToken || urlToken;
-
-  if (autoToken) {
-    // Passo 2: token encontrado → autentica direto, sem interação
-    await autenticar(autoToken, false);
-  } else {
-    // Passo 3: sem token → exibe o formulário de login
-    showForm();
-  }
-
-  // ── Wire do botão Conectar e tecla Enter ────────────────────
-  btnOk.onclick = async () => {
-    const t = input.value.trim();
-    if (!t) { showForm("Por favor, digite seu token de acesso."); return; }
-    await autenticar(t, true);
-  };
-  input.onkeydown = e => { if (e.key === "Enter") btnOk.click(); };
 }
 
 // ── Gera PDF do orçamento com assinatura ─────────────────────
@@ -13431,7 +13335,7 @@ async function autenticarECarregar() {
   const plantaRoleLabel = profile?.role_name || profile?.role_code || pricingData.perfil || 'Acesso operacional';
   const plantaScopeLabel = profile?.franchise_name ? `Franquia · ${profile.franchise_name}` : profile?.unit_name ? `Matriz · ${profile.unit_name}` : 'Matriz · acesso global';
   document.getElementById('side-user-role').textContent = `${plantaRoleLabel} · ${plantaScopeLabel}`;
-  tokenAtivoSessao = 'central-session';
+  sessaoCentralAtiva = true;
   aplicarPricingData(data);
   const overlay = document.getElementById('authOverlay');
   overlay.classList.add('hidden');
