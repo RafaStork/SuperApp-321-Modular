@@ -4,9 +4,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const baseValue = process.env.SUPERAPP_HOMOLOG_URL || '';
-const publishableKey = process.env.SUPERAPP_HOMOLOG_PUBLISHABLE_KEY || '';
-const usersValue = process.env.SUPERAPP_HOMOLOG_TEST_USERS_JSON || '';
+const baseValue = (process.env.SUPERAPP_HOMOLOG_URL || '').trim();
+const publishableKey = (process.env.SUPERAPP_HOMOLOG_PUBLISHABLE_KEY || '').trim();
+const usersValue = (process.env.SUPERAPP_HOMOLOG_TEST_USERS_JSON || '').trim();
 const failures = [];
 const results = [];
 const sessions = new Map();
@@ -25,6 +25,9 @@ function required(value, name) { if (!value) throw new Error(`${name} não confi
 const base = new URL(required(baseValue, 'SUPERAPP_HOMOLOG_URL'));
 if (base.protocol !== 'https:') throw new Error('A homologação deve usar HTTPS.');
 required(publishableKey, 'SUPERAPP_HOMOLOG_PUBLISHABLE_KEY');
+if (!/^(?:sb_publishable_[A-Za-z0-9_-]+|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)$/.test(publishableKey)) {
+  throw new Error('SUPERAPP_HOMOLOG_PUBLISHABLE_KEY possui formato inválido ou caracteres de controle.');
+}
 const runtime = readFileSync(resolve(root, 'shared/runtime-config.js'), 'utf8');
 const productionUrl = runtime.match(/"supabaseUrl"\s*:\s*"([^"]+)"/)?.[1];
 if (productionUrl && new URL(productionUrl).host === base.host) {
