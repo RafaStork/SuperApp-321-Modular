@@ -26,7 +26,7 @@ const results = [];
 for (const route of routes) {
   const url = new URL(route, base);
   try {
-    const response = await fetch(url, { redirect: 'manual' });
+    const response = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(8_000) });
     const body = await response.text();
     const ok = response.status >= 200 && response.status < 400;
     const configured = route.endsWith('index.html') ? !body.includes('Homologação não configurada.') : true;
