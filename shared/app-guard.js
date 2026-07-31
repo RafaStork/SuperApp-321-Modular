@@ -24,6 +24,6 @@
 
       window.dispatchEvent(new CustomEvent('superapp:authorized', { detail: { appCode: code, session: session } }));
       if (code === 'checklist') releaseAppGuard();
-    } catch (error) { deny(error && error.message ? error.message : 'Não foi possível validar o acesso.'); }
+    } catch (error) { window.SuperAppAuth?.logAuthFailure?.(error, 'route-guard'); deny(window.SuperAppAuth?.getSafeAuthMessage?.(error, 'Não foi possível validar o acesso.') || 'Não foi possível validar o acesso.'); }
   }, { once: true });
 }());

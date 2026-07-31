@@ -106,7 +106,38 @@ async function persistirOrdem(tabela, ids){
 
 function monthLabel(iso){ if (!iso) return 'Sem mês'; const d = new Date(iso + 'T00:00:00'); return d.toLocaleDateString('pt-BR', { month:'short', year:'numeric' }); }
 function monthLabelCurto(iso){ if (!iso) return ''; const d = new Date(iso + 'T00:00:00'); return d.toLocaleDateString('pt-BR', { month:'short' }).replace('.',''); }
-function monthKey(iso){ if (!iso) return null; return iso.slice(0,7); }
+function monthKey(iso){
+  if (iso === null || iso === undefined || iso === '') return null;
+  const text = String(iso).trim();
+  const direto = text.match(/^(\d{4})-(\d{1,2})(?:-|T|$)/);
+  if (direto) return direto[1]+'-'+String(Number(direto[2])).padStart(2,'0');
+  const d = new Date(text);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
+function dashboardMonthKey(row, kind){
+  if (!row) return null;
+  const fields = kind === 'projetos'
+    ? ['mes_ref','data_inicio','data_conclusao_real','created_at']
+    : kind === 'vendas_expansao'
+      ? ['mes_ref','data_venda','created_at']
+      : kind === 'chamados_sac'
+        ? ['mes_ref','data_abertura','created_at']
+        : ['mes_ref','created_at'];
+  const value = fields.map(field => row[field]).find(v => v !== null && v !== undefined && String(v).trim() !== '');
+  return monthKey(value);
+}
+function dashboardCompletionMonthKey(row){
+  if (!row) return null;
+  const value = ['data_conclusao_real','mes_ref','data_inicio','created_at']
+    .map(field => row[field])
+    .find(v => v !== null && v !== undefined && String(v).trim() !== '');
+  return monthKey(value);
+}
+function dashboardMonthKeyForField(row, field){
+  if (!row) return null;
+  return monthKey(row.mes_ref ?? row[field] ?? row.created_at);
+}
 
 document.getElementById('login-form').addEventListener('submit', async (e)=>{
   e.preventDefault();
@@ -587,7 +618,7 @@ function buildNav(){
     doGrupo.forEach(key=>{
       const b = document.createElement('button');
       b.className = 'tab-btn'; b.dataset.view = key;
-      b.innerHTML = `${escapeHtml(porChave.get(key))}<span class="nav-dot csp-inline-001" data-nav-dot="${key}"></span>`;
+      b.innerHTML = `${escapeHtml(porChave.get(key))}<span class="nav-dot nav-dot-menu" data-nav-dot="${key}"></span>`;
       b.addEventListener('click', ()=> navigateTo(key));
       nav.appendChild(b);
     });
@@ -709,6 +740,7 @@ const TABLE_CONFIG = {
     aba: 'chamados',
     respTable: 'chamados_sac_responsaveis', respFk: 'chamado_id', detalhavel: true,
     notificacoes: true, notifEventosTable:'chamados_sac_eventos', notifLidosTable:'chamados_sac_eventos_lidos', notifFk:'chamado_id',
+    notifCampoAliases: { tempo_resolucao_dias:'data_resolucao' },
     fields: [
       {key:'numero_chamado', label:'Nº', edit:'text', w:70, readonly:true},
       {key:'motivo', label:'Motivo', edit:'select', group:'chamados_motivo'},
@@ -761,6 +793,7 @@ const TABLE_CONFIG = {
     aba: 'sac-industria',
     respTable: 'reclamacoes_industria_responsaveis', respFk: 'reclamacao_id', detalhavel: true,
     notificacoes: true, notifEventosTable:'reclamacoes_industria_eventos', notifLidosTable:'reclamacoes_industria_eventos_lidos', notifFk:'reclamacao_id',
+    notifCampoAliases: { motivo:'tipo_problema_id', tipo_problema_classe:'tipo_problema_id' },
     fields: [
       {key:'numero_reclamacao', label:'Nº', edit:'text', w:70, readonly:true},
       {key:'franquia', label:'Franquia', edit:'select', group:'chamados_franquia'},
@@ -798,6 +831,28 @@ const TABLE_CONFIG = {
 
 // Flags de permissão do usuário logado pra uma TABELA (usa o mapeamento
 // tabela -> aba do TABLE_CONFIG). Ex.: permissoesTabela('projetos').
+// Traduz cada evento para um lugar realmente visível na interface. Isso mantém
+// a bolinha, os badges e a tela de pendências contando exatamente as mesmas coisas.
+function classificarEventoNotificacao(cfg, evento){
+  if (!cfg || !evento) return null;
+  if (evento.tipo === 'novo') return { tipo:'novo' };
+  if (evento.item_id || evento.campo === 'descricao_detalhada') return { tipo:'detalhes' };
+  const campo = (cfg.notifCampoAliases && cfg.notifCampoAliases[evento.campo]) || evento.campo;
+  if (campo && cfg.fields.some(field=>field.key === campo)) return { tipo:'campo', campo };
+  return null;
+}
+
+function adicionarEventoNotificacao(mapa, cfg, evento){
+  const destino = classificarEventoNotificacao(cfg, evento);
+  const chave = evento && evento[cfg.notifFk];
+  if (!destino || !chave) return false;
+  const reg = mapa[chave] || (mapa[chave] = { novo:[], campos:{}, detalhes:[] });
+  if (destino.tipo === 'novo') reg.novo.push(evento.id);
+  else if (destino.tipo === 'detalhes') reg.detalhes.push(evento.id);
+  else (reg.campos[destino.campo] = reg.campos[destino.campo] || []).push(evento.id);
+  return true;
+}
+
 function permissoesTabela(tableName){
   const aba = (TABLE_CONFIG[tableName]||{}).aba;
   return aba ? permissoesAtuais(aba) : {};
@@ -818,6 +873,7 @@ function registroVisivel(perm, row){
 
 // ── Notificações individuais (por usuário) ─────────────────────────────
 let __avisoNotificacoes = false;
+let __notificacoesRefreshId = 0;
 function reportarFalhaNotificacoes(context, errors){
   console.error('[Notificações] '+context, errors);
   if (!__avisoNotificacoes){
@@ -857,10 +913,12 @@ async function contarNaoLidos(tableName, idsVisiveis){
   if (!idsVisiveis.size) return false;
   const cfg = TABLE_CONFIG[tableName];
   const eventosResult = await sb.from(cfg.notifEventosTable)
-    .select(`id, criado_por, ${cfg.notifFk}`)
+    .select(`id, criado_por, tipo, campo, item_id, ${cfg.notifFk}`)
     .in(cfg.notifFk, Array.from(idsVisiveis));
   if (eventosResult.error){ reportarFalhaNotificacoes(`Erro ao contar ${cfg.title}`, eventosResult.error); return false; }
-  const relevantes = (eventosResult.data||[]).filter(e=>e.criado_por !== currentUser.id);
+  const relevantes = (eventosResult.data||[]).filter(e=>
+    e.criado_por !== currentUser.id && classificarEventoNotificacao(cfg, e)
+  );
   if (!relevantes.length) return false;
   const lidosResult = await sb.from(cfg.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id);
   if (lidosResult.error){ reportarFalhaNotificacoes(`Erro ao contar leituras de ${cfg.title}`, lidosResult.error); return false; }
@@ -868,17 +926,41 @@ async function contarNaoLidos(tableName, idsVisiveis){
   return relevantes.some(e=>!lidosSet.has(e.id));
 }
 async function atualizarBolinhaNotificacoes(){
+  const refreshId = ++__notificacoesRefreshId;
   try{
     for (const tableName of Object.keys(TABLE_CONFIG)){
+      if (refreshId !== __notificacoesRefreshId) return;
       const cfg = TABLE_CONFIG[tableName];
       if (!cfg.notificacoes) continue;
       const dot = document.querySelector(`.nav-dot[data-nav-dot="${cfg.aba}"]`);
       if (!dot) continue;
       const perm = permissoesTabela(tableName);
       if (!perm.ver_proprio && !perm.ver_outros){ dot.style.display = 'none'; continue; }
-      const { data: registros } = await sb.from(tableName).select('*');
+      // O autor fica no evento; algumas tabelas legadas não têm criado_por.
+      const { data: registros, error: registrosError } = await sb.from(tableName).select('id');
+      if (refreshId !== __notificacoesRefreshId) return;
+      if (registrosError){
+        reportarFalhaNotificacoes('Erro ao contar registros de '+cfg.title, registrosError);
+        dot.style.display = 'none';
+        continue;
+      }
+      if (cfg.respTable && (registros||[]).length){
+        const ids = registros.map(r=>r.id);
+        const { data: resp, error: respError } = await sb.from(cfg.respTable).select(cfg.respFk+', profile_id').in(cfg.respFk, ids);
+        if (refreshId !== __notificacoesRefreshId) return;
+        if (respError){
+          reportarFalhaNotificacoes('Erro ao carregar responsáveis de '+cfg.title, respError);
+          dot.style.display = 'none';
+          continue;
+        }
+        (registros||[]).forEach(r=>{
+          r.__resp_ids = (resp||[]).filter(item=>item[cfg.respFk]===r.id).map(item=>item.profile_id);
+        });
+      }
       const idsVisiveis = new Set((registros||[]).filter(r=>registroVisivel(perm, r)).map(r=>r.id));
-      dot.style.display = (await contarNaoLidos(tableName, idsVisiveis)) ? '' : 'none';
+      const temNaoLidos = await contarNaoLidos(tableName, idsVisiveis);
+      if (refreshId !== __notificacoesRefreshId) return;
+      dot.style.display = temNaoLidos ? 'inline-block' : 'none';
     }
     // "Minhas Tarefas" é um recorte de "Projetos" (só o que é
     // responsabilidade da própria pessoa) — usa os mesmos eventos de
@@ -886,8 +968,11 @@ async function atualizarBolinhaNotificacoes(){
     const dotMinhas = document.querySelector('.nav-dot[data-nav-dot="minhas-tarefas"]');
     if (dotMinhas){
       const { data: meusProjetos } = await sb.from('projetos').select('id, projetos_responsaveis!inner(profile_id)').eq('projetos_responsaveis.profile_id', currentUser.id);
+      if (refreshId !== __notificacoesRefreshId) return;
       const idsMeus = new Set((meusProjetos||[]).map(r=>r.id));
-      dotMinhas.style.display = (await contarNaoLidos('projetos', idsMeus)) ? '' : 'none';
+      const temNaoLidosMinhas = await contarNaoLidos('projetos', idsMeus);
+      if (refreshId !== __notificacoesRefreshId) return;
+      dotMinhas.style.display = temNaoLidosMinhas ? 'inline-block' : 'none';
     }
   }catch(e){ /* a bolinha nunca deve travar o resto do app */ }
 }
@@ -1612,11 +1697,7 @@ async function viewTabela(tableName){
     eventos.forEach(ev=>{
       if (ev.criado_por === currentUser.id) return;
       if (lidosSet.has(ev.id)) return;
-      const chaveReg = ev[cfg.notifFk];
-      const reg = mapa[chaveReg] || (mapa[chaveReg] = { novo:[], campos:{}, detalhes:[] });
-      if (ev.tipo === 'novo') reg.novo.push(ev.id);
-      else if (ev.item_id) reg.detalhes.push(ev.id);
-      else if (ev.campo) (reg.campos[ev.campo] = reg.campos[ev.campo] || []).push(ev.id);
+      adicionarEventoNotificacao(mapa, cfg, ev);
     });
     return mapa;
   }  if (cfg.notificacoes) eventosPorRegistro = await carregarNotificacoes();
@@ -2477,11 +2558,7 @@ async function viewMinhasTarefas(){
     const lidosSet = new Set((lidosResult.data||[]).map(l=>l.evento_id));
     (eventosResult.data||[]).forEach(ev=>{
       if (ev.criado_por === currentUser.id || lidosSet.has(ev.id)) return;
-      const chave = ev[cfgProjetos.notifFk];
-      const reg = mapa[chave] || (mapa[chave] = { novo:[], campos:{}, detalhes:[] });
-      if (ev.tipo === 'novo') reg.novo.push(ev.id);
-      else if (ev.item_id) reg.detalhes.push(ev.id);
-      else if (ev.campo) (reg.campos[ev.campo] = reg.campos[ev.campo] || []).push(ev.id);
+      adicionarEventoNotificacao(mapa, cfgProjetos, ev);
     });
     return mapa;
   }
@@ -3396,7 +3473,7 @@ async function viewPendenciasLeitura(){
     ...tabelasNotif.map(t=>{
       const cfg = TABLE_CONFIG[t];
       return Promise.all([
-        sb.from(cfg.notifEventosTable).select('id, criado_por'),
+        sb.from(cfg.notifEventosTable).select('id, criado_por, tipo, campo, item_id'),
         sb.from(cfg.notifLidosTable).select('evento_id, usuario_id'),
       ]);
     }),
@@ -3431,6 +3508,7 @@ async function viewPendenciasLeitura(){
     const { eventos, lidosPorEvento } = porTabela[tabela];
     return eventos.filter(ev=>{
       if (ev.criado_por === usuario.id) return false; // ninguém "deve" ler a própria mudança
+      if (!classificarEventoNotificacao(cfg, ev)) return false;
       const lidoPor = lidosPorEvento.get(ev.id);
       return !lidoPor || !lidoPor.has(usuario.id);
     }).length;
@@ -4391,7 +4469,7 @@ function graficoPorLojaEMes(titulo, lista, campoData, campoAgrupador, mesesAno, 
   if (!grupos.length) return `<div class="chart-card"><div class="chart-title">${titulo}</div><div class="section-note">Sem dados nesse ano.</div></div>`;
   const series = grupos.map(g=>({
     nome: g,
-    valores: mesesAno.map(mk=>lista.filter(r=>(r[campoAgrupador]||'(sem loja)')===g && monthKey(r[campoData]||r.mes_ref)===mk).length),
+    valores: mesesAno.map(mk=>lista.filter(r=>(r[campoAgrupador]||'(sem loja)')===g && dashboardMonthKeyForField(r,campoData)===mk).length),
   }));
   const labels = mesesAno.map(mk=>monthLabelCurto(mk+'-01'));
   const cores = grupos.map((g,i)=>{
@@ -4433,9 +4511,9 @@ async function viewDashboard(){
   const podeDefinirMetas = ehGestorOuAdmin();
 
   const [chamadosRes, projetosRes, vendasRes, metasRes, sacIndRes] = await Promise.all([
-    sb.from('chamados_sac').select('mes_ref, data_abertura, nota_nps, tempo_resolucao_dias, status, franquia'),
-    sb.from('projetos').select('mes_ref, data_inicio, percentual_conclusao, status, data_conclusao_real'),
-    sb.from('vendas_expansao').select('mes_ref, data_venda, loja, metragem_m2'),
+    sb.from('chamados_sac').select('mes_ref, data_abertura, created_at, nota_nps, tempo_resolucao_dias, status, franquia'),
+    sb.from('projetos').select('mes_ref, data_inicio, created_at, percentual_conclusao, status, data_conclusao_real'),
+    sb.from('vendas_expansao').select('mes_ref, data_venda, created_at, loja, metragem_m2'),
     sb.from('metas').select('*'),
     sb.from('reclamacoes_industria').select('tipo_problema_id, tipo_problema_classe, franquia, data_abertura, created_at'),
   ]);
@@ -4448,9 +4526,9 @@ async function viewDashboard(){
   const chamados = chamadosRes.data||[], projetos = projetosRes.data||[], vendas = vendasRes.data||[];
 
   const monthsSet = new Set();
-  chamados.forEach(r=>{ const k=monthKey(r.mes_ref||r.data_abertura); if (k) monthsSet.add(k); });
-  projetos.forEach(r=>{ const k=monthKey(r.mes_ref); if (k) monthsSet.add(k); });
-  vendas.forEach(r=>{ const k=monthKey(r.mes_ref||r.data_venda); if (k) monthsSet.add(k); });
+  chamados.forEach(r=>{ const k=dashboardMonthKey(r,'chamados_sac'); if (k) monthsSet.add(k); });
+  projetos.forEach(r=>{ const k=dashboardMonthKey(r,'projetos'); if (k) monthsSet.add(k); });
+  vendas.forEach(r=>{ const k=dashboardMonthKey(r,'vendas_expansao'); if (k) monthsSet.add(k); });
   const thisMonthKey = new Date().toISOString().slice(0,7);
   monthsSet.add(thisMonthKey);
   const months = Array.from(monthsSet).sort();
@@ -4526,11 +4604,11 @@ async function viewDashboard(){
         ${subabasVisiveis.map(([k,label])=>`<button type="button" class="dash-subtab${k===abaInicial?' active':''}" data-tab="${k}">${label}</button>`).join('')}
       </div>
       <div class="spacer"></div>
-      <div class="dash-subtabs csp-inline-094" id="periodo-toggle">
+      <div class="dash-subtabs" id="periodo-toggle">
         <button type="button" class="dash-subtab active" data-periodo="mes">Mês</button>
         <button type="button" class="dash-subtab" data-periodo="ano">Ano</button>
       </div>
-      <span id="mes-select" class="csp-inline-094">${buildSimplePicker(thisMonthKey, months.map(m=>({value:m,label:monthLabel(m+'-01')})), (v)=>{ mesSelecionado=v; renderTudo(); }, {classeExtra:'dash-period-picker'})}</span>
+      <span id="mes-select">${buildSimplePicker(thisMonthKey, months.map(m=>({value:m,label:monthLabel(m+'-01')})), (v)=>{ mesSelecionado=v; renderTudo(); }, {classeExtra:'dash-period-picker'})}</span>
       <span id="ano-select">${buildSimplePicker(anoAtual, anosList.map(a=>({value:a,label:a})), (v)=>{ anoSelecionado=v; renderTudo(); }, {classeExtra:'dash-period-picker'})}</span>
       ${podeDefinirMetas ? `<button type="button" class="btn" id="btn-definir-metas">🎯 Definir metas</button>` : ''}
     </div>
@@ -4547,9 +4625,9 @@ async function viewDashboard(){
   }
 
   const linhasAnual = anosList.map(ano=>{
-    const chAno = chamados.filter(r=>(monthKey(r.mes_ref||r.data_abertura)||'').startsWith(ano));
-    const prAno = projetos.filter(r=>(monthKey(r.mes_ref)||'').startsWith(ano));
-    const veAno = vendas.filter(r=>(monthKey(r.mes_ref||r.data_venda)||'').startsWith(ano));
+    const chAno = chamados.filter(r=>(dashboardMonthKey(r,'chamados_sac')||'').startsWith(ano));
+    const prAno = projetos.filter(r=>(dashboardMonthKey(r,'projetos')||'').startsWith(ano));
+    const veAno = vendas.filter(r=>(dashboardMonthKey(r,'vendas_expansao')||'').startsWith(ano));
     const npsAno = chAno.map(r=>r.nota_nps).filter(v=>v!=null);
     const avgNps = npsAno.length ? (npsAno.reduce((a,b)=>a+b,0)/npsAno.length).toFixed(1) : '—';
     const concluidos = prAno.filter(r=>normalizarTexto(r.status)==='concluido').length;
@@ -4561,9 +4639,9 @@ async function viewDashboard(){
       <tbody>${linhasAnual || '<tr class="empty-row"><td colspan="7">Sem dados ainda.</td></tr>'}</tbody>
     </table></div></div>`;
 
-  function filtrarPorPeriodo(lista, campoData, periodo){
+  function filtrarPorPeriodo(lista, tipo, periodo){
     return lista.filter(r=>{
-      const k = monthKey(r[campoData] || r.mes_ref);
+      const k = dashboardMonthKey(r, tipo);
       if (!k) return false;
       return periodo.tipo==='mes' ? k===periodo.valor : k.startsWith(periodo.valor);
     });
@@ -4594,19 +4672,19 @@ async function viewDashboard(){
 
   function renderSac(periodo){
     const chamadosPeriodo = chamados.filter(r=>{
-      const k = monthKey(r.mes_ref||r.data_abertura);
+      const k = dashboardMonthKey(r,'chamados_sac');
       return periodo.tipo==='mes' ? k===periodo.valor : (k||'').startsWith(periodo.valor);
     });
     const npsVals = chamadosPeriodo.map(r=>r.nota_nps).filter(v=>v!=null);
     const tempoVals = chamadosPeriodo.map(r=>r.tempo_resolucao_dias).filter(v=>v!=null);
     const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : null;
-    const chamadosAnterior = filtrarPorPeriodo(chamados, 'data_abertura', periodoAnterior(periodo));
+    const chamadosAnterior = filtrarPorPeriodo(chamados, 'chamados_sac', periodoAnterior(periodo));
     const npsAnterior = avg(chamadosAnterior.map(r=>r.nota_nps).filter(v=>v!=null));
     const tempoAnterior = avg(chamadosAnterior.map(r=>r.tempo_resolucao_dias).filter(v=>v!=null));
     const metaChamados = metaAtual('sac_chamados', periodo), metaNps = metaAtual('sac_nps', periodo);
     let graficosSac;
     if (periodo.tipo === 'ano'){
-      const porMes = mesesParaGrafico(periodo).map(k=>[rotuloMes(k, periodo), chamados.filter(r=>monthKey(r.mes_ref||r.data_abertura)===k).length]);
+      const porMes = mesesParaGrafico(periodo).map(k=>[rotuloMes(k, periodo), chamados.filter(r=>dashboardMonthKey(r,'chamados_sac')===k).length]);
       graficosSac = `<div class="chart-card"><div class="chart-title">Nº de chamados por mês</div><div>${svgBarChart(porMes, 'var(--accent-2)', 'Nº de chamados', 'Mês')}</div></div>
         ${graficoPorLojaEMes('Nº de chamados por mês por loja', chamadosPeriodo, 'data_abertura', 'franquia', mesesParaGrafico(periodo), 'chamados_franquia')}`;
     } else {
@@ -4629,20 +4707,20 @@ async function viewDashboard(){
 
   function renderVendas(periodo){
     const vendasPeriodo = vendas.filter(r=>{
-      const k = monthKey(r.mes_ref||r.data_venda);
+      const k = dashboardMonthKey(r,'vendas_expansao');
       return periodo.tipo==='mes' ? k===periodo.valor : (k||'').startsWith(periodo.valor);
     });
     const metragemTotal = vendasPeriodo.reduce((s,r)=>s+(r.metragem_m2||0),0);
-    const vendasAnterior = filtrarPorPeriodo(vendas, 'data_venda', periodoAnterior(periodo));
+    const vendasAnterior = filtrarPorPeriodo(vendas, 'vendas_expansao', periodoAnterior(periodo));
     const metragemAnterior = vendasAnterior.reduce((s,r)=>s+(r.metragem_m2||0),0);
     const metaMetragem = metaAtual('vendas_metragem', periodo);
     const metaNumero = metaAtual('vendas_numero', periodo);
     const porMesNumero = mesesParaGrafico(periodo).map(k=>{
-      const qtd = vendas.filter(r=>monthKey(r.mes_ref||r.data_venda)===k).length;
+      const qtd = vendas.filter(r=>dashboardMonthKey(r,'vendas_expansao')===k).length;
       return [rotuloMes(k, periodo), qtd];
     });
     const porMesMetragem = mesesParaGrafico(periodo).map(k=>{
-      const total = vendas.filter(r=>monthKey(r.mes_ref||r.data_venda)===k).reduce((s,r)=>s+(r.metragem_m2||0),0);
+      const total = vendas.filter(r=>dashboardMonthKey(r,'vendas_expansao')===k).reduce((s,r)=>s+(r.metragem_m2||0),0);
       return [rotuloMes(k, periodo), Math.round(total)];
     });
     const porLoja = {};
@@ -4663,29 +4741,29 @@ async function viewDashboard(){
 
   function renderProjetos(periodo){
     const projetosPeriodo = projetos.filter(r=>{
-      const k = monthKey(r.mes_ref || r.data_inicio || r.data_conclusao_real);
+      const k = dashboardMonthKey(r,'projetos');
       return periodo.tipo==='mes' ? k===periodo.valor : (k||'').startsWith(periodo.valor);
     });
     const pctVals = projetosPeriodo.map(r=>r.percentual_conclusao).filter(v=>v!=null);
     const concluido = r=>normalizarTexto(r.status)==='concluido' || !!r.data_conclusao_real;
-    const concluidosPeriodo = projetos.filter(r=>concluido(r) && (periodo.tipo==='mes' ? monthKey(r.data_conclusao_real || r.mes_ref)===periodo.valor : (monthKey(r.data_conclusao_real || r.mes_ref)||'').startsWith(periodo.valor))).length;
+    const concluidosPeriodo = projetos.filter(r=>concluido(r) && (periodo.tipo==='mes' ? dashboardCompletionMonthKey(r)===periodo.valor : (dashboardCompletionMonthKey(r)||'').startsWith(periodo.valor))).length;
     const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : null;
     const periodoAnt = periodoAnterior(periodo);
     const projetosAnterior = projetos.filter(r=>{
-      const k=monthKey(r.mes_ref || r.data_inicio || r.data_conclusao_real);
+      const k=dashboardMonthKey(r,'projetos');
       return periodoAnt.tipo==='mes' ? k===periodoAnt.valor : (k||'').startsWith(periodoAnt.valor);
     });
-    const concluidosAnterior = projetos.filter(r=>concluido(r) && (periodoAnt.tipo==='mes' ? monthKey(r.data_conclusao_real || r.mes_ref)===periodoAnt.valor : (monthKey(r.data_conclusao_real || r.mes_ref)||'').startsWith(periodoAnt.valor))).length;
+    const concluidosAnterior = projetos.filter(r=>concluido(r) && (periodoAnt.tipo==='mes' ? dashboardCompletionMonthKey(r)===periodoAnt.valor : (dashboardCompletionMonthKey(r)||'').startsWith(periodoAnt.valor))).length;
     const pctAnterior = avg(projetosAnterior.map(r=>r.percentual_conclusao).filter(v=>v!=null));
     const metaConcluidos = metaAtual('projetos_concluidos', periodo);
     let graficosProjetos;
     if (periodo.tipo === 'ano'){
       const porMesConcluidos = mesesParaGrafico(periodo).map(k=>{
-        const qtd = projetos.filter(r=>monthKey(r.data_conclusao_real || r.mes_ref)===k && concluido(r)).length;
+        const qtd = projetos.filter(r=>dashboardCompletionMonthKey(r)===k && concluido(r)).length;
         return [rotuloMes(k, periodo), qtd];
       });
       const porMesPct = mesesParaGrafico(periodo).map(k=>{
-        const vals = projetos.filter(r=>monthKey(r.mes_ref || r.data_inicio || r.data_conclusao_real)===k).map(r=>r.percentual_conclusao).filter(v=>v!=null);
+        const vals = projetos.filter(r=>dashboardMonthKey(r,'projetos')===k).map(r=>r.percentual_conclusao).filter(v=>v!=null);
         const a = vals.length ? Math.round((vals.reduce((x,y)=>x+y,0)/vals.length)*100) : 0;
         return [rotuloMes(k, periodo), a];
       });
@@ -4973,9 +5051,9 @@ async function viewDashboard(){
   // painéis (sem recriar a barra de abas/período), então não pisca a tela.
   currentSilentRefresh = async ()=>{
     const [novoChamados, novoProjetos, novoVendas, novasMetas, novoSacInd] = await Promise.all([
-      sb.from('chamados_sac').select('mes_ref, data_abertura, nota_nps, tempo_resolucao_dias, status, franquia'),
-      sb.from('projetos').select('mes_ref, data_inicio, percentual_conclusao, status, data_conclusao_real'),
-      sb.from('vendas_expansao').select('mes_ref, data_venda, loja, metragem_m2'),
+      sb.from('chamados_sac').select('mes_ref, data_abertura, created_at, nota_nps, tempo_resolucao_dias, status, franquia'),
+      sb.from('projetos').select('mes_ref, data_inicio, created_at, percentual_conclusao, status, data_conclusao_real'),
+      sb.from('vendas_expansao').select('mes_ref, data_venda, created_at, loja, metragem_m2'),
       sb.from('metas').select('*'),
       sb.from('reclamacoes_industria').select('tipo_problema_id, tipo_problema_classe, franquia, data_abertura, created_at'),
     ]);

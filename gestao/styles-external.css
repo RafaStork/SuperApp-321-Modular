@@ -151,6 +151,7 @@ aside{ background:var(--surface); border-right:1px solid var(--border); display:
 nav.tabs{display:flex; flex-direction:column; gap:2px; padding:0 10px;}
 .nav-divider{ height:1px; background:var(--border-soft); margin:9px 8px; flex-shrink:0; }
 .nav-dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--c-orange); margin-left:8px; vertical-align:middle; box-shadow:0 0 0 3px rgba(232,89,12,.18); animation:navDotPulse 1.8s ease-in-out infinite; }
+.nav-dot-menu{ display:none; }
 @keyframes navDotPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.25); } }
 .tab-btn{ display:flex; align-items:center; gap:10px; padding:10px 13px; background:transparent; border:none; border-radius:10px; color:var(--text-dim); text-align:left; font-size:12.5px; font-weight:600; transition:background .2s var(--ease-out), color .2s var(--ease-out), padding-left .22s var(--ease-out), box-shadow .2s var(--ease-out), transform .12s var(--ease-spring); position:relative; }
 .tab-btn::before{ content:''; position:absolute; left:5px; top:50%; width:3px; height:0; border-radius:99px; background:var(--accent); transform:translateY(-50%); transition:height .22s var(--ease-out); }
@@ -667,7 +668,7 @@ svg text{ font-family:var(--font); }
   tbody td:not(.cell-colored) > .cell-number{margin:1px 0;}
 
 /* Estilos extraídos dos templates para CSP */
-.csp-inline-001{display:none;}
+
 .csp-inline-002{border-color:var(--accent);color:var(--accent)}
 .csp-inline-003{width:auto}
 .csp-inline-004{text-align:left;cursor:pointer;width:100%;}

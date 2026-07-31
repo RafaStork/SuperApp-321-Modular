@@ -63,7 +63,21 @@
       source?.removeItem(key);
     }
   }
-  function isConfigured() { return Boolean(config.supabaseUrl && config.supabasePublishableKey && window.supabase?.createClient); }
+  function isConfigured() { return Boolean(config.supabaseUrl && config.supabasePublishableKey && window.supabase?.createClient); }  function authErrorCode(error) { return String(error?.code || error?.error_code || error?.name || '').toLowerCase(); }
+  function getSafeAuthMessage(error, fallback) {
+    const code = authErrorCode(error);
+    const status = Number(error?.status || error?.statusCode || 0);
+    if (status === 429 || ['over_request_rate_limit', 'too_many_requests', 'rate_limit_exceeded'].includes(code)) return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+    if (['invalid_credentials', 'invalid_login_credentials', 'invalid_grant'].includes(code)) return 'E-mail ou senha inválidos.';
+    if (code === 'email_not_confirmed') return 'Não foi possível concluir o acesso. Verifique o cadastro com o administrador.';
+    if (code === 'user_banned') return 'Este acesso está indisponível. Procure o administrador.';
+    if (['fetch_error', 'network_error', 'network'].includes(code) || status >= 500) return 'Não foi possível conectar ao serviço. Tente novamente.';
+    if (['session_not_found', 'session_expired'].includes(code)) return 'Sua sessão expirou. Retorne ao SuperApp e entre novamente.';
+    return fallback || 'Não foi possível concluir a autenticação.';
+  }
+  function logAuthFailure(error, context) {
+    try { console.warn('[SuperAppAuth]', context || 'auth', { code: authErrorCode(error) || 'unknown', status: Number(error?.status || error?.statusCode || 0) || undefined }); } catch (_) {}
+  }
   function getScopedClient(schema) {
     if (!isConfigured()) return null;
     const selectedSchema = schema || config.authSchema || 'core';
@@ -114,5 +128,5 @@
   async function adminDeactivateUser(userId) { return rpc('admin_deactivate_user', { p_user_id: userId }); }
   async function signOut() { const supabase = getClient(); if (supabase) await supabase.auth.signOut(); }
   function getPortalUrl() { return new URL(config.portalBasePath || '../', document.baseURI).href; }
-  window.SuperAppAuth = { isConfigured, getClient, getScopedClient, signIn, getSession, getProfile, getEntitlements, adminListUsers, adminListRoles, adminListFranchises, adminListUnits, adminListAppRolePermissions, adminSetAppRolePermission, adminAssignAccess, adminAssignRole, adminDeactivateUser, signOut, getPortalUrl, isRememberLoginEnabled, setRememberLogin };
+  window.SuperAppAuth = { isConfigured, getClient, getScopedClient, signIn, getSession, getProfile, getEntitlements, adminListUsers, adminListRoles, adminListFranchises, adminListUnits, adminListAppRolePermissions, adminSetAppRolePermission, adminAssignAccess, adminAssignRole, adminDeactivateUser, signOut, getPortalUrl, isRememberLoginEnabled, setRememberLogin, getSafeAuthMessage, logAuthFailure };
 }());

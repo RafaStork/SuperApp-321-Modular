@@ -12,11 +12,11 @@
   <meta name="apple-mobile-web-app-title" content="321 Modular">
   <title>321 Modular | SuperApp</title>
   <script src="shared/theme-bootstrap.js"></script>
-  <link rel="stylesheet" href="shared/styles.css?v=20260730-header-layout-2">
+  <link rel="stylesheet" href="shared/styles.css?v=20260731-login-password-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous" defer></script>
   <script src="shared/runtime-config.local.js"></script>
   <script src="shared/runtime-config.js"></script>
-  <script src="shared/auth.js" defer></script>
+  <script src="shared/auth.js?v=20260731-auth-safe-1" defer></script>
 </head>
 <body class="portal-page">
   <main class="portal-shell">
@@ -31,7 +31,10 @@
           <label for="identifier">Usuário</label>
           <input id="identifier" name="identifier" type="email" inputmode="email" autocomplete="username" placeholder="nome@email.com" required>
           <label for="password">Senha</label>
+          <div class="password-field">
           <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" required>
+          <button id="password-toggle" class="password-toggle" type="button" aria-controls="password" aria-pressed="false">Mostrar</button>
+        </div>
           <label class="remember-login-option" for="remember-login"><input id="remember-login" name="remember-login" type="checkbox"><span>Lembrar meu login neste dispositivo</span></label>
           <button id="login-button" class="primary-button" type="submit">Entrar no SuperApp</button>
           <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
@@ -88,7 +91,7 @@
     </section>
     </section>
   </main>
-  <script src="shared/landing.js"></script>
+  <script src="shared/landing.js?v=20260731-login-password-1"></script>
 </body>
 </html>
 

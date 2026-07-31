@@ -33,7 +33,7 @@ async function loadCentralFinanceSession(){
   const session = await window.SuperAppAuth.getSession();
   if (!session) return false;
   const { data, error } = await sb.rpc('load_app_data', {});
-  if (error) { showLoginError(error.message || 'Acesso ao financeiro negado.'); return false; }
+  if (error) { console.warn('[Financeiro] falha ao carregar o ambiente', { code: error.code || 'unknown', status: error.status || undefined }); showLoginError(window.SuperAppAuth.getSafeAuthMessage(error, 'Não foi possível carregar o ambiente financeiro. Tente novamente.')); return false; }
   SESSION = { username: session.user.email, token: 'central-session' };
   if (data && typeof data === 'object') DB = { ...DB, ...data };
   document.getElementById('loginScreen').classList.add('login-screen-hidden');
