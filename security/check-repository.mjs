@@ -62,6 +62,18 @@ for (const file of files.filter((item) => item.toLowerCase().endsWith('.html')))
   }
 }
 
+const financeHtml = readFileSync(join(root, 'financeiro', 'index.html'), 'utf8');
+const financeJs = readFileSync(join(root, 'financeiro', 'app.js'), 'utf8');
+const legacyFinanceAuth = [
+  ['campo de usuário legado', /id=["']lgUser["']/i, financeHtml],
+  ['campo de token legado', /id=["']lgToken["']/i, financeHtml],
+  ['handler de login legado', /\bdoLogin\b/, financeHtml + '\n' + financeJs],
+  ['chave de sessão legada', /321fin_session/, financeJs],
+];
+for (const [label, pattern, source] of legacyFinanceAuth) {
+  if (pattern.test(source)) failures.push(`financeiro: ${label} voltou ao código ativo`);
+}
+
 let headers = '';
 try { headers = readFileSync(join(root, '_headers'), 'utf8').toLowerCase(); } catch { failures.push('_headers ausente'); }
 for (const name of ['content-security-policy:', 'x-frame-options:', 'x-content-type-options:', 'referrer-policy:', 'permissions-policy:', 'strict-transport-security:']) {

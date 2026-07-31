@@ -14,27 +14,11 @@
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
 <script src="../shared/app-guard.js?v=20260731-boot-guard-fix"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260731-boot-guard-fix">
+<link rel="stylesheet" href="./styles-external.css?v=20260731-single-auth-source-1">
 
 
 </head>
 <body>
-
-<!-- ── LOGIN ── -->
-<div class="login-screen" id="loginScreen">
-  <div class="login-box">
-    <div class="login-head">
-      <span class="brand-logo-wrap login-logo-wrap"><img id="loginLogo" class="brand-logo-img" alt="321 Modular"></span>
-      <div><div class="login-eyebrow">321 Modular</div><h1>Gestão Financeira</h1></div>
-    </div>
-    <div class="fg"><label>Usuário</label><input id="lgUser" placeholder="ex: joao" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <div class="fg"><label>Token de acesso</label><input id="lgToken" type="password" placeholder="Token fornecido" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="btn bp fin-csp-001" id="lgBtn" data-fin-call="doLogin">Entrar</button>
-    <div id="lgError" class="login-error fin-csp-002"></div>
-    <p class="login-hint">Esqueceu seu token? Fale com o administrador do sistema.</p>
-  </div>
-</div>
-
 <div id="appRoot" class="fin-csp-002">
 
 <!-- SIDEBAR -->
@@ -733,7 +717,7 @@
 
 <script src="./app-support.js"></script>
 
-<script src="./app.js?v=20260731-boot-guard-fix"></script>
+<script src="./app.js?v=20260731-single-auth-source-1"></script>
 </body>
 </html>
 
