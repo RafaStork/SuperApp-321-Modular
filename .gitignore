@@ -1,0 +1,32 @@
+# Configuração local e credenciais de ambiente
+**/runtime-config.local.js
+.env
+.env.*
+!.env.example
+
+# Segredos e certificados
+*.pem
+*.key
+*.p12
+*.pfx
+*.secret
+secrets/
+credentials/
+
+# Dependências e artefatos locais
+node_modules/
+**/dist/
+**/build/
+coverage/
+
+# Dumps e arquivos de banco
+*.dump
+*.sql.gz
+*.backup
+
+# Logs e temporários
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
