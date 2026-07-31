@@ -21,7 +21,8 @@
 <script src="../shared/runtime-config.local.js"></script>
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js"></script>
-<style id="superapp-boot-guard">html.superapp-route-pending body > *{visibility:hidden!important}</style>
+<style id="superapp-boot-guard">html.superapp-route-pending body > *,html.planta-auth-pending body > *{visibility:hidden!important}</style>
+<script id="superapp-visual-boot-init">document.documentElement.classList.add('planta-auth-pending');</script>
 <script src="../shared/app-guard.js"></script>
 <link rel="stylesheet" href="./styles-external.css?v=20260730-3d-fix">
 <!-- three.js - usado apenas pela aba de Visualizacao 3D (ver bloco "VISUALIZACAO 3D" no script principal, perto do final do arquivo).
@@ -301,5 +302,33 @@
   <div class="modal" id="confirmModalBody"></div>
 </div>
 
-<script src="./app.js?v=20260730-plantas-fix"></script>
+<script src="./app.js?v=20260730-3d-texture-cache-fix"></script>
+<script id="superapp-visual-boot-release">
+(function () {
+  var root = document.documentElement;
+  function start() {
+    var observer;
+    function release() {
+      var overlay = document.getElementById('authOverlay');
+      if (!overlay || overlay.classList.contains('hidden')) {
+        root.classList.remove('planta-auth-pending');
+        if (observer) observer.disconnect();
+      }
+    }
+    observer = new MutationObserver(release);
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    });
+    release();
+  }
+  if (document.body) {
+    start();
+  } else {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  }
+}());
+</script>
 

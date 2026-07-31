@@ -11946,21 +11946,27 @@ function frameCamera3D(){
 }
 
 // ---- Limpeza (dispose de geometria/material antes de reconstruir) --------
-function clearGroup(group){
+function clearGroup(group, dispose=true){
   if(!group) return;
   for(let i=group.children.length-1;i>=0;i--){
     const child=group.children[i];
     group.remove(child);
-    child.traverse(obj=>{
-      if(obj.geometry) obj.geometry.dispose();
-      if(obj.material){
-        const mats=Array.isArray(obj.material)?obj.material:[obj.material];
-        mats.forEach(m=>{
-          Object.keys(m).forEach(k=>{ if(m[k]&&m[k].isTexture) m[k].dispose(); });
-          m.dispose();
-        });
-      }
-    });
+    // Os modelos GLB inseridos nos grupos de paineis/paredes compartilham
+    // geometria e materiais com o modelCache. Em uma reconstrucao comum,
+    // remover o clone nao pode descartar esses recursos compartilhados;
+    // o descarte completo acontece somente em disposeScene3D().
+    if(dispose){
+      child.traverse(obj=>{
+        if(obj.geometry) obj.geometry.dispose();
+        if(obj.material){
+          const mats=Array.isArray(obj.material)?obj.material:[obj.material];
+          mats.forEach(m=>{
+            Object.keys(m).forEach(k=>{ if(m[k]&&m[k].isTexture) m[k].dispose(); });
+            m.dispose();
+          });
+        }
+      });
+    }
   }
 }
 
@@ -12218,8 +12224,8 @@ function rebuildScene3D(st){
     if(myToken!==rebuildToken3D) return; // uma troca 2D->3D->2D->3D mais nova já está em curso
     loading3dEl.classList.remove('show');
 
-    clearGroup(panelsGroup3D);
-    clearGroup(wallsGroup3D);
+    clearGroup(panelsGroup3D, false);
+    clearGroup(wallsGroup3D, false);
 
     st.panels.forEach(panel=>{
       const ty=typeOf(panel.typeId);
