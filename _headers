@@ -5,3 +5,6 @@
   Referrer-Policy: no-referrer
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+
+/planta/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net 'sha256-XOzT6OF3f/mmmiVkT8ddz2tHeP/fErjSGZmTLlfYj7k='; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev https://drive.google.com https://raw.githubusercontent.com https://github.com; img-src 'self' data: blob: https://*.supabase.co https://drive.google.com https://lh3.googleusercontent.com; frame-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
