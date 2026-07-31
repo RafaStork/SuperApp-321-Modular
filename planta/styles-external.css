@@ -1,4 +1,5 @@
 .superapp-route-pending body > *{visibility:hidden!important}
+#authOverlay,#authOverlay[hidden]{display:none!important}
 
 /* ============================================================
      321 MODULAR — DESIGN TOKENS
