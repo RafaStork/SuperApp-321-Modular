@@ -30,6 +30,21 @@ jobs:
       - name: Scan current files and Git history
         run: node security/scan-secrets.mjs --history
 
+  authorization:
+    name: Authorization smoke tests
+    if: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && vars.SUPERAPP_HOMOLOG_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Validate authentication and authorization in homologation
+        env:
+          SUPERAPP_HOMOLOG_URL: ${{ vars.SUPERAPP_HOMOLOG_URL }}
+          SUPERAPP_HOMOLOG_PUBLISHABLE_KEY: ${{ secrets.SUPERAPP_HOMOLOG_PUBLISHABLE_KEY }}
+          SUPERAPP_HOMOLOG_TEST_USERS_JSON: ${{ secrets.SUPERAPP_HOMOLOG_TEST_USERS_JSON }}
+        run: node security/smoke-authorization.mjs
+
   published:
     name: Published security
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
