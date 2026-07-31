@@ -12,10 +12,11 @@
   <meta name="apple-mobile-web-app-title" content="321 Modular">
   <title>321 Modular | SuperApp</title>
   <script src="shared/theme-bootstrap.js"></script>
-  <link rel="stylesheet" href="shared/styles.css?v=20260731-login-password-1">
+  <link rel="stylesheet" href="shared/styles.css?v=20260731-turnstile-1">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous" defer></script>
   <script src="shared/runtime-config.js"></script>
-  <script src="shared/auth.js?v=20260731-auth-safe-1" defer></script>
+  <script src="shared/auth.js?v=20260731-turnstile-1" defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
 </head>
 <body class="portal-page">
   <main class="portal-shell">
@@ -35,7 +36,8 @@
           <button id="password-toggle" class="password-toggle" type="button" aria-controls="password" aria-pressed="false">Mostrar</button>
         </div>
           <label class="remember-login-option" for="remember-login"><input id="remember-login" name="remember-login" type="checkbox"><span>Lembrar meu login neste dispositivo</span></label>
-          <button id="login-button" class="primary-button" type="submit">Entrar no SuperApp</button>
+          <div id="turnstile-widget" class="turnstile-widget" aria-label="Verificação de segurança"></div>
+          <button id="login-button" class="primary-button" type="submit" disabled>Entrar no SuperApp</button>
           <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
         </form>
       </div>
@@ -90,7 +92,7 @@
     </section>
     </section>
   </main>
-  <script src="shared/landing.js?v=20260731-login-password-1"></script>
+  <script src="shared/landing.js?v=20260731-turnstile-1"></script>
 </body>
 </html>
 

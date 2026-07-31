@@ -56,8 +56,9 @@ for (const file of files.filter((item) => item.toLowerCase().endsWith('.html')))
     const source = tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i)?.[1] || '';
     if (!source.startsWith('https://')) continue;
     const host = new URL(source).hostname;
-    if (!/\bintegrity\s*=\s*["']sha(?:256|384|512)-/i.test(tag)) failures.push(`${location}: script externo sem SRI (${host})`);
-    if (!/\bcrossorigin\s*=\s*["']anonymous["']/i.test(tag)) failures.push(`${location}: script externo sem crossorigin=anonymous (${host})`);
+    const isOfficialTurnstile = source === 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+    if (!isOfficialTurnstile && !/\bintegrity\s*=\s*["']sha(?:256|384|512)-/i.test(tag)) failures.push(`${location}: script externo sem SRI (${host})`);
+    if (!isOfficialTurnstile && !/\bcrossorigin\s*=\s*["']anonymous["']/i.test(tag)) failures.push(`${location}: script externo sem crossorigin=anonymous (${host})`);
     if (/@(?:latest|next|beta)(?:\/|$)/i.test(source) || /@\d+(?:\/|$)/.test(source)) failures.push(`${location}: versão flutuante (${host})`);
   }
 }
@@ -97,6 +98,18 @@ try { headers = readFileSync(join(root, '_headers'), 'utf8').toLowerCase(); } ca
 for (const name of ['content-security-policy:', 'x-frame-options:', 'x-content-type-options:', 'referrer-policy:', 'permissions-policy:', 'strict-transport-security:']) {
   if (!headers.includes(name)) failures.push(`_headers não define ${name.slice(0, -1)}`);
 }
+
+const landingHtml = readFileSync(join(root, 'index.html'), 'utf8');
+const landingJs = readFileSync(join(root, 'shared', 'landing.js'), 'utf8');
+const authJs = readFileSync(join(root, 'shared', 'auth.js'), 'utf8');
+const runtimeConfig = readFileSync(join(root, 'shared', 'runtime-config.js'), 'utf8');
+if (!landingHtml.includes('https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit')) failures.push('landing: script oficial do Turnstile ausente');
+if (!landingHtml.includes('id="turnstile-widget"')) failures.push('landing: contêiner do Turnstile ausente');
+if (!/"turnstileSiteKey"\s*:\s*"0x/i.test(runtimeConfig)) failures.push('landing: site key pública do Turnstile ausente');
+if (!/captchaToken/.test(authJs) || !/turnstileToken/.test(landingJs)) failures.push('landing: token Turnstile não está ligado ao Supabase Auth');
+if (/turnstileSecret|captchaSecret|secretTurnstile/i.test(landingHtml + landingJs + authJs + runtimeConfig)) failures.push('landing: referência a segredo Turnstile no frontend');
+if (!headers.includes('script-src') || !headers.includes('https://challenges.cloudflare.com')) failures.push('_headers não permite o script oficial do Turnstile');
+if (!/frame-src[^;\r\n]*https:\/\/challenges\.cloudflare\.com/i.test(headers)) failures.push('_headers não permite o iframe oficial do Turnstile');
 
 console.log(JSON.stringify({ passed: failures.length === 0, checkedFiles: files.length, failures, notes }, null, 2));
 process.exitCode = failures.length ? 1 : 0;

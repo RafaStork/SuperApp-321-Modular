@@ -3,12 +3,54 @@
     const $=id=>document.getElementById(id), config=window.SUPERAPP_CONFIG||{}, loginForm=$('login-form'),identifier=$('identifier'),password=$('password'),passwordToggle=$('password-toggle'),message=$('form-message'), button=$('login-button'), authView=$('auth-view'), appsSection=$('apps-section'), adminSection=$('admin-section'), appsPanel=$('apps-panel'), adminTab=$('admin-tab'), appsTab=$('apps-tab'), appsGrid=$('apps-grid'), rememberLogin=$('remember-login'), themeToggles=[...document.querySelectorAll('[data-theme-toggle]')];
     const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c])), setMessage=(target,text,kind)=>{target.textContent=text||'';target.className='form-message '+(kind||'')}, appUrl=route=>route==='checklist'?'https://checklist.321modular.com.br/':new URL(String(config.appBasePath||'./')+route+'/',document.baseURI).href;
     let adminUsers=[],adminRoles=[],adminFranchises=[],adminUnits=[],adminAppPermissions=[],adminCurrentUserId='';
+    let turnstileToken='',turnstileWidgetId=null;
+    const turnstileContainer=$('turnstile-widget'),turnstileRequired=Boolean(config.turnstileSiteKey);
+    function turnstileMessage(text,kind='error'){setMessage(message,text,kind)}
+    function resetTurnstile(){
+      turnstileToken='';
+      button.disabled=turnstileRequired;
+      if(turnstileWidgetId!==null&&window.turnstile?.reset)window.turnstile.reset(turnstileWidgetId);
+    }
+    function renderTurnstile(){
+      if(!turnstileRequired){button.disabled=false;turnstileContainer?.classList.add('hidden');return}
+      turnstileToken='';
+      button.disabled=true;
+      if(!turnstileContainer||!window.turnstile?.render){turnstileMessage('Não foi possível carregar a verificação de segurança. Atualize a página.');return}
+      if(turnstileWidgetId!==null&&window.turnstile?.remove)window.turnstile.remove(turnstileWidgetId);
+      turnstileContainer.replaceChildren();
+      turnstileWidgetId=window.turnstile.render(turnstileContainer,{
+        sitekey:config.turnstileSiteKey,
+        theme:document.documentElement.dataset.theme==='dark'?'dark':'light',
+        size:'flexible',
+        action:'superapp_login',
+        callback:token=>{turnstileToken=String(token||'');button.disabled=!turnstileToken;if(turnstileToken)setMessage(message,'')},
+        'expired-callback':()=>{turnstileToken='';button.disabled=true;turnstileMessage('A verificação expirou. Conclua-a novamente.')},
+        'error-callback':()=>{turnstileToken='';button.disabled=true;turnstileMessage('Não foi possível concluir a verificação de segurança. Tente novamente.');return true}
+      });
+    }
     const adminUsersTab=$('admin-users-tab'),adminAppsTab=$('admin-apps-tab'),adminUsersPanel=$('admin-users-panel'),adminAppsPanel=$('admin-apps-panel'),adminAppsMessage=$('admin-apps-message'),adminAppPermissionsHead=$('admin-app-permissions-head'),adminAppPermissionsBody=$('admin-app-permissions');
     function showProfile(profile){const name=profile?.display_name||'Usuário', role=profile?.role_name||profile?.role_code||'Acesso operacional', scope=profile?.franchise_name?'Franquia · '+profile.franchise_name:profile?.unit_name?'Matriz · '+profile.unit_name:'Matriz · acesso global';$('profile-name').textContent=name;$('profile-scope').textContent=scope;$('profile-initials').textContent=name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'3M';$('welcome-name').textContent=name.split(/\s+/)[0];$('welcome-role').textContent=role;$('welcome-scope').textContent=scope}
 function renderApps(entitlements){const allowed=new Map(entitlements.map(app=>[app.app_code,app])),visible=catalog.filter(([code])=>allowed.has(code));$('apps-count').textContent=visible.length+' '+(visible.length===1?'liberado':'liberados');appsGrid.innerHTML=visible.length?visible.map(([code,name,description,scope,icon])=>'<a class="app-card" href="'+appUrl(code)+'"><span class="app-card-icon"><img src="shared/'+icon+'" alt=""></span><span class="app-card-content"><strong>'+escapeHtml(name)+'</strong><span>'+escapeHtml(description)+'</span></span><span class="app-card-footer"><small>'+escapeHtml(scope)+'</small><b aria-hidden="true">→</b></span></a>').join(''):'<p class="form-message error">Nenhum aplicativo autorizado para este usuário.</p>'}
     function showAuthenticated(profile,entitlements){showProfile(profile);renderApps(entitlements);authView.classList.add('hidden');$('login-theme-toggle')?.classList.add('hidden');appsSection.classList.remove('hidden');if(profile?.is_adm){adminTab.classList.remove('hidden');initAdmin()}}
     async function showSession(){if(!window.SuperAppAuth||!SuperAppAuth.isConfigured()){button.disabled=true;setMessage(message,'Homologação não configurada.','error');return}try{const session=await SuperAppAuth.getSession();if(!session)return;const profile=await SuperAppAuth.getProfile();adminCurrentUserId=profile?.user_id||'';showAuthenticated(profile,await SuperAppAuth.getEntitlements())}catch(error){SuperAppAuth.logAuthFailure?.(error,'portal-session');setMessage(message,SuperAppAuth.getSafeAuthMessage(error,'Não foi possível validar a sessão.'),'error')}}
-    loginForm.addEventListener('submit',async event=>{event.preventDefault();button.disabled=true;setMessage(message,'Validando acesso...');try{SuperAppAuth.setRememberLogin(rememberLogin.checked);await SuperAppAuth.signIn(identifier.value.trim(),password.value);const profile=await SuperAppAuth.getProfile();adminCurrentUserId=profile?.user_id||'';showAuthenticated(profile,await SuperAppAuth.getEntitlements());event.target.reset()}catch(error){SuperAppAuth.logAuthFailure?.(error,'portal-login');setMessage(message,SuperAppAuth.getSafeAuthMessage(error,'Acesso negado.'),'error');button.disabled=false}});
+    loginForm.addEventListener('submit',async event=>{
+      event.preventDefault();
+      if(turnstileRequired&&!turnstileToken){turnstileMessage('Conclua a verificação de segurança para entrar.');return}
+      button.disabled=true;
+      setMessage(message,'Validando acesso...');
+      try{
+        SuperAppAuth.setRememberLogin(rememberLogin.checked);
+        await SuperAppAuth.signIn(identifier.value.trim(),password.value,turnstileToken);
+        const profile=await SuperAppAuth.getProfile();
+        adminCurrentUserId=profile?.user_id||'';
+        showAuthenticated(profile,await SuperAppAuth.getEntitlements());
+        event.target.reset();
+      }catch(error){
+        SuperAppAuth.logAuthFailure?.(error,'portal-login');
+        setMessage(message,SuperAppAuth.getSafeAuthMessage(error,'Acesso negado.'),'error');
+        if(turnstileRequired)resetTurnstile();else button.disabled=false;
+      }
+    });
     passwordToggle.addEventListener('click',()=>{const mostrar=password.type==='text';password.type=mostrar?'password':'text';passwordToggle.textContent=mostrar?'Mostrar':'Ocultar';passwordToggle.setAttribute('aria-pressed',mostrar?'false':'true');});
     $('logout-button').addEventListener('click',async()=>{await SuperAppAuth.signOut();location.reload()});
     function switchPortalView(view){const next=view==='admin'?adminSection:appsPanel;appsTab.classList.toggle('active',view!=='admin');adminTab.classList.toggle('active',view==='admin');appsTab.setAttribute('aria-selected',view!=='admin'?'true':'false');adminTab.setAttribute('aria-selected',view==='admin'?'true':'false');appsPanel.classList.add('hidden');adminSection.classList.add('hidden');next.classList.remove('portal-view-enter');void next.offsetWidth;next.classList.remove('hidden');next.classList.add('portal-view-enter');if(!matchMedia('(prefers-reduced-motion: reduce)').matches){next.getAnimations().forEach(animation=>animation.cancel());next.animate([{opacity:0,transform:'translateY(12px)'},{opacity:1,transform:'translateY(0)'}],{duration:340,easing:'cubic-bezier(.16,.84,.44,1)'})}}
@@ -47,7 +89,7 @@ function renderApps(entitlements){const allowed=new Map(entitlements.map(app=>[a
     async function loadAdminPermissions(){adminAppPermissions=await SuperAppAuth.adminListAppRolePermissions();renderAdminAppPermissions()}
     async function loadAdmin(){adminUsers=await SuperAppAuth.adminListUsers();renderAdminUsers()}
     function applyTheme(theme){const dark=theme==='dark';document.documentElement.dataset.theme=dark?'dark':'light';themeToggles.forEach(toggle=>{toggle.setAttribute('aria-pressed',dark?'true':'false');toggle.setAttribute('aria-label',dark?'Ativar modo claro':'Ativar modo escuro');const knob=toggle.querySelector('.knob');if(knob)knob.textContent=dark?'🌙':'☀️'});document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#15171B':'#EEF0F2')}
-    themeToggles.forEach(toggle=>toggle.addEventListener('click',()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('321modular_theme',next)}catch(_){}applyTheme(next)}));
+    themeToggles.forEach(toggle=>toggle.addEventListener('click',()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';try{localStorage.setItem('321modular_theme',next)}catch(_){}applyTheme(next);if(!authView.classList.contains('hidden'))renderTurnstile()}));
     async function initAdmin(){try{[adminUsers,adminRoles,adminFranchises,adminUnits]=await Promise.all([SuperAppAuth.adminListUsers(),SuperAppAuth.adminListRoles(),SuperAppAuth.adminListFranchises(),SuperAppAuth.adminListUnits()]);$('admin-refresh').onclick=loadAdmin;$('admin-apps-refresh').onclick=async()=>{try{await loadAdminPermissions();setMessage(adminAppsMessage,'Permissões atualizadas.','success')}catch(error){setMessage(adminAppsMessage,error.message||'Não foi possível carregar as permissões.','error')}};renderAdminUsers();try{await loadAdminPermissions()}catch(error){setMessage(adminAppsMessage,error.message||'Não foi possível carregar as permissões dos aplicativos.','error')}}catch(error){setMessage(adminMessage,error.message||'Não foi possível carregar a administração.','error')}}
-    window.addEventListener('load',()=>{applyTheme(document.documentElement.dataset.theme||'light');rememberLogin.checked=SuperAppAuth?.isRememberLoginEnabled?.()||false;showSession()});
+    window.addEventListener('load',()=>{applyTheme(document.documentElement.dataset.theme||'light');rememberLogin.checked=SuperAppAuth?.isRememberLoginEnabled?.()||false;renderTurnstile();showSession()});
   

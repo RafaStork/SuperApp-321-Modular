@@ -95,10 +95,11 @@
     if (error) throw error;
     return data;
   }
-  async function signIn(identifier, password) {
+  async function signIn(identifier, password, captchaToken) {
     const supabase = getClient();
     if (!supabase) throw new Error('Homologação ainda não configurada.');
-    const { data, error } = await supabase.auth.signInWithPassword({ email: identifier, password });
+    const options = captchaToken ? { captchaToken } : undefined;
+    const { data, error } = await supabase.auth.signInWithPassword({ email: identifier, password, options });
     if (error) throw error;
     return data;
   }
