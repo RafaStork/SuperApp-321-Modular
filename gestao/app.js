@@ -40,6 +40,90 @@ function flashSaved(el){ el.classList.add('cell-saved'); setTimeout(()=>el.class
 // até ficar transparente, o que fazia a cor real sumir e voltar (bug).
 function flashSavedCor(el){ el.classList.add('cell-saved-cor'); setTimeout(()=>el.classList.remove('cell-saved-cor'), 700); }
 
+// Redimensionamento das colunas das tabelas principais. Salva somente larguras
+// em pixels no navegador, separadas por usuário e por aba; nenhum dado da tabela
+// ou permissão é persistido aqui.
+function ativarRedimensionamentoColunas(table, scope){
+  if (!table || table.dataset.columnsResizable==='true' || !currentUser?.id) return;
+  const headers = Array.from(table.querySelectorAll('thead tr:first-child > th'));
+  if (headers.length < 2) return;
+  const storageKey = `gestao_colunas_v1_${currentUser.id}_${scope}`;
+  const clamp = (value, min, max)=>Math.min(max, Math.max(min, Math.round(Number(value)||min)));
+  const minimums = headers.map(th=>th.querySelector('.th-inner') ? 96 : 48);
+  let widths = headers.map((th,index)=>clamp(th.getBoundingClientRect().width, minimums[index], 640));
+
+  try{
+    const saved = JSON.parse(localStorage.getItem(storageKey)||'null');
+    if (Array.isArray(saved) && saved.length===headers.length){
+      widths = saved.map((value,index)=>clamp(value, minimums[index], 640));
+    }
+  }catch(_){ /* preferência local inválida: usa a largura atual */ }
+
+  function applyWidths(){
+    let total = 0;
+    headers.forEach((th,index)=>{
+      const width = clamp(widths[index], minimums[index], 640);
+      widths[index] = width;
+      th.style.width = `${width}px`;
+      th.style.minWidth = `${width}px`;
+      th.style.maxWidth = `${width}px`;
+      total += width;
+    });
+    table.style.width = `${Math.max(total, table.parentElement?.clientWidth||0)}px`;
+  }
+  function saveWidths(){
+    try{ localStorage.setItem(storageKey, JSON.stringify(widths)); }catch(_){ /* armazenamento indisponível */ }
+  }
+  function resizeColumn(index, delta){
+    widths[index] = clamp(widths[index] + delta, minimums[index], 640);
+    applyWidths();
+  }
+
+  table.dataset.columnsResizable = 'true';
+  table.classList.add('resizable-table');
+  applyWidths();
+
+  headers.slice(0,-1).forEach((th,index)=>{
+    const handle = document.createElement('button');
+    handle.type = 'button';
+    handle.className = 'column-resize-handle';
+    handle.setAttribute('aria-label', `Redimensionar coluna ${index+1}`);
+    handle.title = 'Arraste para ajustar a largura da coluna';
+    th.appendChild(handle);
+
+    handle.addEventListener('pointerdown', event=>{
+      if (event.button!==0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const startX = event.clientX;
+      const startWidth = widths[index];
+      handle.setPointerCapture?.(event.pointerId);
+      document.body.classList.add('column-resizing');
+
+      const onMove = moveEvent=>{
+        widths[index] = clamp(startWidth + moveEvent.clientX - startX, minimums[index], 640);
+        applyWidths();
+      };
+      const onEnd = ()=>{
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onEnd);
+        handle.removeEventListener('pointercancel', onEnd);
+        document.body.classList.remove('column-resizing');
+        saveWidths();
+      };
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onEnd);
+      handle.addEventListener('pointercancel', onEnd);
+    });
+
+    handle.addEventListener('keydown', event=>{
+      if (event.key!=='ArrowLeft' && event.key!=='ArrowRight') return;
+      event.preventDefault();
+      resizeColumn(index, (event.key==='ArrowRight'?1:-1) * (event.shiftKey?20:10));
+      saveWidths();
+    });
+  });
+}
 // Confirmação dentro do app (substitui o confirm() nativo do navegador).
 // Uso: if (!(await confirmarAcao('Excluir este item?'))) return;
 function confirmarAcao(mensagem, textoBotao='Excluir'){
@@ -1775,6 +1859,7 @@ async function viewTabela(tableName){
       <tbody id="tbody"></tbody>
     </table></div>
   `;
+  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), tableName);
 
   function valorExibivel(r, f){
     if (f.edit==='multiselect') return (profilesCache.filter(p=>(r.__resp_ids||[]).includes(p.id)).map(p=>p.nome).join(', '));
@@ -2826,6 +2911,7 @@ async function viewMinhasTarefas(){
       <tbody id="tbody"></tbody>
     </table></div>
   `;
+  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), 'minhas-tarefas');
   ligarCabecalho();
   aplicarFiltrosAtual = aplicarFiltrosOrdenacao;
   aplicarFiltrosOrdenacao();
@@ -3581,6 +3667,7 @@ async function viewAuditoria(){
       </div></th>`).join('')}<th>Alteração</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table></div>`;
+  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), 'auditoria');
 
   function render(rows){
     const tbody = document.getElementById('tbody');
