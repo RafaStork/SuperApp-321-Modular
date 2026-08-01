@@ -1,5 +1,6 @@
 
 const DEFAULT_LOGO="../shared/Logo321Modular.svg";
+const sb=window.SuperAppAuth?.getScopedClient?.('legacy_gestao');
 let currentUser = null;      // { id, nome, usuario, role }
 let currentProfile = null;   // igual a currentUser (mantido por compatibilidade com o resto do código)
 let currentView = null;
@@ -5153,5 +5154,10 @@ if (document.body){
   cspDynamicStyleObserver.observe(document.body, { childList:true, subtree:true });
 }window.addEventListener('superapp:authorized', () => {
   document.getElementById('login-screen')?.classList.add('login-screen-hidden');
-  bootAfterLogin().finally(() => window.SuperAppAuth.releaseAppGuard?.());
+  bootAfterLogin().catch(error => {
+    console.error('Falha ao inicializar o app Gestão:', error);
+    document.getElementById('page-title').textContent = 'Erro ao carregar';
+    document.getElementById('page-sub').textContent = 'Não foi possível concluir a inicialização segura do módulo.';
+    document.getElementById('view-root').innerHTML = '<div class="section-note">Retorne ao SuperApp e tente abrir o módulo novamente.</div>';
+  }).finally(() => window.SuperAppAuth.releaseAppGuard?.());
 }, { once: true });
