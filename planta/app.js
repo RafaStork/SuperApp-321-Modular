@@ -8748,8 +8748,10 @@ function computeBlocosLayout(){
 function setPlantSheetPdfTypography(svgEl){
   if(!svgEl||typeof svgEl.querySelectorAll!=="function")return svgEl;
   svgEl.querySelectorAll("text").forEach(text=>{
-    text.setAttribute("font-family","Montserrat, sans-serif");
-    text.setAttribute("font-weight","700");
+    text.setAttribute("font-family","Montserrat");
+    text.setAttribute("font-weight","bold");
+    text.style.setProperty("font-family","Montserrat","important");
+    text.style.setProperty("font-weight","bold","important");
   });
   return svgEl;
 }
@@ -9364,23 +9366,28 @@ function buildCarimboSVG(mLeft, rW, mBot, H, carimboH, scaleLabel, plantaLabel, 
 }
 
 const MONTSERRAT_FONT_URL="../shared/Montserrat-Variable.ttf";
+const MONTSERRAT_BOLD_FONT_URL="../shared/Montserrat-Bold.ttf";
 let _montserratB64Cache=null;
+let _montserratBoldB64Cache=null;
 function arrayBufferToBase64(buf){
   const bytes=new Uint8Array(buf);let binary="";const chunk=0x8000;
   for(let i=0;i<bytes.length;i+=chunk)binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));
   return btoa(binary);
 }
 async function loadMontserratIntoDoc(doc){
-  if(!_montserratB64Cache){
-    const res=await fetch(MONTSERRAT_FONT_URL,{cache:"force-cache"});
-    if(!res.ok)throw new Error("Falha ao carregar a fonte Montserrat compartilhada");
-    _montserratB64Cache=arrayBufferToBase64(await res.arrayBuffer());
+  if(!_montserratB64Cache||!_montserratBoldB64Cache){
+    const [regularResponse,boldResponse]=await Promise.all([
+      fetch(MONTSERRAT_FONT_URL,{cache:"force-cache"}),
+      fetch(MONTSERRAT_BOLD_FONT_URL,{cache:"force-cache"})
+    ]);
+    if(!regularResponse.ok||!boldResponse.ok)throw new Error("Falha ao carregar as fontes Montserrat compartilhadas");
+    _montserratB64Cache=arrayBufferToBase64(await regularResponse.arrayBuffer());
+    _montserratBoldB64Cache=arrayBufferToBase64(await boldResponse.arrayBuffer());
   }
-  for(const style of ["normal","bold"]){
-    const fname="Montserrat-"+style+".ttf";
-    doc.addFileToVFS(fname,_montserratB64Cache);
-    doc.addFont(fname,"Montserrat",style);
-  }
+  doc.addFileToVFS("Montserrat-normal.ttf",_montserratB64Cache);
+  doc.addFont("Montserrat-normal.ttf","Montserrat","normal");
+  doc.addFileToVFS("Montserrat-bold.ttf",_montserratBoldB64Cache);
+  doc.addFont("Montserrat-bold.ttf","Montserrat","bold");
 }
 
 // Injeta assinatura rotacionada 90° na margem esquerda da folha (x: 0–25 mm está livre no SVG)
@@ -13382,6 +13389,9 @@ document.addEventListener('click', (event) => {
   if (!target) return;
   event.preventDefault();
   document.getElementById('previewScrim')?.classList.remove('show');
+  const returnToPdf=window.__plantaPreviewReturn;
+  window.__plantaPreviewReturn=null;
+  if(typeof returnToPdf==='function')setTimeout(returnToPdf,0);
 }); 
 // Planta: listeners delegados para templates compatíveis com CSP.
 (function instalarListenersPlantaCsp() {

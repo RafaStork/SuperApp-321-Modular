@@ -436,6 +436,9 @@
   .pdf-url-input{width:100%;min-height:76px;resize:vertical;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;background:var(--surface);color:var(--ink);font:600 12px/1.5 'Montserrat',sans-serif}
   .pdf-url-input:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus-ring)}
   .pdf-inline-actions{display:flex;justify-content:flex-end;margin-top:8px}
+  .pdf-proposal-textarea{width:100%;min-height:150px;resize:vertical;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:11px 12px;background:var(--surface);color:var(--ink);font:600 12px/1.55 'Montserrat',sans-serif}
+  .pdf-proposal-textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus-ring)}
+  .pdf-franchise-name{display:block;margin-top:6px;color:var(--ink);font-size:13px;line-height:1.4}
 
 
   /* ── Accordion (detalhes/summary) no modal de tipo ── */

@@ -3,6 +3,24 @@
 const PROPOSAL_PICTURES_BASE="https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev/Pictures/";
 const PROPOSAL_PICTURES_MANIFEST=PROPOSAL_PICTURES_BASE+"index.json";
 const PROPOSAL_MAX_IMAGES=6;
+const DEFAULT_PROPOSAL_INCLUDED_ITEMS=[
+  "ESTRUTURA DO CHALÉ EM MÓDULOS DE PINUS AUTOCLAVADO.",
+  "FUNDAÇÃO EM PILOTIS DE EUCALIPTO AUTOCLAVADO DE 1 METRO.",
+  "ESQUADRIAS DE PORTAS E JANELAS EM EUCALIPTO.",
+  "PRÉ-INSTALAÇÃO ELÉTRICA (CONDUÍTES, CAIXAS DE PASSAGEM E CAIXA DE DISJUNTORES).",
+  "TELHAS METÁLICAS COM EPS (SEMI-SANDUÍCHE NA COR PRETA).",
+  "MÃO DE OBRA PARA MONTAGEM DO CHALÉ E SERVIÇO DE CAMINHÃO MUNCK.",
+  "FRETE ATÉ O TERRENO."
+].join("\n");
+const DEFAULT_PROPOSAL_EXCLUDED_ITEMS=[
+  "TRANSPORTE FORA DE ESTRADA.",
+  "VIDROS.",
+  "FIAÇÃO ELÉTRICA.",
+  "PINTURA DO CHALÉ.",
+  "CALHAS."
+].join("\n");
+let lastPdfExportMode="technical";
+
 const PROPOSAL_PICTURE_GROUPS=[
   ["01A",["R1","R2","R3","V2 R1"]],["01C",["R1","R2","R3","V2 R1"]],
   ["02A",["R1","R2","R3","V2 R1"]],["02C",["R1","R2","R3","V2 R1"]],
@@ -135,35 +153,10 @@ async function loadProposalPictureCatalog(){
   }
 }
 
-function addProposalPictureUrls(){
-  const input=document.getElementById("m_com_urls");
-  if(!input)return;
-  const values=input.value.split(/\r?\n/).map(value=>value.trim()).filter(Boolean);
-  let added=0;
-  for(const raw of values){
-    if(proposalSelectedPictures.size>=PROPOSAL_MAX_IMAGES){
-      toastError(`Limite de ${PROPOSAL_MAX_IMAGES} imagens atingido.`);
-      break;
-    }
-    try{
-      const url=normalizeProposalPictureUrl(raw);
-      proposalSelectedPictures.set(url,{url,label:proposalPictureLabel(url)});
-      added++;
-    }catch(error){
-      toastError(error.message);
-      return;
-    }
-  }
-  if(added){
-    input.value="";
-    renderProposalPictureCatalog();
-    toast(`${added} imagem(ns) adicionada(s).`);
-  }
-}
 
 function openPdfModal(){
-  const m=state.meta;
-  let exportMode="technical";
+  const m=state.meta||{};
+  let exportMode=lastPdfExportMode;
   let dimMode=(state.manualDims&&state.manualDims.some(d=>(d.andar||1)===1))?"manual":"auto";
   modalBody.dataset.modal="";
   modalBody.classList.remove("q-wide","pm-modal");
@@ -175,34 +168,37 @@ function openPdfModal(){
     </div>
     <div class="pdf-modal-scroll">
       <div class="pdf-export-kinds" role="tablist" aria-label="Tipo de PDF">
-        <button type="button" class="pdf-kind active" id="m_pdf_technical" role="tab" aria-selected="true">
-          <strong>Documento tecnico</strong>
+        <button type="button" class="pdf-kind" id="m_pdf_technical" role="tab" aria-selected="false">
+          <strong>Documento técnico</strong>
           <span>Plantas, blocos, cotas, carimbo e quantitativo opcional.</span>
         </button>
         <button type="button" class="pdf-kind" id="m_pdf_commercial" role="tab" aria-selected="false">
           <strong>Proposta comercial</strong>
-          <span>Apresentacao visual, beneficios, investimento e imagens.</span>
+          <span>Apresentacao visual, beneficios, investimento, escopo e imagens.</span>
         </button>
       </div>
 
       <div class="two">
         <div class="field"><label>Nome do cliente</label><input id="m_cli" value="${esc(m.cliente||"")}" placeholder="ex: Joao Silva"></div>
+        <div class="field"><label>Telefone do cliente</label><input id="m_cli_tel" value="${esc(m.telefoneCliente||"")}" placeholder="ex: (48) 99999-9999" inputmode="tel"></div>
+      </div>
+      <div class="two">
         <div class="field"><label>Local da obra</label><input id="m_loc" value="${esc(m.local||"")}" placeholder="ex: Cidade/UF"></div>
+        <div class="field"><label>Modelo / Projeto</label><input id="m_mod" value="${esc(m.modelo||"")}" placeholder="${esc(state.name||"Planta sem titulo")}"></div>
       </div>
       <div class="two">
         <div class="field"><label>Projetado por</label><input id="m_proj" value="${esc(m.projetadoPor||"")}" placeholder="321 MODULAR"></div>
-        <div class="field"><label>Modelo / Projeto</label><input id="m_mod" value="${esc(m.modelo||"")}" placeholder="${esc(state.name||"Planta sem titulo")}"></div>
+        <div class="field"><label>Revisao</label><input id="m_rev" value="${esc(m.revisao||"")}" placeholder="01"></div>
       </div>
-      <div class="field"><label>Revisao</label><input id="m_rev" value="${esc(m.revisao||"")}" placeholder="01"></div>
 
       <section class="pdf-section" id="m_pdf_technical_section" role="tabpanel">
         <div class="pdf-option-card">
           <label>Cotas no PDF</label>
           <div class="pdf-inline-actions">
-            <button type="button" class="tbtn" id="m_dim_auto">Automaticas</button>
+            <button type="button" class="tbtn" id="m_dim_auto">Automáticas</button>
             <button type="button" class="tbtn" id="m_dim_manual">Manuais</button>
           </div>
-          <p class="sub">Automaticas: cota geral e mezanino. Manuais: cotas criadas com a ferramenta da planta.</p>
+          <p class="sub">Automáticas: cota geral e mezanino. Manuais: cotas criadas com a ferramenta da planta.</p>
         </div>
         <div class="pdf-option-card">
           <label class="pdf-check"><input type="checkbox" id="m_incluir_orc">Incluir quantitativo</label>
@@ -217,11 +213,19 @@ function openPdfModal(){
           <p class="sub">Mostra o valor total no carimbo das folhas tecnicas.</p>
         </div>
         <div class="pdf-option-card">
-          <label class="pdf-check"><input type="checkbox" id="m_incluir_labels" checked>Incluir descricoes de esquadrias e oitoes</label>
+          <label class="pdf-check"><input type="checkbox" id="m_incluir_labels" checked>Incluir descrições de esquadrias e oitões</label>
         </div>
       </section>
 
       <section class="pdf-section" id="m_pdf_commercial_section" role="tabpanel" hidden>
+        <div class="pdf-option-card">
+          <label>Franquia responsavel</label>
+          <strong class="pdf-franchise-name">${esc(pricingData?.franquia||"Não informada")}</strong>
+        </div>
+        <div class="two">
+          <div class="field"><label>Nome do vendedor</label><input id="m_vendedor" value="${esc(m.vendedor||"")}" placeholder="Nome do responsavel comercial"></div>
+          <div class="field"><label>Telefone do vendedor</label><input id="m_vendedor_tel" value="${esc(m.telefoneVendedor||"")}" placeholder="ex: (48) 99999-9999" inputmode="tel"></div>
+        </div>
         <div class="pdf-option-card">
           <label class="pdf-check"><input type="checkbox" id="m_com_incluir_valor" checked>Apresentar investimento estimado</label>
           <p class="sub">Exibe o valor calculado no Quantitativo, quando estiver disponivel.</p>
@@ -232,17 +236,21 @@ function openPdfModal(){
           <div class="pdf-image-grid" id="m_com_images"></div>
         </div>
         <div class="field">
-          <label for="m_com_urls">Adicionar URLs da pasta Pictures</label>
-          <textarea class="pdf-url-input" id="m_com_urls" placeholder="Uma URL publica por linha"></textarea>
-          <p class="sub">Somente PNG, JPG ou WEBP hospedados em ${esc(PROPOSAL_PICTURES_BASE)}</p>
-          <div class="pdf-inline-actions"><button type="button" class="tbtn" id="m_com_add_urls">Adicionar imagens</button></div>
+          <label for="m_com_included">Itens que compõem o orçamento</label>
+          <textarea class="pdf-proposal-textarea" id="m_com_included">${esc(m.propostaItens||DEFAULT_PROPOSAL_INCLUDED_ITEMS)}</textarea>
+          <p class="sub">Use uma linha para cada item. O texto podera ser editado antes de cada proposta.</p>
+        </div>
+        <div class="field">
+          <label for="m_com_excluded">O que não está incluso</label>
+          <textarea class="pdf-proposal-textarea" id="m_com_excluded">${esc(m.propostaNaoIncluso||DEFAULT_PROPOSAL_EXCLUDED_ITEMS)}</textarea>
+          <p class="sub">Use uma linha para cada exclusao ou observacao comercial.</p>
         </div>
       </section>
     </div>
     <div class="pdf-modal-footer">
       <div class="modal-actions">
         <button class="tbtn" id="m_cancel">Cancelar</button>
-        <button class="tbtn" id="m_preview">Pre-visualizar</button>
+        <button class="tbtn" id="m_preview">Pré-visualizar</button>
         <button class="tbtn accent" id="m_go">Gerar PDF</button>
       </div>
     </div>`;
@@ -257,6 +265,7 @@ function openPdfModal(){
 
   const setExportMode=mode=>{
     exportMode=mode;
+    lastPdfExportMode=mode;
     const technical=mode==="technical";
     document.getElementById("m_pdf_technical").classList.toggle("active",technical);
     document.getElementById("m_pdf_technical").setAttribute("aria-selected",String(technical));
@@ -269,21 +278,27 @@ function openPdfModal(){
   };
   document.getElementById("m_pdf_technical").onclick=()=>setExportMode("technical");
   document.getElementById("m_pdf_commercial").onclick=()=>setExportMode("commercial");
-  document.getElementById("m_com_add_urls").onclick=addProposalPictureUrls;
 
   const updateMeta=()=>{
     state.meta={
+      ...state.meta,
       cliente:document.getElementById("m_cli").value.trim(),
+      telefoneCliente:document.getElementById("m_cli_tel").value.trim(),
       local:document.getElementById("m_loc").value.trim(),
       projetadoPor:document.getElementById("m_proj").value.trim()||"321 MODULAR",
       modelo:document.getElementById("m_mod").value.trim()||state.name||"Planta sem titulo",
       revisao:document.getElementById("m_rev").value.trim()||"01",
+      vendedor:document.getElementById("m_vendedor").value.trim(),
+      telefoneVendedor:document.getElementById("m_vendedor_tel").value.trim(),
+      propostaItens:document.getElementById("m_com_included").value.trim(),
+      propostaNaoIncluso:document.getElementById("m_com_excluded").value.trim(),
       logo:DEFAULT_LOGO
     };
     state.incluirValorNaPlanta=document.getElementById("m_incluir_valor").checked;
   };
   const runExport=action=>{
     updateMeta();
+    window.__plantaPreviewReturn=action==="preview"?()=>openPdfModal():null;
     if(exportMode==="technical"){
       const inclOrc=document.getElementById("m_incluir_orc").checked;
       const inclLabels=document.getElementById("m_incluir_labels").checked;
@@ -300,12 +315,11 @@ function openPdfModal(){
   document.getElementById("m_cancel").onclick=()=>{updateMeta();closeModal();};
   document.getElementById("m_preview").onclick=()=>runExport("preview");
   document.getElementById("m_go").onclick=()=>runExport("save");
+  setExportMode(exportMode);
 
   scrim.classList.add("show");
   setTimeout(()=>document.getElementById("m_cli")?.focus(),50);
 }
-
-
 function proposalInvestmentValue(){
   if(!pricingData)return 0;
   const total=gerarItensOrcamento().reduce((sum,item)=>sum+(Number(item.subtotal)||0),0);
@@ -315,9 +329,20 @@ function proposalInvestmentValue(){
   return Math.max(0,total-discount);
 }
 
-function rasterizeProposalImageSource(source,maxDimension=1800){
+
+function rasterizeProposalImageSource(source,maxDimension=1800,options={}){
   return new Promise((resolve,reject)=>{
     const image=new Image();
+    let settled=false;
+    const finish=(callback,value)=>{
+      if(settled)return;
+      settled=true;
+      clearTimeout(timer);
+      callback(value);
+    };
+    const timer=setTimeout(()=>finish(reject,new Error("Tempo esgotado ao processar uma imagem.")),options.timeoutMs||45000);
+    if(options.crossOrigin)image.crossOrigin="anonymous";
+    image.referrerPolicy="no-referrer";
     image.onload=()=>{
       try{
         const scale=Math.min(1,maxDimension/Math.max(image.naturalWidth||image.width,image.naturalHeight||image.height));
@@ -328,35 +353,48 @@ function rasterizeProposalImageSource(source,maxDimension=1800){
         context.fillStyle="#ffffff";
         context.fillRect(0,0,canvas.width,canvas.height);
         context.drawImage(image,0,0,canvas.width,canvas.height);
-        resolve({dataUrl:canvas.toDataURL("image/jpeg",0.9),width:canvas.width,height:canvas.height});
-      }catch(error){reject(error);}
+        finish(resolve,{dataUrl:canvas.toDataURL("image/jpeg",0.88),width:canvas.width,height:canvas.height});
+      }catch(error){finish(reject,error);}
     };
-    image.onerror=()=>reject(new Error("Nao foi possivel processar uma das imagens."));
+    image.onerror=()=>finish(reject,new Error("Não foi possível processar uma das imagens."));
     image.src=source;
   });
 }
 
 async function loadProposalPictureForPdf(item){
   const url=normalizeProposalPictureUrl(item.url);
+  const label=String(item.label||proposalPictureLabel(url)).slice(0,100);
   const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),15000);
+  const timer=setTimeout(()=>controller.abort(),45000);
   try{
-    const response=await fetch(url,{
-      method:"GET",mode:"cors",credentials:"omit",cache:"force-cache",
-      referrerPolicy:"no-referrer",signal:controller.signal
-    });
-    if(!response.ok)throw new Error(`Falha ao carregar ${item.label}: HTTP ${response.status}.`);
-    const declaredSize=Number(response.headers.get("content-length")||0);
-    if(declaredSize>12*1024*1024)throw new Error(`A imagem ${item.label} excede 12 MB.`);
-    const blob=await response.blob();
-    if(blob.size>12*1024*1024)throw new Error(`A imagem ${item.label} excede 12 MB.`);
-    if(!/^image\/(?:png|jpeg|webp)$/i.test(blob.type))throw new Error(`Formato invalido em ${item.label}.`);
-    const objectUrl=URL.createObjectURL(blob);
     try{
-      const raster=await rasterizeProposalImageSource(objectUrl);
-      return {...raster,label:String(item.label||proposalPictureLabel(url)).slice(0,100),url};
-    }finally{
-      URL.revokeObjectURL(objectUrl);
+      const response=await fetch(url,{
+        method:"GET",mode:"cors",credentials:"omit",cache:"no-store",
+        referrerPolicy:"no-referrer",signal:controller.signal
+      });
+      if(!response.ok)throw new Error(`Falha ao carregar ${label}: HTTP ${response.status}.`);
+      const declaredSize=Number(response.headers.get("content-length")||0);
+      if(declaredSize>20*1024*1024)throw new Error(`A imagem ${label} excede 20 MB.`);
+      const blob=await response.blob();
+      if(blob.size>20*1024*1024)throw new Error(`A imagem ${label} excede 20 MB.`);
+      if(!/^image\/(?:png|jpeg|webp)$/i.test(blob.type))throw new Error(`Formato inválido em ${label}.`);
+      const objectUrl=URL.createObjectURL(blob);
+      try{
+        const raster=await rasterizeProposalImageSource(objectUrl,1800,{timeoutMs:45000});
+        return {...raster,label,url};
+      }finally{
+        URL.revokeObjectURL(objectUrl);
+      }
+    }catch(error){
+      if(/excede 20 MB|Formato inválido|HTTP 4\d\d/.test(String(error.message||"")))throw error;
+      console.warn("Fetch da imagem falhou; tentando carregamento CORS direto.",error);
+      try{
+        const raster=await rasterizeProposalImageSource(url,1800,{crossOrigin:true,timeoutMs:45000});
+        return {...raster,label,url};
+      }catch(directError){
+        console.warn("Carregamento direto da imagem falhou.",directError);
+        throw new Error(`Não foi possível carregar ${label}. Tente novamente ou escolha outra imagem.`);
+      }
     }
   }finally{
     clearTimeout(timer);
@@ -429,6 +467,62 @@ function showGeneratedPdf(doc,action,fileName,successMessage){
   }
 }
 
+
+function normalizeProposalLines(value,fallback){
+  return String(value||fallback||"")
+    .split(/\r?\n/)
+    .map(line=>line.replace(/^[\s\-•]+/,"").trim())
+    .filter(Boolean)
+    .slice(0,80)
+    .map(line=>line.slice(0,300));
+}
+
+function addCommercialScopePages(doc,fontFamily,includedItems,excludedItems){
+  const sections=[
+    {title:"ITENS QUE COMPÕEM O ORÇAMENTO",items:includedItems,color:[31,51,27]},
+    {title:"O QUE NÃO ESTÁ INCLUSO",items:excludedItems,color:[180,58,45]}
+  ].filter(section=>section.items.length);
+  if(!sections.length)return;
+  let y=43;
+  const startPage=continued=>{
+    doc.addPage();
+    y=43;
+    doc.setFont(fontFamily,"bold");
+    doc.setFontSize(16);
+    doc.setTextColor(31,51,27);
+    doc.text(continued?"ESCOPO DA PROPOSTA - CONTINUAÇÃO":"ESCOPO DA PROPOSTA",14,y);
+    doc.setFont(fontFamily,"normal");
+    doc.setFontSize(8);
+    doc.setTextColor(105,113,103);
+    doc.text("Condições e fornecimentos considerados nesta apresentacao comercial.",14,y+7);
+    y+=18;
+  };
+  startPage(false);
+  sections.forEach((section,sectionIndex)=>{
+    if(sectionIndex&&y>238)startPage(true);
+    doc.setFillColor(...section.color);
+    doc.roundedRect(14,y,182,11,2,2,"F");
+    doc.setFont(fontFamily,"bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255,255,255);
+    doc.text(section.title,19,y+7);
+    y+=17;
+    section.items.forEach(item=>{
+      const wrapped=doc.splitTextToSize(item,164);
+      const needed=Math.max(9,wrapped.length*4.3+3);
+      if(y+needed>274)startPage(true);
+      doc.setFillColor(...section.color);
+      doc.circle(18,y+2.4,1.25,"F");
+      doc.setFont(fontFamily,"normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(58,65,56);
+      doc.text(wrapped,23,y+4);
+      y+=needed;
+    });
+    y+=6;
+  });
+}
+
 async function generateCommercialProposal(action="save",options={}){
   const js=window.jspdf&&window.jspdf.jsPDF;
   if(!js){toastError("Gerador de PDF indisponivel.");return;}
@@ -449,10 +543,16 @@ async function generateCommercialProposal(action="save",options={}){
     const meta=state.meta||{};
     const model=meta.modelo||state.name||"Projeto modular";
     const client=meta.cliente||"Cliente";
+    const clientPhone=meta.telefoneCliente||"Não informado";
     const location=meta.local||"Local a definir";
+    const seller=meta.vendedor||"Não informado";
+    const sellerPhone=meta.telefoneVendedor||"Não informado";
+    const franchise=pricingData?.franquia||"Não informada";
     const area=occupiedArea();
     const investment=proposalInvestmentValue();
     const hero=loaded[0]||null;
+    const includedItems=normalizeProposalLines(meta.propostaItens,DEFAULT_PROPOSAL_INCLUDED_ITEMS);
+    const excludedItems=normalizeProposalLines(meta.propostaNaoIncluso,DEFAULT_PROPOSAL_EXCLUDED_ITEMS);
 
     doc.setFont(fontFamily,"bold");
     doc.setTextColor(31,51,27);
@@ -463,7 +563,11 @@ async function generateCommercialProposal(action="save",options={}){
     doc.setFont(fontFamily,"normal");
     doc.setTextColor(89,97,87);
     doc.setFontSize(9);
-    doc.text(doc.splitTextToSize("Uma proposta pensada para transformar seu projeto em uma construcao agil, previsivel e de alta qualidade.",118),14,59);
+    doc.text(doc.splitTextToSize("Uma proposta pensada para transformar seu projeto em uma construção ágil, previsivel e de alta qualidade.",118),14,59);
+    doc.setFont(fontFamily,"bold");
+    doc.setFontSize(8);
+    doc.setTextColor(31,51,27);
+    doc.text(`${model} | ${location} | ${area.toLocaleString("pt-BR",{maximumFractionDigits:2})} m2`,14,68);
 
     if(hero){
       addContainedProposalImage(doc,hero,14,72,182,78);
@@ -483,37 +587,47 @@ async function generateCommercialProposal(action="save",options={}){
 
     drawCommercialBenefit(doc,fontFamily,14,"AGILIDADE","Processo industrializado e montagem planejada.");
     drawCommercialBenefit(doc,fontFamily,77,"PREVISIBILIDADE","Escopo claro para decisoes mais seguras.");
-    drawCommercialBenefit(doc,fontFamily,140,"QUALIDADE","Padrao construtivo e controle de execucao.");
+    drawCommercialBenefit(doc,fontFamily,140,"QUALIDADE","Padrão construtivo e controle de execucao.");
 
     doc.setFont(fontFamily,"bold");
     doc.setFontSize(9);
     doc.setTextColor(31,51,27);
-    doc.text("RESUMO DO PROJETO",14,208);
-    doc.setFont(fontFamily,"normal");
-    doc.setTextColor(68,75,66);
-    doc.setFontSize(8.5);
-    doc.text(`Cliente: ${client}`,14,217);
-    doc.text(`Modelo: ${model}`,14,224);
-    doc.text(`Local: ${location}`,105,217);
-    doc.text(`Area estimada: ${area.toLocaleString("pt-BR",{maximumFractionDigits:2})} m2`,105,224);
+    doc.text("CONTATOS DA PROPOSTA",14,207);
+
+    const drawContact=(x,y,label,value,width)=>{
+      doc.setFont(fontFamily,"bold");
+      doc.setFontSize(6.8);
+      doc.setTextColor(105,113,103);
+      doc.text(label,x,y);
+      doc.setFont(fontFamily,"bold");
+      doc.setFontSize(8.4);
+      doc.setTextColor(31,51,27);
+      doc.text(doc.splitTextToSize(String(value||"-"),width),x,y+5);
+    };
+    drawContact(14,215,"CLIENTE",client,80);
+    drawContact(14,227,"TELEFONE DO CLIENTE",clientPhone,80);
+    drawContact(105,215,"FRANQUIA",franchise,88);
+    drawContact(105,227,"VENDEDOR",seller,88);
+    drawContact(105,239,"TELEFONE DO VENDEDOR",sellerPhone,88);
 
     if(options.includeInvestment&&investment>0){
       doc.setFillColor(31,51,27);
-      doc.roundedRect(14,235,182,29,3,3,"F");
-      doc.setFont(fontFamily,"normal");
-      doc.setTextColor(210,226,202);
-      doc.setFontSize(8);
-      doc.text("INVESTIMENTO ESTIMADO",21,245);
+      doc.roundedRect(14,246,182,25,3,3,"F");
       doc.setFont(fontFamily,"bold");
+      doc.setTextColor(210,226,202);
+      doc.setFontSize(7.5);
+      doc.text("INVESTIMENTO ESTIMADO",21,255);
       doc.setTextColor(255,255,255);
-      doc.setFontSize(16);
-      doc.text(investment.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}),21,257);
+      doc.setFontSize(15);
+      doc.text(investment.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}),21,265);
     }else{
-      doc.setFont(fontFamily,"normal");
+      doc.setFont(fontFamily,"bold");
       doc.setFontSize(8);
       doc.setTextColor(105,113,103);
-      doc.text("Valores e condicoes comerciais sujeitos a validacao do escopo final.",14,247);
+      doc.text("Valores e condicoes comerciais sujeitos a validacao do escopo final.",14,260);
     }
+
+    addCommercialScopePages(doc,fontFamily,includedItems,excludedItems);
 
     const gallery=loaded.slice(1);
     for(let index=0;index<gallery.length;index+=2){
@@ -522,7 +636,7 @@ async function generateCommercialProposal(action="save",options={}){
       doc.setFontSize(16);
       doc.setTextColor(31,51,27);
       doc.text("INSPIRACOES PARA O PROJETO",14,43);
-      doc.setFont(fontFamily,"normal");
+      doc.setFont(fontFamily,"bold");
       doc.setFontSize(8);
       doc.setTextColor(105,113,103);
       doc.text("Referencias visuais selecionadas para esta apresentacao.",14,50);
@@ -545,9 +659,7 @@ async function generateCommercialProposal(action="save",options={}){
     showGeneratedPdf(doc,action,`Proposta_${fileBase}.pdf`,"Proposta comercial gerada.");
   }catch(error){
     console.error("Falha ao gerar proposta comercial.",error);
-    toastError("Nao foi possivel gerar a proposta comercial.");
+    toastError(error?.message||"Não foi possível gerar a proposta comercial.");
   }
 }
-
-
 document.getElementById("btnPdf").onclick=openPdfModal;
