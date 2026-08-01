@@ -437,6 +437,11 @@
   .pdf-image-group[open]>summary::after{transform:rotate(90deg)}
   .pdf-image-group>summary small{margin-left:auto;color:var(--ink-faint);font-size:10px;font-weight:700}
   .pdf-image-group>.pdf-image-grid{padding:10px;margin:0;border-top:1px solid var(--line)}
+  .pdf-image-group[open]>.pdf-image-grid{transform-origin:top center;animation:pdf-catalog-group-open .28s var(--ease) both}
+  @keyframes pdf-catalog-group-open{
+    from{opacity:0;transform:translateY(-8px) scaleY(.94)}
+    to{opacity:1;transform:translateY(0) scaleY(1)}
+  }
   .pdf-image-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:10px}
   .pdf-image-choice{position:relative;display:block;border:1.5px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:var(--surface);cursor:pointer;min-width:0}
   .pdf-image-choice:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent)}
