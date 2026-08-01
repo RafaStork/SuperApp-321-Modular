@@ -40,6 +40,13 @@ function buildPdfFileBase(meta,defaultModel){
   ].join(" - ");
 }
 
+function applyPdfDocumentName(doc,fileName){
+  const title=String(fileName||"Documento.pdf").replace(/\.pdf$/i,"");
+  if(typeof doc?.setProperties==="function"){
+    doc.setProperties({title,subject:title,author:"321 Modular",creator:"321 Modular"});
+  }
+  return title;
+}
 const PROPOSAL_PICTURE_GROUPS=[
   ["01A",["R1","R2","R3","V2 R1"]],["01C",["R1","R2","R3","V2 R1"]],
   ["02A",["R1","R2","R3","V2 R1"]],["02C",["R1","R2","R3","V2 R1"]],
@@ -601,10 +608,15 @@ function drawCommercialBenefit(doc,fontFamily,x,title,text){
 }
 
 function showGeneratedPdf(doc,action,fileName,successMessage){
+  applyPdfDocumentName(doc,fileName);
   if(action==="preview"){
-    document.getElementById("previewFrame").src=doc.output("bloburl");
+    const frame=document.getElementById("previewFrame");
+    const saveButton=document.getElementById("previewSaveBtn");
+    frame.title=fileName;
+    frame.src=doc.output("bloburl");
     document.getElementById("previewScrim").classList.add("show");
-    document.getElementById("previewSaveBtn").onclick=()=>doc.save(fileName);
+    saveButton.title=`Salvar ${fileName}`;
+    saveButton.onclick=()=>doc.save(fileName);
   }else{
     doc.save(fileName);
     toast(successMessage);
@@ -813,7 +825,7 @@ async function generateCommercialProposal(action="save",options={}){
       drawCommercialPdfChrome(doc,logo,page,totalPages,fontFamily);
     }
     const fileBase=buildPdfFileBase(meta,model);
-    showGeneratedPdf(doc,action,`Proposta_${fileBase}.pdf`,"Proposta comercial gerada.");
+    showGeneratedPdf(doc,action,`${fileBase}.pdf`,"Proposta comercial gerada.");
   }catch(error){
     console.error("Falha ao gerar proposta comercial.",error);
     toastError(error?.message||"Não foi possível gerar a proposta comercial.");

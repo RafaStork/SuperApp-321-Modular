@@ -9578,6 +9578,7 @@ async function generatePDF(action = 'save', dimMode = 'auto', incluirOrcamento =
       if(state.panels.some(isFloor2Panel)) await appendAndar2SheetAoPDF(doc, dimMode, incluirLabels);
       if (incluirBlocos) await appendBlocosSheetAoPDF(doc);
       if (incluirOrcamento) appendOrcamentoSimplificadoAoPDF(doc);
+      if(typeof applyPdfDocumentName==="function") applyPdfDocumentName(doc,fname+".pdf");
       if (action === 'preview') {
           document.getElementById('previewFrame').src = doc.output('bloburl');
           document.getElementById('previewScrim').classList.add('show');
@@ -9605,6 +9606,7 @@ async function generatePDF(action = 'save', dimMode = 'auto', incluirOrcamento =
             doc.addImage(cv.toDataURL("image/jpeg",0.95),"JPEG",0,0,210,297);
             injetarAssinaturaPDF(doc);
             if (incluirOrcamento) appendOrcamentoSimplificadoAoPDF(doc);
+            if(typeof applyPdfDocumentName==="function") applyPdfDocumentName(doc,fname+".pdf");
             if (action === 'preview') {
                 document.getElementById('previewFrame').src = doc.output('bloburl');
                 document.getElementById('previewScrim').classList.add('show');
@@ -10725,7 +10727,10 @@ function gerarPDFOrcamento(action = 'save') {
     });
   }
 
-  const fname = `orcamento-${proj.replace(/\s+/g,"-").toLowerCase()}`;
+  const fname=typeof buildPdfFileBase==="function"
+    ? buildPdfFileBase(state.meta,state.name||"Modelo de chalé")
+    : `orcamento-${proj.replace(/\s+/g,"-").toLowerCase()}`;
+  if(typeof applyPdfDocumentName==="function") applyPdfDocumentName(doc,fname+".pdf");
   if (action === 'preview') {
     document.getElementById('previewFrame').src = doc.output('bloburl');
     document.getElementById('previewScrim').classList.add('show');
