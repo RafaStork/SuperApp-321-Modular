@@ -86,30 +86,44 @@ function wireProposalImageGroupAnimations(container){
       if(!content)return;
       event.preventDefault();
       if(proposalGroupAnimations.has(group))return;
+      const opening=!group.open;
       if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
-        group.open=!group.open;
+        if(opening){content.style.removeProperty("display");group.open=true;}
+        else{group.open=false;content.style.display="none";}
         return;
       }
-      const opening=!group.open;
-      if(opening)group.open=true;
-      else group.classList.add("closing");
+      content.getAnimations().forEach(animation=>animation.cancel());
+      if(opening){
+        content.style.removeProperty("display");
+        group.open=true;
+        void content.offsetHeight;
+      }else{
+        group.classList.add("closing");
+      }
       const fullHeight=content.scrollHeight;
-      const from={height:opening?"0px":`${fullHeight}px`,opacity:opening?0:1,transform:opening?"translateY(-6px)":"translateY(0)"};
+      const currentHeight=content.getBoundingClientRect().height||fullHeight;
+      const from={height:opening?"0px":`${currentHeight}px`,opacity:opening?0:1,transform:opening?"translateY(-6px)":"translateY(0)"};
       const to={height:opening?`${fullHeight}px`:"0px",opacity:opening?1:0,transform:opening?"translateY(0)":"translateY(-6px)"};
       content.style.overflow="hidden";
-      const animation=content.animate([from,to],{duration:260,easing:"cubic-bezier(.22,.61,.36,1)",fill:"both"});
+      const animation=content.animate([from,to],{duration:260,easing:"cubic-bezier(.22,.61,.36,1)",fill:"forwards"});
       proposalGroupAnimations.set(group,animation);
-      const finish=()=>{
+      const clearAnimationStyles=()=>{
         proposalGroupAnimations.delete(group);
-        if(!opening)group.open=false;
         group.classList.remove("closing");
         content.style.removeProperty("overflow");
         content.style.removeProperty("height");
         content.style.removeProperty("opacity");
         content.style.removeProperty("transform");
       };
-      animation.onfinish=finish;
-      animation.oncancel=finish;
+      animation.onfinish=()=>{
+        animation.onfinish=null;
+        animation.oncancel=null;
+        if(!opening){group.open=false;content.style.display="none";}
+        else content.style.removeProperty("display");
+        animation.cancel();
+        clearAnimationStyles();
+      };
+      animation.oncancel=clearAnimationStyles;
     });
   });
 }

@@ -437,7 +437,6 @@
   .pdf-image-group[open]>summary::after{transform:rotate(90deg)}
   .pdf-image-group.closing>summary::after{transform:rotate(0)}
   .pdf-image-group>.pdf-image-grid{will-change:height,opacity,transform}
-  .pdf-image-group:not([open])>.pdf-image-grid{display:none}
   .pdf-image-group>summary small{margin-left:auto;color:var(--ink-faint);font-size:10px;font-weight:700}
   .pdf-image-group>.pdf-image-grid{padding:10px;margin:0;border-top:1px solid var(--line)}
   .pdf-image-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:10px}
