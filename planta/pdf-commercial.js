@@ -3,22 +3,6 @@
 const PROPOSAL_PICTURES_BASE="https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev/Pictures/";
 const PROPOSAL_PICTURES_MANIFEST=PROPOSAL_PICTURES_BASE+"index.json";
 const PROPOSAL_MAX_IMAGES=6;
-const DEFAULT_PROPOSAL_INCLUDED_ITEMS=[
-  "ESTRUTURA DO CHALÉ EM MÓDULOS DE PINUS AUTOCLAVADO.",
-  "FUNDAÇÃO EM PILOTIS DE EUCALIPTO AUTOCLAVADO DE 1 METRO.",
-  "ESQUADRIAS DE PORTAS E JANELAS EM EUCALIPTO.",
-  "PRÉ-INSTALAÇÃO ELÉTRICA (CONDUÍTES, CAIXAS DE PASSAGEM E CAIXA DE DISJUNTORES).",
-  "TELHAS METÁLICAS COM EPS (SEMI-SANDUÍCHE NA COR PRETA).",
-  "MÃO DE OBRA PARA MONTAGEM DO CHALÉ E SERVIÇO DE CAMINHÃO MUNCK.",
-  "FRETE ATÉ O TERRENO."
-].join("\n");
-const DEFAULT_PROPOSAL_EXCLUDED_ITEMS=[
-  "TRANSPORTE FORA DE ESTRADA.",
-  "VIDROS.",
-  "FIAÇÃO ELÉTRICA.",
-  "PINTURA DO CHALÉ.",
-  "CALHAS."
-].join("\n");
 let lastPdfExportMode="technical";
 
 const PROPOSAL_PICTURE_GROUPS=[
@@ -237,12 +221,12 @@ function openPdfModal(){
         </div>
         <div class="field">
           <label for="m_com_included">Itens que compõem o orçamento</label>
-          <textarea class="pdf-proposal-textarea" id="m_com_included">${esc(m.propostaItens||DEFAULT_PROPOSAL_INCLUDED_ITEMS)}</textarea>
+          <textarea class="pdf-proposal-textarea" id="m_com_included" placeholder="Digite um item por linha">${esc(m.propostaItens||"")}</textarea>
           <p class="sub">Use uma linha para cada item. O texto podera ser editado antes de cada proposta.</p>
         </div>
         <div class="field">
           <label for="m_com_excluded">O que não está incluso</label>
-          <textarea class="pdf-proposal-textarea" id="m_com_excluded">${esc(m.propostaNaoIncluso||DEFAULT_PROPOSAL_EXCLUDED_ITEMS)}</textarea>
+          <textarea class="pdf-proposal-textarea" id="m_com_excluded" placeholder="Digite uma exclusão ou observação por linha">${esc(m.propostaNaoIncluso||"")}</textarea>
           <p class="sub">Use uma linha para cada exclusao ou observacao comercial.</p>
         </div>
       </section>
@@ -467,6 +451,32 @@ function showGeneratedPdf(doc,action,fileName,successMessage){
   }
 }
 
+function showPdfLoading(message="Preparando proposta..."){
+  let overlay=document.getElementById("pdfGenerationLoading");
+  if(!overlay){
+    overlay=document.createElement("div");
+    overlay.id="pdfGenerationLoading";
+    overlay.className="pdf-generation-loading";
+    overlay.setAttribute("role","status");
+    overlay.setAttribute("aria-live","polite");
+    overlay.innerHTML=`<div class="pdf-generation-loading-card"><span class="pdf-generation-spinner" aria-hidden="true"></span><strong>Gerando PDF</strong><span class="pdf-generation-loading-message"></span><small>Aguarde. Imagens maiores podem levar alguns segundos.</small></div>`;
+    document.body.appendChild(overlay);
+  }
+  overlay.querySelector(".pdf-generation-loading-message").textContent=message;
+  overlay.classList.add("show");
+  document.body.setAttribute("aria-busy","true");
+}
+function updatePdfLoading(message){
+  const target=document.querySelector("#pdfGenerationLoading .pdf-generation-loading-message");
+  if(target)target.textContent=message;
+}
+function hidePdfLoading(){
+  document.getElementById("pdfGenerationLoading")?.classList.remove("show");
+  document.body.removeAttribute("aria-busy");
+}
+function waitForPdfLoadingPaint(){
+  return new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+}
 
 function normalizeProposalLines(value,fallback){
   return String(value||fallback||"")
@@ -477,63 +487,84 @@ function normalizeProposalLines(value,fallback){
     .map(line=>line.slice(0,300));
 }
 
-function addCommercialScopePages(doc,fontFamily,includedItems,excludedItems){
+function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,images){
   const sections=[
     {title:"ITENS QUE COMPÕEM O ORÇAMENTO",items:includedItems,color:[31,51,27]},
     {title:"O QUE NÃO ESTÁ INCLUSO",items:excludedItems,color:[180,58,45]}
   ].filter(section=>section.items.length);
-  if(!sections.length)return;
-  let y=43;
-  const startPage=continued=>{
-    doc.addPage();
-    y=43;
-    doc.setFont(fontFamily,"bold");
-    doc.setFontSize(16);
-    doc.setTextColor(31,51,27);
-    doc.text(continued?"ESCOPO DA PROPOSTA - CONTINUAÇÃO":"ESCOPO DA PROPOSTA",14,y);
-    doc.setFont(fontFamily,"normal");
-    doc.setFontSize(8);
-    doc.setTextColor(105,113,103);
-    doc.text("Condições e fornecimentos considerados nesta apresentacao comercial.",14,y+7);
-    y+=18;
-  };
-  startPage(false);
-  sections.forEach((section,sectionIndex)=>{
-    if(sectionIndex&&y>238)startPage(true);
-    doc.setFillColor(...section.color);
-    doc.roundedRect(14,y,182,11,2,2,"F");
-    doc.setFont(fontFamily,"bold");
-    doc.setFontSize(9);
-    doc.setTextColor(255,255,255);
-    doc.text(section.title,19,y+7);
-    y+=17;
-    section.items.forEach(item=>{
-      const wrapped=doc.splitTextToSize(item,164);
-      const needed=Math.max(9,wrapped.length*4.3+3);
-      if(y+needed>274)startPage(true);
+  if(!sections.length&&!images.length)return;
+  doc.addPage();
+  doc.setFont(fontFamily,"bold");
+  doc.setFontSize(15);
+  doc.setTextColor(31,51,27);
+  doc.text(sections.length?"ESCOPO E REFERÊNCIAS":"REFERÊNCIAS DO PROJETO",14,43);
+  let galleryTop=55;
+  if(sections.length){
+    const columnWidth=87,scopeTop=53,scopeBottom=133;
+    sections.forEach((section,index)=>{
+      const x=index===0?14:109;
+      let y=scopeTop;
       doc.setFillColor(...section.color);
-      doc.circle(18,y+2.4,1.25,"F");
-      doc.setFont(fontFamily,"normal");
-      doc.setFontSize(8.5);
-      doc.setTextColor(58,65,56);
-      doc.text(wrapped,23,y+4);
-      y+=needed;
+      doc.roundedRect(x,y,columnWidth,10,2,2,"F");
+      doc.setFont(fontFamily,"bold");
+      doc.setFontSize(7.4);
+      doc.setTextColor(255,255,255);
+      doc.text(section.title,x+4,y+6.5);
+      y+=15;
+      let omitted=0;
+      section.items.forEach(item=>{
+        const wrapped=doc.splitTextToSize(item,columnWidth-13);
+        const needed=Math.max(6,wrapped.length*3.25+1.5);
+        if(y+needed>scopeBottom){omitted++;return;}
+        doc.setFillColor(...section.color);
+        doc.circle(x+3.7,y+1.8,0.9,"F");
+        doc.setFont(fontFamily,"normal");
+        doc.setFontSize(6.6);
+        doc.setTextColor(58,65,56);
+        doc.text(wrapped,x+7,y+3);
+        y+=needed;
+      });
+      if(omitted){
+        doc.setFont(fontFamily,"bold");
+        doc.setFontSize(6.2);
+        doc.setTextColor(...section.color);
+        doc.text(`+ ${omitted} item(ns) adicional(is)`,x+7,scopeBottom);
+      }
     });
-    y+=6;
-  });
+    galleryTop=145;
+  }
+  if(images.length){
+    doc.setFont(fontFamily,"bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(31,51,27);
+    doc.text("IMAGENS SELECIONADAS",14,galleryTop);
+    const gridTop=galleryTop+6,columns=3,gap=4;
+    const rows=Math.ceil(images.length/columns);
+    const cellWidth=(182-gap*(columns-1))/columns;
+    const cellHeight=Math.min(92,(274-gridTop-gap*(rows-1))/rows);
+    images.forEach((image,index)=>{
+      const column=index%columns,row=Math.floor(index/columns);
+      const x=14+column*(cellWidth+gap),y=gridTop+row*(cellHeight+gap);
+      addContainedProposalImage(doc,image,x,y,cellWidth,cellHeight);
+    });
+  }
 }
 
 async function generateCommercialProposal(action="save",options={}){
   const js=window.jspdf&&window.jspdf.jsPDF;
   if(!js){toastError("Gerador de PDF indisponivel.");return;}
-  toast("Gerando proposta comercial...");
+  showPdfLoading("Preparando a proposta comercial...");
   try{
+    await waitForPdfLoadingPaint();
     const requested=(options.images||[]).slice(0,PROPOSAL_MAX_IMAGES);
     const loaded=[];
-    for(const item of requested){
+    for(let index=0;index<requested.length;index++){
+      const item=requested[index];
+      updatePdfLoading(`Carregando imagem ${index+1} de ${requested.length}...`);
       try{loaded.push(await loadProposalPictureForPdf(item));}
       catch(error){console.warn(error);toastError(error.message);}
     }
+    updatePdfLoading("Montando as páginas do PDF...");
     const logo=await proposalLogoForPdf();
     const doc=new js({orientation:"portrait",unit:"mm",format:"a4"});
     let fontFamily="helvetica";
@@ -551,8 +582,8 @@ async function generateCommercialProposal(action="save",options={}){
     const area=occupiedArea();
     const investment=proposalInvestmentValue();
     const hero=loaded[0]||null;
-    const includedItems=normalizeProposalLines(meta.propostaItens,DEFAULT_PROPOSAL_INCLUDED_ITEMS);
-    const excludedItems=normalizeProposalLines(meta.propostaNaoIncluso,DEFAULT_PROPOSAL_EXCLUDED_ITEMS);
+    const includedItems=normalizeProposalLines(meta.propostaItens,"");
+    const excludedItems=normalizeProposalLines(meta.propostaNaoIncluso,"");
 
     doc.setFont(fontFamily,"bold");
     doc.setTextColor(31,51,27);
@@ -627,28 +658,7 @@ async function generateCommercialProposal(action="save",options={}){
       doc.text("Valores e condicoes comerciais sujeitos a validacao do escopo final.",14,260);
     }
 
-    addCommercialScopePages(doc,fontFamily,includedItems,excludedItems);
-
-    const gallery=loaded.slice(1);
-    for(let index=0;index<gallery.length;index+=2){
-      doc.addPage();
-      doc.setFont(fontFamily,"bold");
-      doc.setFontSize(16);
-      doc.setTextColor(31,51,27);
-      doc.text("INSPIRACOES PARA O PROJETO",14,43);
-      doc.setFont(fontFamily,"bold");
-      doc.setFontSize(8);
-      doc.setTextColor(105,113,103);
-      doc.text("Referencias visuais selecionadas para esta apresentacao.",14,50);
-      gallery.slice(index,index+2).forEach((image,position)=>{
-        const y=position===0?60:165;
-        addContainedProposalImage(doc,image,14,y,182,86);
-        doc.setFont(fontFamily,"bold");
-        doc.setFontSize(8);
-        doc.setTextColor(31,51,27);
-        doc.text(image.label.slice(0,70),14,y+94);
-      });
-    }
+    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,loaded.slice(1));
 
     const totalPages=doc.getNumberOfPages();
     for(let page=1;page<=totalPages;page++){
@@ -660,6 +670,8 @@ async function generateCommercialProposal(action="save",options={}){
   }catch(error){
     console.error("Falha ao gerar proposta comercial.",error);
     toastError(error?.message||"Não foi possível gerar a proposta comercial.");
+  }finally{
+    hidePdfLoading();
   }
 }
 document.getElementById("btnPdf").onclick=openPdfModal;
