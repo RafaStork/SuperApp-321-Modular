@@ -9553,7 +9553,9 @@ async function generatePDF(action = 'save', dimMode = 'auto', incluirOrcamento =
   toast("Gerando PDF (vetorial)…");
   try{await preloadDefaultLogoForExport()}catch(error){console.warn("Não foi possível incorporar a logo compartilhada no PDF.",error)}
   const svgStr=makePlantSheetSvgBold(buildSheetSVG(dimMode, incluirLabels));
-  const fname=(state.meta.modelo||state.name||"planta").replace(/[^\w\-]+/g,"_");
+  const fname=typeof buildPdfFileBase==="function"
+    ? buildPdfFileBase(state.meta,state.name||"Modelo de chalé")
+    : (state.meta.modelo||state.name||"planta").replace(/[^\w\-]+/g,"_");
   const js=window.jspdf&&window.jspdf.jsPDF;
 
   if(js && js.API && typeof js.API.svg==="function"){

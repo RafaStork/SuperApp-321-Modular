@@ -4,6 +4,41 @@ const PROPOSAL_PICTURES_BASE="https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.de
 const PROPOSAL_PICTURES_MANIFEST=PROPOSAL_PICTURES_BASE+"index.json";
 const PROPOSAL_MAX_IMAGES=6;
 let lastPdfExportMode="technical";
+function brazilPhoneDigits(value){
+  let digits=String(value||"").replace(/\D/g,"");
+  if(digits.length>11&&digits.startsWith("55"))digits=digits.slice(2);
+  return digits.slice(0,11);
+}
+function formatBrazilPhone(value){
+  const digits=brazilPhoneDigits(value);
+  if(!digits)return "";
+  if(digits.length<=2)return `(${digits}`;
+  const area=digits.slice(0,2),number=digits.slice(2);
+  if(number.length<=5)return `(${area}) ${number}`;
+  return `(${area}) ${number.slice(0,5)}-${number.slice(5)}`;
+}
+function wireBrazilPhoneInput(input){
+  if(!input)return;
+  input.value=formatBrazilPhone(input.value);
+  input.addEventListener("input",()=>{input.value=formatBrazilPhone(input.value);});
+}
+function hasIncompleteBrazilPhone(value){
+  const digits=brazilPhoneDigits(value);
+  return digits.length>0&&digits.length!==11;
+}
+function safePdfFilenamePart(value,fallback){
+  const cleaned=String(value||fallback||"")
+    .replace(/[<>:"/\\|?*\u0000-\u001F]/g," ")
+    .replace(/\s+/g," ").trim().replace(/[. ]+$/g,"");
+  return (cleaned||fallback||"Documento").slice(0,70);
+}
+function buildPdfFileBase(meta,defaultModel){
+  return [
+    safePdfFilenamePart(meta?.cliente,"Cliente"),
+    safePdfFilenamePart(String(meta?.local||"").split(/\s*(?:\/|,|\||\s-\s)\s*/)[0],"Cidade"),
+    safePdfFilenamePart(meta?.modelo||defaultModel,"Modelo de chalé")
+  ].join(" - ");
+}
 
 const PROPOSAL_PICTURE_GROUPS=[
   ["01A",["R1","R2","R3","V2 R1"]],["01C",["R1","R2","R3","V2 R1"]],
@@ -247,7 +282,7 @@ function openPdfModal(){
 
       <div class="two">
         <div class="field"><label>Nome do cliente</label><input id="m_cli" value="${esc(m.cliente||"")}" placeholder="ex: Joao Silva"></div>
-        <div class="field"><label>Telefone do cliente</label><input id="m_cli_tel" value="${esc(m.telefoneCliente||"")}" placeholder="ex: (48) 99999-9999" inputmode="tel"></div>
+        <div class="field"><label>Telefone do cliente</label><input id="m_cli_tel" value="${esc(formatBrazilPhone(m.telefoneCliente||""))}" placeholder="(48) 99999-9999" inputmode="tel" maxlength="15" autocomplete="tel"></div>
       </div>
       <div class="two">
         <div class="field"><label>Local da obra</label><input id="m_loc" value="${esc(m.local||"")}" placeholder="ex: Cidade/UF"></div>
@@ -291,7 +326,7 @@ function openPdfModal(){
         </div>
         <div class="two">
           <div class="field"><label>Nome do vendedor</label><input id="m_vendedor" value="${esc(m.vendedor||"")}" placeholder="Nome do responsavel comercial"></div>
-          <div class="field"><label>Telefone do vendedor</label><input id="m_vendedor_tel" value="${esc(m.telefoneVendedor||"")}" placeholder="ex: (48) 99999-9999" inputmode="tel"></div>
+          <div class="field"><label>Telefone do vendedor</label><input id="m_vendedor_tel" value="${esc(formatBrazilPhone(m.telefoneVendedor||""))}" placeholder="(48) 99999-9999" inputmode="tel" maxlength="15" autocomplete="tel"></div>
         </div>
         <div class="field">
           <label>Validade da proposta</label><input id="m_validade" value="${esc(m.validadeProposta||"")}" placeholder="ex: 15 dias" maxlength="80">
@@ -354,6 +389,8 @@ function openPdfModal(){
   };
   document.getElementById("m_pdf_technical").onclick=()=>setExportMode("technical");
   document.getElementById("m_pdf_commercial").onclick=()=>setExportMode("commercial");
+  wireBrazilPhoneInput(document.getElementById("m_cli_tel"));
+  wireBrazilPhoneInput(document.getElementById("m_vendedor_tel"));
   const localUploadInput=document.getElementById("m_com_local_files");
   document.getElementById("m_com_local_upload").onclick=()=>localUploadInput.click();
   localUploadInput.onchange=()=>{addLocalProposalPictures(localUploadInput.files);localUploadInput.value="";};
@@ -362,13 +399,13 @@ function openPdfModal(){
     state.meta={
       ...state.meta,
       cliente:document.getElementById("m_cli").value.trim(),
-      telefoneCliente:document.getElementById("m_cli_tel").value.trim(),
+      telefoneCliente:formatBrazilPhone(document.getElementById("m_cli_tel").value),
       local:document.getElementById("m_loc").value.trim(),
       projetadoPor:document.getElementById("m_proj").value.trim()||"321 MODULAR",
       modelo:document.getElementById("m_mod").value.trim()||state.name||"Planta sem titulo",
       revisao:document.getElementById("m_rev").value.trim()||"01",
       vendedor:document.getElementById("m_vendedor").value.trim(),
-      telefoneVendedor:document.getElementById("m_vendedor_tel").value.trim(),
+      telefoneVendedor:formatBrazilPhone(document.getElementById("m_vendedor_tel").value),
       validadeProposta:document.getElementById("m_validade").value.trim(),
       propostaItens:document.getElementById("m_com_included").value.trim(),
       propostaNaoIncluso:document.getElementById("m_com_excluded").value.trim(),
@@ -378,6 +415,10 @@ function openPdfModal(){
   };
   const runExport=action=>{
     updateMeta();
+    if(hasIncompleteBrazilPhone(state.meta.telefoneCliente)||(exportMode==="commercial"&&hasIncompleteBrazilPhone(state.meta.telefoneVendedor))){
+      toastError("Informe o telefone completo no formato (xx) xxxxx-xxxx.");
+      return;
+    }
     window.__plantaPreviewReturn=action==="preview"?()=>openPdfModal():null;
     if(exportMode==="technical"){
       const inclOrc=document.getElementById("m_incluir_orc").checked;
@@ -541,7 +582,7 @@ function drawCommercialPdfChrome(doc,logo,page,total,fontFamily){
   doc.setFont(fontFamily,"normal");
   doc.setFontSize(7.5);
   doc.setTextColor(105,113,103);
-  doc.text("321 Modular | Solucoes construtivas inteligentes",14,287);
+  doc.text("321 Modular | Seu chalé montado em horas",14,287);
   doc.text(`${page} / ${total}`,196,287,{align:"right"});
 }
 
@@ -694,10 +735,10 @@ async function generateCommercialProposal(action="save",options={}){
     const meta=state.meta||{};
     const model=meta.modelo||state.name||"Projeto modular";
     const client=meta.cliente||"Cliente";
-    const clientPhone=meta.telefoneCliente||"Não informado";
+    const clientPhone=formatBrazilPhone(meta.telefoneCliente)||"Não informado";
     const location=meta.local||"Local a definir";
     const seller=meta.vendedor||"Não informado";
-    const sellerPhone=meta.telefoneVendedor||"Não informado";
+    const sellerPhone=formatBrazilPhone(meta.telefoneVendedor)||"Não informado";
     const validity=meta.validadeProposta||"Não informada";
     const franchise=pricingData?.franquia||"Não informada";
     const area=occupiedArea();
@@ -771,7 +812,7 @@ async function generateCommercialProposal(action="save",options={}){
       doc.setPage(page);
       drawCommercialPdfChrome(doc,logo,page,totalPages,fontFamily);
     }
-    const fileBase=(model||"proposta").replace(/[^\w-]+/g,"_");
+    const fileBase=buildPdfFileBase(meta,model);
     showGeneratedPdf(doc,action,`Proposta_${fileBase}.pdf`,"Proposta comercial gerada.");
   }catch(error){
     console.error("Falha ao gerar proposta comercial.",error);
