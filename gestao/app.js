@@ -49,9 +49,33 @@ function ativarRedimensionamentoColunas(table, scope){
   if (headers.length < 2) return;
   const storageKey = `gestao_colunas_v1_${currentUser.id}_${scope}`;
   const clamp = (value, min, max)=>Math.min(max, Math.max(min, Math.round(Number(value)||min)));
-  // O tamanho que o navegador calculou antes de ativar o recurso é o mínimo.
-  // Isso preserva exatamente a largura original de cada coluna.
-  const minimums = headers.map(th=>Math.max(1, Math.ceil(th.getBoundingClientRect().width)));
+  // Preserva a largura original, mas amplia o mínimo quando a célula contém
+  // controles que não podem ser cortados (datas, seletores, chips e ações).
+  const baselineMinimums = headers.map(th=>Math.max(1, Math.ceil(th.getBoundingClientRect().width)));
+  const criticalSelector = '.cell-date,.cell-number,.cell-input,.cell-select,.sel-dd-btn,.sel-simple-btn,.msel-btn,.chip,.fill,.icon-btn,.row-actions button';
+  function measureContentMinimum(th,index){
+    const headerInner = th.querySelector('.th-inner');
+    const thStyle = getComputedStyle(th);
+    const horizontalPadding = (parseFloat(thStyle.paddingLeft)||0) + (parseFloat(thStyle.paddingRight)||0);
+    let required = headerInner ? headerInner.scrollWidth + horizontalPadding : 1;
+    Array.from(table.tBodies).forEach(tbody=>{
+      Array.from(tbody.rows).forEach(row=>{
+        const cell = row.cells[index];
+        if (!cell || cell.colSpan>1) return;
+        const cellStyle = getComputedStyle(cell);
+        const cellPadding = (parseFloat(cellStyle.paddingLeft)||0) + (parseFloat(cellStyle.paddingRight)||0);
+        cell.querySelectorAll(criticalSelector).forEach(element=>{
+          const rectWidth = element.getBoundingClientRect().width;
+          required = Math.max(required, rectWidth, element.scrollWidth + cellPadding);
+        });
+        if (/\b\d{2}\/\d{2}\/\d{4}\b/.test(cell.textContent||'')){
+          required = Math.max(required, cell.scrollWidth);
+        }
+      });
+    });
+    return Math.ceil(Math.min(640, required));
+  }
+  const minimums = headers.map((th,index)=>Math.max(baselineMinimums[index], measureContentMinimum(th,index)));
   const maximums = minimums.map(minimum=>Math.max(640, minimum));
   let widths = minimums.slice();
 
@@ -86,10 +110,11 @@ function ativarRedimensionamentoColunas(table, scope){
   table.classList.add('resizable-table');
   applyWidths();
 
-  headers.slice(0,-1).forEach((th,index)=>{
+  headers.forEach((th,index)=>{
     const handle = document.createElement('button');
     handle.type = 'button';
     handle.className = 'column-resize-handle';
+    if (index===headers.length-1) handle.classList.add('is-last');
     handle.setAttribute('aria-label', `Redimensionar coluna ${index+1}`);
     handle.title = 'Arraste para ajustar a largura da coluna';
     th.appendChild(handle);
@@ -98,6 +123,10 @@ function ativarRedimensionamentoColunas(table, scope){
       if (event.button!==0) return;
       event.preventDefault();
       event.stopPropagation();
+      minimums[index] = Math.max(baselineMinimums[index], measureContentMinimum(th,index));
+      maximums[index] = Math.max(640, minimums[index]);
+      widths[index] = Math.max(widths[index], minimums[index]);
+      applyWidths();
       const startX = event.clientX;
       const startWidth = widths[index];
       handle.setPointerCapture?.(event.pointerId);
@@ -126,6 +155,21 @@ function ativarRedimensionamentoColunas(table, scope){
       saveWidths();
     });
   });
+
+  const tbody = table.tBodies[0];
+  if (tbody && window.MutationObserver){
+    const observer = new MutationObserver(()=>{
+      let changed = false;
+      headers.forEach((th,index)=>{
+        const nextMinimum = Math.max(baselineMinimums[index], measureContentMinimum(th,index));
+        minimums[index] = nextMinimum;
+        maximums[index] = Math.max(640, nextMinimum);
+        if (widths[index] < nextMinimum){ widths[index] = nextMinimum; changed = true; }
+      });
+      if (changed){ applyWidths(); saveWidths(); }
+    });
+    observer.observe(tbody,{childList:true,subtree:true,characterData:true});
+  }
 }
 // Confirmação dentro do app (substitui o confirm() nativo do navegador).
 // Uso: if (!(await confirmarAcao('Excluir este item?'))) return;
@@ -1862,7 +1906,6 @@ async function viewTabela(tableName){
       <tbody id="tbody"></tbody>
     </table></div>
   `;
-  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), tableName);
 
   function valorExibivel(r, f){
     if (f.edit==='multiselect') return (profilesCache.filter(p=>(r.__resp_ids||[]).includes(p.id)).map(p=>p.nome).join(', '));
@@ -1979,6 +2022,7 @@ async function viewTabela(tableName){
 
   aplicarFiltrosAtual = aplicarFiltrosOrdenacao;
   aplicarFiltrosOrdenacao();
+  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), tableName);
   atualizarIndicadoresOrdenacao();
   atualizarIndicadoresFiltro();
 
@@ -2914,10 +2958,10 @@ async function viewMinhasTarefas(){
       <tbody id="tbody"></tbody>
     </table></div>
   `;
-  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), 'minhas-tarefas');
   ligarCabecalho();
   aplicarFiltrosAtual = aplicarFiltrosOrdenacao;
   aplicarFiltrosOrdenacao();
+  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), 'minhas-tarefas');
   atualizarIndicadoresOrdenacao();
   atualizarIndicadoresFiltro();
 
@@ -3670,7 +3714,6 @@ async function viewAuditoria(){
       </div></th>`).join('')}<th>Alteração</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table></div>`;
-  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), 'auditoria');
 
   function render(rows){
     const tbody = document.getElementById('tbody');
@@ -3725,6 +3768,7 @@ async function viewAuditoria(){
   }
 
   aplicarFiltrosOrdenacao();
+  ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), 'auditoria');
   atualizarIndicadoresOrdenacao();
   atualizarIndicadoresFiltro();
 
