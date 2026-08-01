@@ -77,6 +77,42 @@ function proposalPictureModel(item){
   if(item.local)return "IMAGENS LOCAIS";
   return String(item.model||item.label?.match(/Modelo\s+([0-9]+[A-Z]?)/i)?.[1]||"OUTROS").toUpperCase();
 }
+const proposalGroupAnimations=new WeakMap();
+function wireProposalImageGroupAnimations(container){
+  container.querySelectorAll(".pdf-image-group>summary").forEach(summary=>{
+    summary.addEventListener("click",event=>{
+      const group=summary.parentElement;
+      const content=group.querySelector(":scope>.pdf-image-grid");
+      if(!content)return;
+      event.preventDefault();
+      if(proposalGroupAnimations.has(group))return;
+      if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+        group.open=!group.open;
+        return;
+      }
+      const opening=!group.open;
+      if(opening)group.open=true;
+      else group.classList.add("closing");
+      const fullHeight=content.scrollHeight;
+      const from={height:opening?"0px":`${fullHeight}px`,opacity:opening?0:1,transform:opening?"translateY(-6px)":"translateY(0)"};
+      const to={height:opening?`${fullHeight}px`:"0px",opacity:opening?1:0,transform:opening?"translateY(0)":"translateY(-6px)"};
+      content.style.overflow="hidden";
+      const animation=content.animate([from,to],{duration:260,easing:"cubic-bezier(.22,.61,.36,1)",fill:"both"});
+      proposalGroupAnimations.set(group,animation);
+      const finish=()=>{
+        proposalGroupAnimations.delete(group);
+        if(!opening)group.open=false;
+        group.classList.remove("closing");
+        content.style.removeProperty("overflow");
+        content.style.removeProperty("height");
+        content.style.removeProperty("opacity");
+        content.style.removeProperty("transform");
+      };
+      animation.onfinish=finish;
+      animation.oncancel=finish;
+    });
+  });
+}
 function renderProposalPictureCatalog(message){
   const grid=document.getElementById("m_com_images");
   const status=document.getElementById("m_com_image_status");
@@ -100,6 +136,7 @@ function renderProposalPictureCatalog(message){
           <span>${esc(item.label)}</span>
         </label>`).join("")}</div>
     </details>`).join("");
+  wireProposalImageGroupAnimations(grid);
   grid.onchange=event=>{
     const checkbox=event.target.closest("[data-proposal-picture]");
     if(!checkbox)return;
