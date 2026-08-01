@@ -39,10 +39,17 @@ function normalizeProposalPictureUrl(raw){
   url.hash="";
   return url.href;
 }
-proposalPictureCatalog=PROPOSAL_PICTURE_GROUPS.flatMap(([model,variants])=>variants.map(variant=>{
-  const file="Modelo "+model+" "+variant+".png";
-  return {url:normalizeProposalPictureUrl(file),label:file.replace(/\.png$/i,"")};
-}));
+function buildBundledProposalPictureCatalog(){
+  const catalog=[];
+  PROPOSAL_PICTURE_GROUPS.forEach(group=>{
+    const model=group[0],variants=group[1];
+    variants.forEach(variant=>{
+      const file="Modelo "+model+" "+variant+".png";
+      catalog.push({url:normalizeProposalPictureUrl(file),label:file.replace(/\.png$/i,"")});
+    });
+  });
+  return catalog;
+}
 
 
 let defaultLogoForExport=DEFAULT_LOGO;
@@ -8578,6 +8585,7 @@ function renderProposalPictureCatalog(message){
 }
 
 async function loadProposalPictureCatalog(){
+  if(!proposalPictureCatalog.length)proposalPictureCatalog=buildBundledProposalPictureCatalog();
   if(proposalPictureCatalogLoaded||proposalPictureCatalogLoading){
     renderProposalPictureCatalog(proposalPictureCatalogLoading?"Carregando imagens do catalogo...":"");
     return;
