@@ -17,7 +17,8 @@ const routes = [
   '/planta/index.html',
   '/financeiro/index.html',
   '/playbook/index.html',
-  '/checklist/index.html',
+  '/simulacao/index.html',
+  'https://checklist.321modular.com.br/',
   '/shared/runtime-config.js',
 ];
 const failures = [];
