@@ -42,7 +42,7 @@ function buildBundledProposalPictureCatalog(){
     const model=group[0],variants=group[1];
     variants.forEach(variant=>{
       const file="Modelo "+model+" "+variant+".png";
-      catalog.push({url:normalizeProposalPictureUrl(file),label:file.replace(/\.png$/i,"")});
+      catalog.push({url:normalizeProposalPictureUrl(file),label:file.replace(/\.png$/i,""),model});
     });
   });
   return catalog;
@@ -66,28 +66,40 @@ function parseProposalPictureManifest(payload){
       if(!raw)return;
       const url=normalizeProposalPictureUrl(raw);
       const label=String(typeof entry==="object"&&(entry.title||entry.name)||proposalPictureLabel(url)).slice(0,100);
-      unique.set(url,{url,label});
+      const model=String(typeof entry==="object"&&entry.model||label.match(/Modelo\s+([0-9]+[A-Z]?)/i)?.[1]||"Outros").toUpperCase();
+      unique.set(url,{url,label,model});
     }catch(_error){}
   });
   return [...unique.values()];
 }
 
+function proposalPictureModel(item){
+  if(item.local)return "IMAGENS LOCAIS";
+  return String(item.model||item.label?.match(/Modelo\s+([0-9]+[A-Z]?)/i)?.[1]||"OUTROS").toUpperCase();
+}
 function renderProposalPictureCatalog(message){
   const grid=document.getElementById("m_com_images");
   const status=document.getElementById("m_com_image_status");
   if(!grid||!status)return;
   const all=new Map(proposalPictureCatalog.map(item=>[item.url,item]));
   proposalSelectedPictures.forEach((item,url)=>all.set(url,item));
-  const items=[...all.values()];
-  status.textContent=message||(items.length
-    ? `Selecione ate ${PROPOSAL_MAX_IMAGES} imagens. ${proposalSelectedPictures.size} selecionada(s).`
-    : "Nenhuma imagem listada. Adicione URLs publicas da pasta Pictures abaixo.");
-  grid.innerHTML=items.map(item=>`
-    <label class="pdf-image-choice" title="${esc(item.label)}">
-      <input type="checkbox" data-proposal-picture="${esc(item.url)}" ${proposalSelectedPictures.has(item.url)?"checked":""}>
-      <img src="${esc(item.url)}" alt="${esc(item.label)}" loading="lazy" referrerpolicy="no-referrer">
-      <span>${esc(item.label)}</span>
-    </label>`).join("");
+  const groups=new Map();
+  [...all.values()].forEach(item=>{
+    const model=proposalPictureModel(item);
+    if(!groups.has(model))groups.set(model,[]);
+    groups.get(model).push(item);
+  });
+  status.textContent=message||`Selecione até ${PROPOSAL_MAX_IMAGES} imagens. ${proposalSelectedPictures.size} selecionada(s).`;
+  grid.innerHTML=[...groups.entries()].map(([model,items])=>`
+    <details class="pdf-image-group" ${model==="IMAGENS LOCAIS"?"open":""}>
+      <summary><span>${esc(model==="IMAGENS LOCAIS"?model:`MODELO ${model}`)}</span><small>${items.length} imagem(ns)</small></summary>
+      <div class="pdf-image-grid">${items.map(item=>`
+        <label class="pdf-image-choice" title="${esc(item.label)}">
+          <input type="checkbox" data-proposal-picture="${esc(item.url)}" ${proposalSelectedPictures.has(item.url)?"checked":""}>
+          <img src="${esc(item.url)}" alt="${esc(item.label)}" loading="lazy" referrerpolicy="no-referrer">
+          <span>${esc(item.label)}</span>
+        </label>`).join("")}</div>
+    </details>`).join("");
   grid.onchange=event=>{
     const checkbox=event.target.closest("[data-proposal-picture]");
     if(!checkbox)return;
@@ -96,16 +108,36 @@ function renderProposalPictureCatalog(message){
     if(checkbox.checked){
       if(proposalSelectedPictures.size>=PROPOSAL_MAX_IMAGES){
         checkbox.checked=false;
-        toastError(`Escolha no maximo ${PROPOSAL_MAX_IMAGES} imagens.`);
+        toastError(`Escolha no máximo ${PROPOSAL_MAX_IMAGES} imagens.`);
         return;
       }
       proposalSelectedPictures.set(url,item||{url,label:proposalPictureLabel(url)});
     }else{
+      const removed=proposalSelectedPictures.get(url);
       proposalSelectedPictures.delete(url);
+      if(removed?.local&&String(removed.url).startsWith("blob:")){
+        URL.revokeObjectURL(removed.url);
+        renderProposalPictureCatalog();
+        return;
+      }
     }
-    status.textContent=`Selecione ate ${PROPOSAL_MAX_IMAGES} imagens. ${proposalSelectedPictures.size} selecionada(s).`;
+    status.textContent=`Selecione até ${PROPOSAL_MAX_IMAGES} imagens. ${proposalSelectedPictures.size} selecionada(s).`;
   };
 }
+function addLocalProposalPictures(fileList){
+  const files=[...fileList];
+  for(const file of files){
+    if(proposalSelectedPictures.size>=PROPOSAL_MAX_IMAGES){toastError(`O limite é de ${PROPOSAL_MAX_IMAGES} imagens.`);break;}
+    if(!/^image\/(?:png|jpeg|webp)$/i.test(file.type)){toastError(`${file.name}: formato não permitido.`);continue;}
+    if(file.size>20*1024*1024){toastError(`${file.name}: a imagem excede 20 MB.`);continue;}
+    const url=URL.createObjectURL(file);
+    proposalSelectedPictures.set(url,{url,label:String(file.name||"Imagem local").slice(0,100),model:"IMAGENS LOCAIS",local:true});
+  }
+  renderProposalPictureCatalog();
+}
+window.addEventListener("beforeunload",()=>{
+  proposalSelectedPictures.forEach(item=>{if(item.local&&String(item.url).startsWith("blob:"))URL.revokeObjectURL(item.url);});
+});
 
 async function loadProposalPictureCatalog(){
   if(!proposalPictureCatalog.length)proposalPictureCatalog=buildBundledProposalPictureCatalog();
@@ -210,12 +242,21 @@ function openPdfModal(){
           <div class="field"><label>Nome do vendedor</label><input id="m_vendedor" value="${esc(m.vendedor||"")}" placeholder="Nome do responsavel comercial"></div>
           <div class="field"><label>Telefone do vendedor</label><input id="m_vendedor_tel" value="${esc(m.telefoneVendedor||"")}" placeholder="ex: (48) 99999-9999" inputmode="tel"></div>
         </div>
+        <div class="field">
+          <label>Validade da proposta</label><input id="m_validade" value="${esc(m.validadeProposta||"")}" placeholder="ex: 15 dias" maxlength="80">
+          <p class="sub">Informe por quanto tempo as condições comerciais permanecerão válidas.</p>
+        </div>
         <div class="pdf-option-card">
           <label class="pdf-check"><input type="checkbox" id="m_com_incluir_valor" checked>Apresentar investimento estimado</label>
           <p class="sub">Exibe o valor calculado no Quantitativo, quando estiver disponivel.</p>
         </div>
         <div class="field">
           <label>Imagens da proposta</label>
+          <div class="pdf-local-upload">
+            <input type="file" id="m_com_local_files" accept="image/png,image/jpeg,image/webp" multiple hidden>
+            <button type="button" class="tbtn" id="m_com_local_upload">Enviar imagem deste dispositivo</button>
+            <small>Somente nesta sessão. Nada é enviado ao banco de dados.</small>
+          </div>
           <p class="pdf-image-status" id="m_com_image_status">Abra a proposta comercial para carregar o catalogo.</p>
           <div class="pdf-image-grid" id="m_com_images"></div>
         </div>
@@ -262,6 +303,9 @@ function openPdfModal(){
   };
   document.getElementById("m_pdf_technical").onclick=()=>setExportMode("technical");
   document.getElementById("m_pdf_commercial").onclick=()=>setExportMode("commercial");
+  const localUploadInput=document.getElementById("m_com_local_files");
+  document.getElementById("m_com_local_upload").onclick=()=>localUploadInput.click();
+  localUploadInput.onchange=()=>{addLocalProposalPictures(localUploadInput.files);localUploadInput.value="";};
 
   const updateMeta=()=>{
     state.meta={
@@ -274,6 +318,7 @@ function openPdfModal(){
       revisao:document.getElementById("m_rev").value.trim()||"01",
       vendedor:document.getElementById("m_vendedor").value.trim(),
       telefoneVendedor:document.getElementById("m_vendedor_tel").value.trim(),
+      validadeProposta:document.getElementById("m_validade").value.trim(),
       propostaItens:document.getElementById("m_com_included").value.trim(),
       propostaNaoIncluso:document.getElementById("m_com_excluded").value.trim(),
       logo:DEFAULT_LOGO
@@ -329,14 +374,27 @@ function rasterizeProposalImageSource(source,maxDimension=1800,options={}){
     image.referrerPolicy="no-referrer";
     image.onload=()=>{
       try{
-        const scale=Math.min(1,maxDimension/Math.max(image.naturalWidth||image.width,image.naturalHeight||image.height));
+        const sourceWidth=image.naturalWidth||image.width;
+        const sourceHeight=image.naturalHeight||image.height;
+        let sx=0,sy=0,sourceCropWidth=sourceWidth,sourceCropHeight=sourceHeight;
+        if(options.aspectRatio){
+          const sourceRatio=sourceWidth/sourceHeight;
+          if(sourceRatio>options.aspectRatio){
+            sourceCropWidth=sourceHeight*options.aspectRatio;
+            sx=(sourceWidth-sourceCropWidth)/2;
+          }else{
+            sourceCropHeight=sourceWidth/options.aspectRatio;
+            sy=(sourceHeight-sourceCropHeight)/2;
+          }
+        }
+        const scale=Math.min(1,maxDimension/Math.max(sourceCropWidth,sourceCropHeight));
         const canvas=document.createElement("canvas");
-        canvas.width=Math.max(1,Math.round((image.naturalWidth||image.width)*scale));
-        canvas.height=Math.max(1,Math.round((image.naturalHeight||image.height)*scale));
+        canvas.width=Math.max(1,Math.round(sourceCropWidth*scale));
+        canvas.height=Math.max(1,Math.round(sourceCropHeight*scale));
         const context=canvas.getContext("2d",{alpha:false});
         context.fillStyle="#ffffff";
         context.fillRect(0,0,canvas.width,canvas.height);
-        context.drawImage(image,0,0,canvas.width,canvas.height);
+        context.drawImage(image,sx,sy,sourceCropWidth,sourceCropHeight,0,0,canvas.width,canvas.height);
         finish(resolve,{dataUrl:canvas.toDataURL("image/jpeg",0.88),width:canvas.width,height:canvas.height});
       }catch(error){finish(reject,error);}
     };
@@ -346,6 +404,11 @@ function rasterizeProposalImageSource(source,maxDimension=1800,options={}){
 }
 
 async function loadProposalPictureForPdf(item){
+  if(item?.local){
+    const label=String(item.label||"Imagem local").slice(0,100);
+    const raster=await rasterizeProposalImageSource(item.url,1800,{timeoutMs:45000,aspectRatio:16/9});
+    return {...raster,label,url:item.url};
+  }
   const url=normalizeProposalPictureUrl(item.url);
   const label=String(item.label||proposalPictureLabel(url)).slice(0,100);
   const controller=new AbortController();
@@ -364,7 +427,7 @@ async function loadProposalPictureForPdf(item){
       if(!/^image\/(?:png|jpeg|webp)$/i.test(blob.type))throw new Error(`Formato inválido em ${label}.`);
       const objectUrl=URL.createObjectURL(blob);
       try{
-        const raster=await rasterizeProposalImageSource(objectUrl,1800,{timeoutMs:45000});
+        const raster=await rasterizeProposalImageSource(objectUrl,1800,{timeoutMs:45000,aspectRatio:16/9});
         return {...raster,label,url};
       }finally{
         URL.revokeObjectURL(objectUrl);
@@ -373,7 +436,7 @@ async function loadProposalPictureForPdf(item){
       if(/excede 20 MB|Formato inválido|HTTP 4\d\d/.test(String(error.message||"")))throw error;
       console.warn("Fetch da imagem falhou; tentando carregamento CORS direto.",error);
       try{
-        const raster=await rasterizeProposalImageSource(url,1800,{crossOrigin:true,timeoutMs:45000});
+        const raster=await rasterizeProposalImageSource(url,1800,{crossOrigin:true,timeoutMs:45000,aspectRatio:16/9});
         return {...raster,label,url};
       }catch(directError){
         console.warn("Carregamento direto da imagem falhou.",directError);
@@ -405,6 +468,11 @@ function addContainedProposalImage(doc,image,x,y,width,height){
   doc.addImage(image.dataUrl,"JPEG",x+(width-drawW)/2,y+(height-drawH)/2,drawW,drawH,undefined,"FAST");
 }
 
+function addProposalImage16x9(doc,image,x,y,width){
+  const height=width*9/16;
+  addContainedProposalImage(doc,image,x,y,width,height);
+  return height;
+}
 function drawCommercialPdfChrome(doc,logo,page,total,fontFamily){
   doc.setFillColor(31,51,27);
   doc.rect(0,0,210,7,"F");
@@ -451,7 +519,7 @@ function showGeneratedPdf(doc,action,fileName,successMessage){
   }
 }
 
-function showPdfLoading(message="Preparando proposta..."){
+function showPdfLoading(message="Preparando proposta...",title="Gerando PDF"){
   let overlay=document.getElementById("pdfGenerationLoading");
   if(!overlay){
     overlay=document.createElement("div");
@@ -459,10 +527,12 @@ function showPdfLoading(message="Preparando proposta..."){
     overlay.className="pdf-generation-loading";
     overlay.setAttribute("role","status");
     overlay.setAttribute("aria-live","polite");
-    overlay.innerHTML=`<div class="pdf-generation-loading-card"><span class="pdf-generation-spinner" aria-hidden="true"></span><strong>Gerando PDF</strong><span class="pdf-generation-loading-message"></span><small>Aguarde. Imagens maiores podem levar alguns segundos.</small></div>`;
+    overlay.innerHTML=`<div class="pdf-generation-loading-card"><span class="pdf-generation-spinner" aria-hidden="true"></span><strong class="pdf-generation-loading-title"></strong><span class="pdf-generation-loading-message"></span><small class="pdf-generation-loading-detail"></small></div>`;
     document.body.appendChild(overlay);
   }
+  overlay.querySelector(".pdf-generation-loading-title").textContent=title;
   overlay.querySelector(".pdf-generation-loading-message").textContent=message;
+  overlay.querySelector(".pdf-generation-loading-detail").textContent=title==="Carregando 3D"?"Aguarde enquanto modelos e texturas são preparados.":"Aguarde. Imagens maiores podem levar alguns segundos.";
   overlay.classList.add("show");
   document.body.setAttribute("aria-busy","true");
 }
@@ -539,13 +609,12 @@ function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,ima
     doc.setTextColor(31,51,27);
     doc.text("IMAGENS SELECIONADAS",14,galleryTop);
     const gridTop=galleryTop+6,columns=3,gap=4;
-    const rows=Math.ceil(images.length/columns);
     const cellWidth=(182-gap*(columns-1))/columns;
-    const cellHeight=Math.min(92,(274-gridTop-gap*(rows-1))/rows);
+    const cellHeight=cellWidth*9/16;
     images.forEach((image,index)=>{
       const column=index%columns,row=Math.floor(index/columns);
       const x=14+column*(cellWidth+gap),y=gridTop+row*(cellHeight+gap);
-      addContainedProposalImage(doc,image,x,y,cellWidth,cellHeight);
+      addProposalImage16x9(doc,image,x,y,cellWidth);
     });
   }
 }
@@ -578,10 +647,10 @@ async function generateCommercialProposal(action="save",options={}){
     const location=meta.local||"Local a definir";
     const seller=meta.vendedor||"Não informado";
     const sellerPhone=meta.telefoneVendedor||"Não informado";
+    const validity=meta.validadeProposta||"Não informada";
     const franchise=pricingData?.franquia||"Não informada";
     const area=occupiedArea();
     const investment=proposalInvestmentValue();
-    const hero=loaded[0]||null;
     const includedItems=normalizeProposalLines(meta.propostaItens,"");
     const excludedItems=normalizeProposalLines(meta.propostaNaoIncluso,"");
 
@@ -600,21 +669,6 @@ async function generateCommercialProposal(action="save",options={}){
     doc.setTextColor(31,51,27);
     doc.text(`${model} | ${location} | ${area.toLocaleString("pt-BR",{maximumFractionDigits:2})} m2`,14,68);
 
-    if(hero){
-      addContainedProposalImage(doc,hero,14,72,182,78);
-    }else{
-      doc.setFillColor(31,51,27);
-      doc.roundedRect(14,72,182,78,4,4,"F");
-      doc.setFillColor(244,111,24);
-      doc.circle(169,91,22,"F");
-      doc.setFont(fontFamily,"bold");
-      doc.setFontSize(21);
-      doc.setTextColor(255,255,255);
-      doc.text(model.slice(0,36),24,108);
-      doc.setFont(fontFamily,"normal");
-      doc.setFontSize(10);
-      doc.text("Engenharia modular sob medida",24,120);
-    }
 
     drawCommercialBenefit(doc,fontFamily,14,"AGILIDADE","Processo industrializado e montagem planejada.");
     drawCommercialBenefit(doc,fontFamily,77,"PREVISIBILIDADE","Escopo claro para decisoes mais seguras.");
@@ -623,7 +677,7 @@ async function generateCommercialProposal(action="save",options={}){
     doc.setFont(fontFamily,"bold");
     doc.setFontSize(9);
     doc.setTextColor(31,51,27);
-    doc.text("CONTATOS DA PROPOSTA",14,207);
+    doc.text("DADOS DA PROPOSTA",14,80);
 
     const drawContact=(x,y,label,value,width)=>{
       doc.setFont(fontFamily,"bold");
@@ -635,11 +689,12 @@ async function generateCommercialProposal(action="save",options={}){
       doc.setTextColor(31,51,27);
       doc.text(doc.splitTextToSize(String(value||"-"),width),x,y+5);
     };
-    drawContact(14,215,"CLIENTE",client,80);
-    drawContact(14,227,"TELEFONE DO CLIENTE",clientPhone,80);
-    drawContact(105,215,"FRANQUIA",franchise,88);
-    drawContact(105,227,"VENDEDOR",seller,88);
-    drawContact(105,239,"TELEFONE DO VENDEDOR",sellerPhone,88);
+    drawContact(14,89,"CLIENTE",client,80);
+    drawContact(14,102,"TELEFONE DO CLIENTE",clientPhone,80);
+    drawContact(14,115,"VALIDADE",validity,80);
+    drawContact(105,89,"FRANQUIA",franchise,88);
+    drawContact(105,102,"VENDEDOR",seller,88);
+    drawContact(105,115,"TELEFONE DO VENDEDOR",sellerPhone,88);
 
     if(options.includeInvestment&&investment>0){
       doc.setFillColor(31,51,27);
@@ -658,7 +713,7 @@ async function generateCommercialProposal(action="save",options={}){
       doc.text("Valores e condicoes comerciais sujeitos a validacao do escopo final.",14,260);
     }
 
-    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,loaded.slice(1));
+    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,loaded);
 
     const totalPages=doc.getNumberOfPages();
     for(let page=1;page<=totalPages;page++){

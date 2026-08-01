@@ -427,11 +427,21 @@
   .pdf-check input{width:auto!important;margin:2px 0 0;accent-color:var(--accent)}
   .pdf-option-card .sub{margin:6px 0 0 24px}
   .pdf-image-status{font-size:11.5px;color:var(--ink-faint);margin:0 0 10px;line-height:1.5}
+  .pdf-local-upload{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 10px;padding:10px;border:1px dashed var(--line);border-radius:var(--r-sm);background:var(--paper)}
+  .pdf-local-upload small{color:var(--ink-faint);font-size:10.5px;line-height:1.4}
+  #m_com_images.pdf-image-grid{display:block;margin-bottom:10px}
+  .pdf-image-group{overflow:hidden;margin-bottom:9px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper)}
+  .pdf-image-group>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;cursor:pointer;list-style:none;color:var(--ink);font-size:11px;font-weight:800;letter-spacing:.04em;background:var(--surface)}
+  .pdf-image-group>summary::-webkit-details-marker{display:none}
+  .pdf-image-group>summary::after{content:"▸";color:var(--accent);transition:transform .18s var(--ease)}
+  .pdf-image-group[open]>summary::after{transform:rotate(90deg)}
+  .pdf-image-group>summary small{margin-left:auto;color:var(--ink-faint);font-size:10px;font-weight:700}
+  .pdf-image-group>.pdf-image-grid{padding:10px;margin:0;border-top:1px solid var(--line)}
   .pdf-image-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:10px}
   .pdf-image-choice{position:relative;display:block;border:1.5px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:var(--surface);cursor:pointer;min-width:0}
   .pdf-image-choice:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 18%,transparent)}
   .pdf-image-choice input{position:absolute;top:8px;right:8px;width:17px!important;height:17px;z-index:1;accent-color:var(--accent)}
-  .pdf-image-choice img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--paper)}
+  .pdf-image-choice img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--paper)}
   .pdf-image-choice span{display:block;padding:7px 8px;font-size:10.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pdf-url-input{width:100%;min-height:76px;resize:vertical;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;background:var(--surface);color:var(--ink);font:600 12px/1.5 'Montserrat',sans-serif}
   .pdf-url-input:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus-ring)}

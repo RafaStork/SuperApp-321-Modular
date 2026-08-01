@@ -12738,6 +12738,7 @@ function setViewMode3D(mode){
   stage3dEl.classList.toggle('show', mode==='3d');
 
   if(mode==='3d'){
+    if(typeof showPdfLoading==='function') showPdfLoading('Preparando bibliotecas e modelos...', 'Carregando 3D');
     if(typeof THREE==="undefined"){
       // O script principal é clássico e pode executar antes do módulo ES.
       // Aguarda a Promise do bootstrap em vez de fazer polling indefinido;
@@ -12768,6 +12769,7 @@ function setViewMode3D(mode){
           if(typeof THREE!=="undefined") setViewMode3D('3d');
           else throw new Error('window.THREE não foi inicializado.');
         }).catch(error=>{
+          if(typeof hidePdfLoading==='function') hidePdfLoading();
           const detail=error && error.message ? ` (${error.message})` : '';
           toastError(`Não consegui carregar as bibliotecas 3D${detail}`);
         });
@@ -12776,7 +12778,7 @@ function setViewMode3D(mode){
         const wait=setInterval(()=>{
           tries++;
           if(typeof THREE!=="undefined"){ clearInterval(wait); setViewMode3D('3d'); }
-          else if(tries>50){ clearInterval(wait); toastError('O módulo Three.js não foi inicializado. Confira a CSP e a conexão.'); }
+          else if(tries>50){ clearInterval(wait); if(typeof hidePdfLoading==='function') hidePdfLoading(); toastError('O módulo Three.js não foi inicializado. Confira a CSP e a conexão.'); }
         },100);
       }
       return;
@@ -12796,9 +12798,15 @@ function setViewMode3D(mode){
     // promise que só resolve nesse ponto (ver comentário na própria função).
     rebuildScene3D(state).then(()=>{
       if(typeof loadRender3dConfig==='function') loadRender3dConfig(state.render3d);
+    }).catch(error=>{
+      console.error('Falha ao montar visualização 3D.',error);
+      toastError('Não foi possível concluir o carregamento do 3D.');
+    }).finally(()=>{
+      if(typeof hidePdfLoading==='function') hidePdfLoading();
     });
     startRenderLoop3D();
   } else {
+    if(typeof hidePdfLoading==='function') hidePdfLoading();
     // Volta a mostrar o menu lateral, com a mesma animação, ao voltar pro 2D.
     const asideEl3D=document.getElementById('aside');
     if(asideEl3D) asideEl3D.classList.remove('aside-collapsed');
