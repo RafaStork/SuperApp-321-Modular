@@ -5,53 +5,6 @@ const WOOD_D = "#8B5A2B";
 const ESQ_FILL = "#B28152";
 const ESQ_STROKE = "#62472D";
 const DEFAULT_LOGO="../shared/Logo321Modular.svg";
-const PROPOSAL_PICTURES_BASE="https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev/Pictures/";
-const PROPOSAL_PICTURES_MANIFEST=PROPOSAL_PICTURES_BASE+"index.json";
-const PROPOSAL_MAX_IMAGES=6;
-const PROPOSAL_PICTURE_GROUPS=[
-  ["01A",["R1","R2","R3","V2 R1"]],["01C",["R1","R2","R3","V2 R1"]],
-  ["02A",["R1","R2","R3","V2 R1"]],["02C",["R1","R2","R3","V2 R1"]],
-  ["03A",["R1","R2","R3","V2 R1"]],["03C",["R1","R2","R3","V2 R1"]],
-  ["04A",["R1","R2","R3","V2 R1"]],["04C",["R1","R2","R3","V2 R1"]],
-  ["05A",["R1","R2","R3","V2 R1"]],["05C",["R1","R2","R3","V2 R1"]],
-  ["06A",["R1","R2","R3","V2 R1"]],["06C",["R1","R2","R3","V2 R1"]],
-  ["07A",["R1","R2","R3","V2 R1"]],["07C",["R1","R2","R3","V2 R1"]],
-  ["08A",["R1","R2","R3","V2 R1"]],["08C",["R1","R2","R3","R4","V2 R1"]],
-  ["09",["R1","R2","V2 R1"]],["10",["R1","R2","R3","V2 R1"]]
-];
-
-let proposalPictureCatalog=[];
-let proposalPictureCatalogLoaded=false;
-let proposalPictureCatalogLoading=false;
-const proposalSelectedPictures=new Map();
-
-function normalizeProposalPictureUrl(raw){
-  const value=String(raw||"").trim();
-  if(!value||value.length>2048)throw new Error("URL de imagem invalida.");
-  const url=new URL(value,PROPOSAL_PICTURES_BASE);
-  const base=new URL(PROPOSAL_PICTURES_BASE);
-  if(url.protocol!=="https:"||url.origin!==base.origin||!url.pathname.startsWith(base.pathname)){
-    throw new Error("Use somente imagens publicas da pasta Pictures informada.");
-  }
-  if(!/\.(?:png|jpe?g|webp)$/i.test(url.pathname)){
-    throw new Error("Formato permitido: PNG, JPG, JPEG ou WEBP.");
-  }
-  url.hash="";
-  return url.href;
-}
-function buildBundledProposalPictureCatalog(){
-  const catalog=[];
-  PROPOSAL_PICTURE_GROUPS.forEach(group=>{
-    const model=group[0],variants=group[1];
-    variants.forEach(variant=>{
-      const file="Modelo "+model+" "+variant+".png";
-      catalog.push({url:normalizeProposalPictureUrl(file),label:file.replace(/\.png$/i,"")});
-    });
-  });
-  return catalog;
-}
-
-
 let defaultLogoForExport=DEFAULT_LOGO;
 let defaultLogoForExportPromise=null;
 async function preloadDefaultLogoForExport(){
@@ -8525,207 +8478,65 @@ function montarAreaSalvarPlantas(){
 }
 
 document.getElementById("btnPdf").onclick=openPdfModal;
-
-function proposalPictureLabel(url){
-  try{
-    const pathname=new URL(url).pathname;
-    const file=decodeURIComponent(pathname.split("/").pop()||"Imagem");
-    return file.replace(/\.[^.]+$/,"").replace(/[-_]+/g," ").trim()||"Imagem";
-  }catch(_error){return "Imagem";}
-}
-
-function parseProposalPictureManifest(payload){
-  const source=Array.isArray(payload)?payload:(Array.isArray(payload?.images)?payload.images:[]);
-  const unique=new Map();
-  source.slice(0,100).forEach(entry=>{
-    try{
-      const raw=typeof entry==="string"?entry:(entry?.url||entry?.file||entry?.src);
-      if(!raw)return;
-      const url=normalizeProposalPictureUrl(raw);
-      const label=String(typeof entry==="object"&&(entry.title||entry.name)||proposalPictureLabel(url)).slice(0,100);
-      unique.set(url,{url,label});
-    }catch(_error){}
-  });
-  return [...unique.values()];
-}
-
-function renderProposalPictureCatalog(message){
-  const grid=document.getElementById("m_com_images");
-  const status=document.getElementById("m_com_image_status");
-  if(!grid||!status)return;
-  const all=new Map(proposalPictureCatalog.map(item=>[item.url,item]));
-  proposalSelectedPictures.forEach((item,url)=>all.set(url,item));
-  const items=[...all.values()];
-  status.textContent=message||(items.length
-    ? `Selecione ate ${PROPOSAL_MAX_IMAGES} imagens. ${proposalSelectedPictures.size} selecionada(s).`
-    : "Nenhuma imagem listada. Adicione URLs publicas da pasta Pictures abaixo.");
-  grid.innerHTML=items.map(item=>`
-    <label class="pdf-image-choice" title="${esc(item.label)}">
-      <input type="checkbox" data-proposal-picture="${esc(item.url)}" ${proposalSelectedPictures.has(item.url)?"checked":""}>
-      <img src="${esc(item.url)}" alt="${esc(item.label)}" loading="lazy" referrerpolicy="no-referrer">
-      <span>${esc(item.label)}</span>
-    </label>`).join("");
-  grid.onchange=event=>{
-    const checkbox=event.target.closest("[data-proposal-picture]");
-    if(!checkbox)return;
-    const url=checkbox.getAttribute("data-proposal-picture");
-    const item=all.get(url);
-    if(checkbox.checked){
-      if(proposalSelectedPictures.size>=PROPOSAL_MAX_IMAGES){
-        checkbox.checked=false;
-        toastError(`Escolha no maximo ${PROPOSAL_MAX_IMAGES} imagens.`);
-        return;
-      }
-      proposalSelectedPictures.set(url,item||{url,label:proposalPictureLabel(url)});
-    }else{
-      proposalSelectedPictures.delete(url);
-    }
-    status.textContent=`Selecione ate ${PROPOSAL_MAX_IMAGES} imagens. ${proposalSelectedPictures.size} selecionada(s).`;
-  };
-}
-
-async function loadProposalPictureCatalog(){
-  if(!proposalPictureCatalog.length)proposalPictureCatalog=buildBundledProposalPictureCatalog();
-  if(proposalPictureCatalogLoaded||proposalPictureCatalogLoading){
-    renderProposalPictureCatalog(proposalPictureCatalogLoading?"Carregando imagens do catalogo...":"");
-    return;
-  }
-  proposalPictureCatalogLoading=true;
-  renderProposalPictureCatalog("Carregando imagens do catalogo...");
-  try{
-    const response=await fetch(PROPOSAL_PICTURES_MANIFEST,{
-      method:"GET",mode:"cors",credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer"
-    });
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    const contentType=response.headers.get("content-type")||"";
-    if(!contentType.includes("json"))throw new Error("manifesto nao e JSON");
-    const manifestItems=parseProposalPictureManifest(await response.json());
-    const merged=new Map(proposalPictureCatalog.map(item=>[item.url,item]));
-    manifestItems.forEach(item=>merged.set(item.url,item));
-    proposalPictureCatalog=[...merged.values()];
-    proposalPictureCatalogLoaded=true;
-    renderProposalPictureCatalog(proposalPictureCatalog.length+" imagens disponiveis. Selecione ate "+PROPOSAL_MAX_IMAGES+".");
-  }catch(error){
-    console.info("Manifesto complementar de imagens indisponivel.",error);
-    proposalPictureCatalogLoaded=true;
-    renderProposalPictureCatalog(proposalPictureCatalog.length+" imagens cadastradas. Selecione ate "+PROPOSAL_MAX_IMAGES+".");
-  }finally{
-    proposalPictureCatalogLoading=false;
-  }
-}
-
-function addProposalPictureUrls(){
-  const input=document.getElementById("m_com_urls");
-  if(!input)return;
-  const values=input.value.split(/\r?\n/).map(value=>value.trim()).filter(Boolean);
-  let added=0;
-  for(const raw of values){
-    if(proposalSelectedPictures.size>=PROPOSAL_MAX_IMAGES){
-      toastError(`Limite de ${PROPOSAL_MAX_IMAGES} imagens atingido.`);
-      break;
-    }
-    try{
-      const url=normalizeProposalPictureUrl(raw);
-      proposalSelectedPictures.set(url,{url,label:proposalPictureLabel(url)});
-      added++;
-    }catch(error){
-      toastError(error.message);
-      return;
-    }
-  }
-  if(added){
-    input.value="";
-    renderProposalPictureCatalog();
-    toast(`${added} imagem(ns) adicionada(s).`);
-  }
-}
-
 function openPdfModal(){
   const m=state.meta;
-  let exportMode="technical";
-  let dimMode=(state.manualDims&&state.manualDims.some(d=>(d.andar||1)===1))?"manual":"auto";
-  modalBody.dataset.modal="";
-  modalBody.classList.remove("q-wide","pm-modal");
-  modalBody.classList.add("pdf-export-modal");
-  modalBody.innerHTML=`
-    <div class="pdf-modal-header">
-      <h3>Gerar PDF</h3>
-      <p class="sub">Escolha entre o documento tecnico completo e uma proposta comercial voltada a apresentacao.</p>
+  // Pré-preenche os campos com os dados já salvos em state.meta para persistência
+  modalBody.dataset.modal = ""; // marca qual modal está aberto (evita hijack pelo polling de preços)
+  modalBody.innerHTML=`<h3>Exportar planta em PDF</h3>
+    <div class="field"><label>Nome do cliente</label><input id="m_cli" value="${esc(m.cliente||"")}" placeholder="ex: João Silva"></div>
+    <div class="field"><label>Local da obra</label><input id="m_loc" value="${esc(m.local||"")}" placeholder="ex: Rua das Flores, 123 - Cidade/UF"></div>
+    <div class="field"><label>Projetado por</label><input id="m_proj" value="${esc(m.projetadoPor||"")}" placeholder="321 MODULAR"></div>
+    <div class="two"><div class="field"><label>Modelo / Projeto</label><input id="m_mod" value="${esc(m.modelo||"")}" placeholder="${esc(state.name||"Planta sem título")}"></div>
+      <div class="field"><label>Revisão</label><input id="m_rev" value="${esc(m.revisao||"")}" placeholder="01"></div></div>
+
+    <div class="field" data-planta-style="planta-inline-077">
+      <label>Cotas no PDF</label>
+      <div data-planta-style="planta-inline-054">
+        <button type="button" class="tbtn" id="m_dim_auto" data-planta-style="planta-inline-012">Automáticas</button>
+        <button type="button" class="tbtn" id="m_dim_manual" data-planta-style="planta-inline-012">Manuais</button>
+      </div>
+      <p class="sub" data-planta-style="planta-inline-076">Automáticas: só a cota geral do projeto e a do mezanino. Manuais: as cotas que você criou com a ferramenta de cotas na planta.</p>
     </div>
-    <div class="pdf-modal-scroll">
-      <div class="pdf-export-kinds" role="tablist" aria-label="Tipo de PDF">
-        <button type="button" class="pdf-kind active" id="m_pdf_technical" role="tab" aria-selected="true">
-          <strong>Documento tecnico</strong>
-          <span>Plantas, blocos, cotas, carimbo e quantitativo opcional.</span>
-        </button>
-        <button type="button" class="pdf-kind" id="m_pdf_commercial" role="tab" aria-selected="false">
-          <strong>Proposta comercial</strong>
-          <span>Apresentacao visual, beneficios, investimento e imagens.</span>
-        </button>
-      </div>
 
-      <div class="two">
-        <div class="field"><label>Nome do cliente</label><input id="m_cli" value="${esc(m.cliente||"")}" placeholder="ex: Joao Silva"></div>
-        <div class="field"><label>Local da obra</label><input id="m_loc" value="${esc(m.local||"")}" placeholder="ex: Cidade/UF"></div>
-      </div>
-      <div class="two">
-        <div class="field"><label>Projetado por</label><input id="m_proj" value="${esc(m.projetadoPor||"")}" placeholder="321 MODULAR"></div>
-        <div class="field"><label>Modelo / Projeto</label><input id="m_mod" value="${esc(m.modelo||"")}" placeholder="${esc(state.name||"Planta sem titulo")}"></div>
-      </div>
-      <div class="field"><label>Revisao</label><input id="m_rev" value="${esc(m.revisao||"")}" placeholder="01"></div>
-
-      <section class="pdf-section" id="m_pdf_technical_section" role="tabpanel">
-        <div class="pdf-option-card">
-          <label>Cotas no PDF</label>
-          <div class="pdf-inline-actions">
-            <button type="button" class="tbtn" id="m_dim_auto">Automaticas</button>
-            <button type="button" class="tbtn" id="m_dim_manual">Manuais</button>
-          </div>
-          <p class="sub">Automaticas: cota geral e mezanino. Manuais: cotas criadas com a ferramenta da planta.</p>
-        </div>
-        <div class="pdf-option-card">
-          <label class="pdf-check"><input type="checkbox" id="m_incluir_orc">Incluir quantitativo</label>
-          <p class="sub">Adiciona a lista de componentes ao documento tecnico.</p>
-        </div>
-        <div class="pdf-option-card">
-          <label class="pdf-check"><input type="checkbox" id="m_incluir_blocos" checked>Gerar planta de blocos</label>
-          <p class="sub">Inclui a marcacao dos blocos de fundacao em folha propria.</p>
-        </div>
-        <div class="pdf-option-card">
-          <label class="pdf-check"><input type="checkbox" id="m_incluir_valor" ${state.incluirValorNaPlanta!==false?"checked":""}>Incluir valor na planta</label>
-          <p class="sub">Mostra o valor total no carimbo das folhas tecnicas.</p>
-        </div>
-        <div class="pdf-option-card">
-          <label class="pdf-check"><input type="checkbox" id="m_incluir_labels" checked>Incluir descricoes de esquadrias e oitoes</label>
-        </div>
-      </section>
-
-      <section class="pdf-section" id="m_pdf_commercial_section" role="tabpanel" hidden>
-        <div class="pdf-option-card">
-          <label class="pdf-check"><input type="checkbox" id="m_com_incluir_valor" checked>Apresentar investimento estimado</label>
-          <p class="sub">Exibe o valor calculado no Quantitativo, quando estiver disponivel.</p>
-        </div>
-        <div class="field">
-          <label>Imagens da proposta</label>
-          <p class="pdf-image-status" id="m_com_image_status">Abra a proposta comercial para carregar o catalogo.</p>
-          <div class="pdf-image-grid" id="m_com_images"></div>
-        </div>
-        <div class="field">
-          <label for="m_com_urls">Adicionar URLs da pasta Pictures</label>
-          <textarea class="pdf-url-input" id="m_com_urls" placeholder="Uma URL publica por linha"></textarea>
-          <p class="sub">Somente PNG, JPG ou WEBP hospedados em ${esc(PROPOSAL_PICTURES_BASE)}</p>
-          <div class="pdf-inline-actions"><button type="button" class="tbtn" id="m_com_add_urls">Adicionar imagens</button></div>
-        </div>
-      </section>
+    <div class="field" data-planta-style="planta-inline-077">
+      <label data-planta-style="planta-inline-078">
+        <input type="checkbox" id="m_incluir_orc" data-planta-style="planta-inline-079">
+        Incluir Quantitativo
+      </label>
+      <p class="sub" data-planta-style="planta-inline-076">Adiciona uma página após a planta com a lista de componentes e o valor total do projeto.</p>
     </div>
-    <div class="pdf-modal-footer">
-      <div class="modal-actions">
-        <button class="tbtn" id="m_cancel">Cancelar</button>
-        <button class="tbtn" id="m_preview">Pre-visualizar</button>
-        <button class="tbtn accent" id="m_go">Gerar PDF</button>
-      </div>
+
+    <div class="field" data-planta-style="planta-inline-080">
+      <label data-planta-style="planta-inline-078">
+        <input type="checkbox" id="m_incluir_blocos" checked data-planta-style="planta-inline-079">
+        Gerar planta de blocos
+      </label>
+      <p class="sub" data-planta-style="planta-inline-076">Gera automaticamente a marcação dos blocos de fundação (15 × 15 cm) sob os pisos, com cotas. Se o Quantitativo também for incluído, ele passa a ficar na página seguinte.</p>
+    </div>
+
+    <div class="field" data-planta-style="planta-inline-080">
+      <label data-planta-style="planta-inline-078">
+        <input type="checkbox" id="m_incluir_valor" ${state.incluirValorNaPlanta!==false?'checked':''} data-planta-style="planta-inline-079">
+        Incluir Valor na Planta
+      </label>
+      <p class="sub" data-planta-style="planta-inline-076">Mostra o valor total do orçamento no carimbo da planta baixa, entre a logo e "Projetado por".</p>
+    </div>
+
+    <div class="field" data-planta-style="planta-inline-080">
+      <label data-planta-style="planta-inline-078">
+        <input type="checkbox" id="m_incluir_labels" checked data-planta-style="planta-inline-079">
+        Incluir descrições de esquadrias e oitões
+      </label>
+      <p class="sub" data-planta-style="planta-inline-076">Exibe os nomes das portas, janelas e indicadores de oitão sobrepostos à planta no PDF.</p>
+    </div>
+
+    <div class="modal-actions">
+      <button class="tbtn" id="m_cancel">Cancelar</button>
+      <button class="tbtn" id="m_preview">Pré-visualizar</button>
+      <button class="tbtn accent" id="m_go">Gerar PDF</button>
     </div>`;
 
+  let dimMode = (state.manualDims&&state.manualDims.some(d=>(d.andar||1)===1)) ? "manual" : "auto";
   const paintDimMode=()=>{
     document.getElementById("m_dim_auto").classList.toggle("primary",dimMode==="auto");
     document.getElementById("m_dim_manual").classList.toggle("primary",dimMode==="manual");
@@ -8734,56 +8545,42 @@ function openPdfModal(){
   document.getElementById("m_dim_manual").onclick=()=>{dimMode="manual";paintDimMode();};
   paintDimMode();
 
-  const setExportMode=mode=>{
-    exportMode=mode;
-    const technical=mode==="technical";
-    document.getElementById("m_pdf_technical").classList.toggle("active",technical);
-    document.getElementById("m_pdf_technical").setAttribute("aria-selected",String(technical));
-    document.getElementById("m_pdf_commercial").classList.toggle("active",!technical);
-    document.getElementById("m_pdf_commercial").setAttribute("aria-selected",String(!technical));
-    document.getElementById("m_pdf_technical_section").hidden=!technical;
-    document.getElementById("m_pdf_commercial_section").hidden=technical;
-    document.getElementById("m_go").textContent=technical?"Gerar PDF":"Gerar proposta";
-    if(!technical)loadProposalPictureCatalog();
-  };
-  document.getElementById("m_pdf_technical").onclick=()=>setExportMode("technical");
-  document.getElementById("m_pdf_commercial").onclick=()=>setExportMode("commercial");
-  document.getElementById("m_com_add_urls").onclick=addProposalPictureUrls;
-
-  const updateMeta=()=>{
+  // Salva os dados em state.meta para que persistam entre aberturas do modal.
+  // Chamada tanto ao gerar/pré-visualizar quanto ao cancelar.
+  const updateMeta = () => {
     state.meta={
-      cliente:document.getElementById("m_cli").value.trim(),
-      local:document.getElementById("m_loc").value.trim(),
-      projetadoPor:document.getElementById("m_proj").value.trim()||"321 MODULAR",
-      modelo:document.getElementById("m_mod").value.trim()||state.name||"Planta sem titulo",
-      revisao:document.getElementById("m_rev").value.trim()||"01",
-      logo:DEFAULT_LOGO
+        cliente:     document.getElementById("m_cli").value.trim(),
+        local:       document.getElementById("m_loc").value.trim(),
+        projetadoPor:document.getElementById("m_proj").value.trim() || "321 MODULAR",
+        modelo:      document.getElementById("m_mod").value.trim() || state.name || "Planta sem título",
+        revisao:     document.getElementById("m_rev").value.trim() || "01",
+        logo: DEFAULT_LOGO
     };
-    state.incluirValorNaPlanta=document.getElementById("m_incluir_valor").checked;
+    state.incluirValorNaPlanta = document.getElementById("m_incluir_valor").checked;
   };
-  const runExport=action=>{
-    updateMeta();
-    if(exportMode==="technical"){
-      const inclOrc=document.getElementById("m_incluir_orc").checked;
-      const inclLabels=document.getElementById("m_incluir_labels").checked;
-      const inclBlocos=document.getElementById("m_incluir_blocos").checked;
-      closeModal();
-      generatePDF(action,dimMode,inclOrc,inclLabels,inclBlocos);
-      return;
-    }
-    const includeInvestment=document.getElementById("m_com_incluir_valor").checked;
-    const images=[...proposalSelectedPictures.values()].slice(0,PROPOSAL_MAX_IMAGES);
-    closeModal();
-    generateCommercialProposal(action,{includeInvestment,images});
+
+  // Cancelar também salva — assim os dados preenchidos não se perdem
+  document.getElementById("m_cancel").onclick=()=>{ updateMeta(); closeModal(); };
+
+  document.getElementById("m_preview").onclick=()=>{
+      updateMeta();
+      const inclOrc    = document.getElementById("m_incluir_orc").checked;
+      const inclLabels = document.getElementById("m_incluir_labels").checked;
+      const inclBlocos = document.getElementById("m_incluir_blocos").checked;
+      closeModal(); generatePDF('preview', dimMode, inclOrc, inclLabels, inclBlocos);
   };
-  document.getElementById("m_cancel").onclick=()=>{updateMeta();closeModal();};
-  document.getElementById("m_preview").onclick=()=>runExport("preview");
-  document.getElementById("m_go").onclick=()=>runExport("save");
+
+  document.getElementById("m_go").onclick=()=>{
+      updateMeta();
+      const inclOrc    = document.getElementById("m_incluir_orc").checked;
+      const inclLabels = document.getElementById("m_incluir_labels").checked;
+      const inclBlocos = document.getElementById("m_incluir_blocos").checked;
+      closeModal(); generatePDF('save', dimMode, inclOrc, inclLabels, inclBlocos);
+  };
 
   scrim.classList.add("show");
-  setTimeout(()=>document.getElementById("m_cli")?.focus(),50);
+  setTimeout(()=>document.getElementById("m_cli").focus(),50);
 }
-
 
 // Tick-ended dimension line with extension (witness) lines connecting the
 // actual edge being measured to the dimension line itself — usada tanto
@@ -8948,7 +8745,6 @@ function computeBlocosLayout(){
 // página — logo, cliente, local da obra, valor, escala/área/data/revisão
 // e modelo, só trocando o rótulo de "PLANTA" e a escala (recalculada para
 // o conteúdo desta folha).
-
 function setPlantSheetPdfTypography(svgEl){
   if(!svgEl||typeof svgEl.querySelectorAll!=="function")return svgEl;
   svgEl.querySelectorAll("text").forEach(text=>{
@@ -8961,8 +8757,7 @@ function makePlantSheetSvgBold(svgText){
   const parsed=new DOMParser().parseFromString(svgText,"image/svg+xml");
   setPlantSheetPdfTypography(parsed.documentElement);
   return new XMLSerializer().serializeToString(parsed.documentElement);
-}
-function buildBlocosSheetSVG(){
+}function buildBlocosSheetSVG(){
   const W=210, H=297, mTop=7, mBot=7, mRight=7, mLeft=25;
   const rW=W-mLeft-mRight, rH=H-mTop-mBot;
   const carimboH=52;
@@ -9744,250 +9539,6 @@ function appendOrcamentoSimplificadoAoPDF(doc) {
       footStyles: { fillColor: [231, 241, 227], textColor: [31, 51, 27], fontStyle: "bold" },
       ...tableStyles,
     });
-  }
-}
-
-
-function proposalInvestmentValue(){
-  if(!pricingData)return 0;
-  const total=gerarItensOrcamento().reduce((sum,item)=>sum+(Number(item.subtotal)||0),0);
-  const discount=qDesconto.tipo==="percent"
-    ? total*(Math.max(0,Number(qDesconto.valor)||0)/100)
-    : Math.min(Math.max(0,Number(qDesconto.valor)||0),total);
-  return Math.max(0,total-discount);
-}
-
-function rasterizeProposalImageSource(source,maxDimension=1800){
-  return new Promise((resolve,reject)=>{
-    const image=new Image();
-    image.onload=()=>{
-      try{
-        const scale=Math.min(1,maxDimension/Math.max(image.naturalWidth||image.width,image.naturalHeight||image.height));
-        const canvas=document.createElement("canvas");
-        canvas.width=Math.max(1,Math.round((image.naturalWidth||image.width)*scale));
-        canvas.height=Math.max(1,Math.round((image.naturalHeight||image.height)*scale));
-        const context=canvas.getContext("2d",{alpha:false});
-        context.fillStyle="#ffffff";
-        context.fillRect(0,0,canvas.width,canvas.height);
-        context.drawImage(image,0,0,canvas.width,canvas.height);
-        resolve({dataUrl:canvas.toDataURL("image/jpeg",0.9),width:canvas.width,height:canvas.height});
-      }catch(error){reject(error);}
-    };
-    image.onerror=()=>reject(new Error("Nao foi possivel processar uma das imagens."));
-    image.src=source;
-  });
-}
-
-async function loadProposalPictureForPdf(item){
-  const url=normalizeProposalPictureUrl(item.url);
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),15000);
-  try{
-    const response=await fetch(url,{
-      method:"GET",mode:"cors",credentials:"omit",cache:"force-cache",
-      referrerPolicy:"no-referrer",signal:controller.signal
-    });
-    if(!response.ok)throw new Error(`Falha ao carregar ${item.label}: HTTP ${response.status}.`);
-    const declaredSize=Number(response.headers.get("content-length")||0);
-    if(declaredSize>12*1024*1024)throw new Error(`A imagem ${item.label} excede 12 MB.`);
-    const blob=await response.blob();
-    if(blob.size>12*1024*1024)throw new Error(`A imagem ${item.label} excede 12 MB.`);
-    if(!/^image\/(?:png|jpeg|webp)$/i.test(blob.type))throw new Error(`Formato invalido em ${item.label}.`);
-    const objectUrl=URL.createObjectURL(blob);
-    try{
-      const raster=await rasterizeProposalImageSource(objectUrl);
-      return {...raster,label:String(item.label||proposalPictureLabel(url)).slice(0,100),url};
-    }finally{
-      URL.revokeObjectURL(objectUrl);
-    }
-  }finally{
-    clearTimeout(timer);
-  }
-}
-
-async function proposalLogoForPdf(){
-  try{
-    const source=await preloadDefaultLogoForExport();
-    return await rasterizeProposalImageSource(source,900);
-  }catch(error){
-    console.warn("Logo nao incorporada na proposta.",error);
-    return null;
-  }
-}
-
-function addContainedProposalImage(doc,image,x,y,width,height){
-  doc.setFillColor(245,247,244);
-  doc.roundedRect(x,y,width,height,2,2,"F");
-  if(!image)return;
-  const scale=Math.min(width/image.width,height/image.height);
-  const drawW=image.width*scale;
-  const drawH=image.height*scale;
-  doc.addImage(image.dataUrl,"JPEG",x+(width-drawW)/2,y+(height-drawH)/2,drawW,drawH,undefined,"FAST");
-}
-
-function drawCommercialPdfChrome(doc,logo,page,total,fontFamily){
-  doc.setFillColor(31,51,27);
-  doc.rect(0,0,210,7,"F");
-  doc.setFillColor(244,111,24);
-  doc.rect(0,7,210,2,"F");
-  if(logo)doc.addImage(logo.dataUrl,"JPEG",14,12,38,12,undefined,"FAST");
-  doc.setFont(fontFamily,"bold");
-  doc.setFontSize(8);
-  doc.setTextColor(31,51,27);
-  doc.text("PROPOSTA COMERCIAL",196,18,{align:"right"});
-  doc.setDrawColor(218,224,215);
-  doc.setLineWidth(0.35);
-  doc.line(14,29,196,29);
-  doc.line(14,280,196,280);
-  doc.setFont(fontFamily,"normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(105,113,103);
-  doc.text("321 Modular | Solucoes construtivas inteligentes",14,287);
-  doc.text(`${page} / ${total}`,196,287,{align:"right"});
-}
-
-function drawCommercialBenefit(doc,fontFamily,x,title,text){
-  doc.setFillColor(245,247,244);
-  doc.setDrawColor(218,224,215);
-  doc.roundedRect(x,158,56,38,3,3,"FD");
-  doc.setFont(fontFamily,"bold");
-  doc.setFontSize(9);
-  doc.setTextColor(31,51,27);
-  doc.text(title,x+5,169);
-  doc.setFont(fontFamily,"normal");
-  doc.setFontSize(7.3);
-  doc.setTextColor(86,94,84);
-  doc.text(doc.splitTextToSize(text,46),x+5,177);
-}
-
-function showGeneratedPdf(doc,action,fileName,successMessage){
-  if(action==="preview"){
-    document.getElementById("previewFrame").src=doc.output("bloburl");
-    document.getElementById("previewScrim").classList.add("show");
-    document.getElementById("previewSaveBtn").onclick=()=>doc.save(fileName);
-  }else{
-    doc.save(fileName);
-    toast(successMessage);
-  }
-}
-
-async function generateCommercialProposal(action="save",options={}){
-  const js=window.jspdf&&window.jspdf.jsPDF;
-  if(!js){toastError("Gerador de PDF indisponivel.");return;}
-  toast("Gerando proposta comercial...");
-  try{
-    const requested=(options.images||[]).slice(0,PROPOSAL_MAX_IMAGES);
-    const loaded=[];
-    for(const item of requested){
-      try{loaded.push(await loadProposalPictureForPdf(item));}
-      catch(error){console.warn(error);toastError(error.message);}
-    }
-    const logo=await proposalLogoForPdf();
-    const doc=new js({orientation:"portrait",unit:"mm",format:"a4"});
-    let fontFamily="helvetica";
-    try{await loadMontserratIntoDoc(doc);fontFamily="Montserrat";}
-    catch(error){console.warn("Montserrat indisponivel na proposta.",error);}
-
-    const meta=state.meta||{};
-    const model=meta.modelo||state.name||"Projeto modular";
-    const client=meta.cliente||"Cliente";
-    const location=meta.local||"Local a definir";
-    const area=occupiedArea();
-    const investment=proposalInvestmentValue();
-    const hero=loaded[0]||null;
-
-    doc.setFont(fontFamily,"bold");
-    doc.setTextColor(31,51,27);
-    doc.setFontSize(22);
-    doc.text("SEU PROJETO",14,43);
-    doc.setTextColor(244,111,24);
-    doc.text("321 MODULAR",14,52);
-    doc.setFont(fontFamily,"normal");
-    doc.setTextColor(89,97,87);
-    doc.setFontSize(9);
-    doc.text(doc.splitTextToSize("Uma proposta pensada para transformar seu projeto em uma construcao agil, previsivel e de alta qualidade.",118),14,59);
-
-    if(hero){
-      addContainedProposalImage(doc,hero,14,72,182,78);
-    }else{
-      doc.setFillColor(31,51,27);
-      doc.roundedRect(14,72,182,78,4,4,"F");
-      doc.setFillColor(244,111,24);
-      doc.circle(169,91,22,"F");
-      doc.setFont(fontFamily,"bold");
-      doc.setFontSize(21);
-      doc.setTextColor(255,255,255);
-      doc.text(model.slice(0,36),24,108);
-      doc.setFont(fontFamily,"normal");
-      doc.setFontSize(10);
-      doc.text("Engenharia modular sob medida",24,120);
-    }
-
-    drawCommercialBenefit(doc,fontFamily,14,"AGILIDADE","Processo industrializado e montagem planejada.");
-    drawCommercialBenefit(doc,fontFamily,77,"PREVISIBILIDADE","Escopo claro para decisoes mais seguras.");
-    drawCommercialBenefit(doc,fontFamily,140,"QUALIDADE","Padrao construtivo e controle de execucao.");
-
-    doc.setFont(fontFamily,"bold");
-    doc.setFontSize(9);
-    doc.setTextColor(31,51,27);
-    doc.text("RESUMO DO PROJETO",14,208);
-    doc.setFont(fontFamily,"normal");
-    doc.setTextColor(68,75,66);
-    doc.setFontSize(8.5);
-    doc.text(`Cliente: ${client}`,14,217);
-    doc.text(`Modelo: ${model}`,14,224);
-    doc.text(`Local: ${location}`,105,217);
-    doc.text(`Area estimada: ${area.toLocaleString("pt-BR",{maximumFractionDigits:2})} m2`,105,224);
-
-    if(options.includeInvestment&&investment>0){
-      doc.setFillColor(31,51,27);
-      doc.roundedRect(14,235,182,29,3,3,"F");
-      doc.setFont(fontFamily,"normal");
-      doc.setTextColor(210,226,202);
-      doc.setFontSize(8);
-      doc.text("INVESTIMENTO ESTIMADO",21,245);
-      doc.setFont(fontFamily,"bold");
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(16);
-      doc.text(investment.toLocaleString("pt-BR",{style:"currency",currency:"BRL"}),21,257);
-    }else{
-      doc.setFont(fontFamily,"normal");
-      doc.setFontSize(8);
-      doc.setTextColor(105,113,103);
-      doc.text("Valores e condicoes comerciais sujeitos a validacao do escopo final.",14,247);
-    }
-
-    const gallery=loaded.slice(1);
-    for(let index=0;index<gallery.length;index+=2){
-      doc.addPage();
-      doc.setFont(fontFamily,"bold");
-      doc.setFontSize(16);
-      doc.setTextColor(31,51,27);
-      doc.text("INSPIRACOES PARA O PROJETO",14,43);
-      doc.setFont(fontFamily,"normal");
-      doc.setFontSize(8);
-      doc.setTextColor(105,113,103);
-      doc.text("Referencias visuais selecionadas para esta apresentacao.",14,50);
-      gallery.slice(index,index+2).forEach((image,position)=>{
-        const y=position===0?60:165;
-        addContainedProposalImage(doc,image,14,y,182,86);
-        doc.setFont(fontFamily,"bold");
-        doc.setFontSize(8);
-        doc.setTextColor(31,51,27);
-        doc.text(image.label.slice(0,70),14,y+94);
-      });
-    }
-
-    const totalPages=doc.getNumberOfPages();
-    for(let page=1;page<=totalPages;page++){
-      doc.setPage(page);
-      drawCommercialPdfChrome(doc,logo,page,totalPages,fontFamily);
-    }
-    const fileBase=(model||"proposta").replace(/[^\w-]+/g,"_");
-    showGeneratedPdf(doc,action,`Proposta_${fileBase}.pdf`,"Proposta comercial gerada.");
-  }catch(error){
-    console.error("Falha ao gerar proposta comercial.",error);
-    toastError("Nao foi possivel gerar a proposta comercial.");
   }
 }
 
@@ -11008,6 +10559,252 @@ function mostrarEditorInsumos() {
   };
 }
 
+// ── Gera PDF do orçamento com assinatura ─────────────────────
+function gerarPDFOrcamento(action = 'save') {
+  if (!pricingData) { toastError("Sem dados de precificação."); return; }
+  const { jsPDF } = window.jspdf;
+  if (!jsPDF) { toastError("jsPDF não carregado."); return; }
+
+  const doc    = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const brlFmt = v => "R$ " + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const itens  = gerarItensOrcamento();
+  const total  = itens.reduce((s,i)=>s+(i.subtotal||0),0);
+  const proj   = state.name || "Planta sem título";
+  // Ponto 6: só entram na lista impressa os insumos marcados como
+  // "Compra com Indústria" — o total continua somando todos os itens.
+  const itensVisiveis = itens.filter(it => !it.isInsumo || insumoCompraIndustria(it.nome));
+
+  // ── Calcular desconto ──────────────────────────────────────
+  const descValorAbs = qDesconto.tipo === 'percent'
+    ? total * (qDesconto.valor / 100)
+    : Math.min(qDesconto.valor, total);
+  const valorFinal = Math.max(0, total - descValorAbs);
+  const temDesconto = descValorAbs > 0;
+
+  // Converter SVG logo para PNG via canvas
+  const img = document.getElementById("headerLogo");
+  const cv = document.createElement("canvas");
+  const cx = cv.getContext("2d");
+  cv.width = 338 * 2; cv.height = 108 * 2; 
+  cx.drawImage(img, 0, 0, cv.width, cv.height);
+  const logoData = cv.toDataURL("image/png");
+
+  // ── Cabeçalho e Design ────────────────────────────────────
+  doc.setFillColor(31, 51, 27); // #1f331b
+  doc.rect(0, 0, 210, 8, "F");
+  doc.setFillColor(167, 199, 152); // #a7c798
+  doc.rect(0, 8, 210, 2, "F");
+
+  // Logo
+  doc.addImage(logoData, "PNG", 14, 15, 45, 14.3);
+
+  // Título
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(31, 51, 27); // #1f331b
+  doc.text("ORÇAMENTO", 196, 25, { align: "right" });
+  
+  // Informações do Projeto
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(32, 32, 32); // #202020
+  doc.text(`Projeto: ${proj}`, 14, 40);
+  
+  doc.setFont("helvetica", "normal");
+  doc.text(`Franquia: ${pricingData.franquia}`, 14, 45);
+  doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 14, 50);
+
+  // Linha divisória
+  doc.setDrawColor(208, 226, 200); // #d0e2c8
+  doc.setLineWidth(0.5);
+  doc.line(14, 54, 196, 54);
+
+  // Painéis/produtos e insumos ficam em tabelas separadas no PDF.
+  const paineisVisiveis = itensVisiveis.filter(it => !it.isInsumo);
+  const insumosVisiveis = itensVisiveis.filter(it => it.isInsumo);
+
+  const totaisFoot = (() => {
+    if (temDesconto) {
+      const descLabel = qDesconto.tipo === 'percent'
+        ? `DESCONTO (${qDesconto.valor}%)`
+        : 'DESCONTO';
+      return [
+        ["", "", "SUBTOTAL",    total > 0 ? brlFmt(total) : "—"],
+        ["", "", descLabel,     brlFmt(descValorAbs)],
+        ["", "", "TOTAL FINAL", valorFinal > 0 ? brlFmt(valorFinal) : "—"],
+      ];
+    }
+    return [["", "", "TOTAL", total > 0 ? brlFmt(total) : "—"]];
+  })();
+
+  const tableBaseOpts = {
+    styles: { 
+        fontSize: 9, 
+        cellPadding: 4, 
+        textColor: [32, 32, 32], // #202020
+        lineColor: [208, 226, 200], // #d0e2c8
+        lineWidth: 0.1 
+    },
+    headStyles: { 
+        fillColor: [31, 51, 27], // #1f331b
+        textColor: 255, 
+        fontStyle: "bold" 
+    },
+    alternateRowStyles: { 
+        fillColor: [250, 252, 249] // Brancura sutil
+    },
+    footStyles: { 
+        fillColor: [167, 199, 152], // #a7c798
+        textColor: [31, 51, 27], // #1f331b
+        fontStyle: "bold", 
+        fontSize: 10 
+    },
+    didParseCell: function(data) {
+      if (data.section === 'foot' && temDesconto) {
+        if (data.row.index === 1) {
+          // linha de desconto: fundo vermelho, texto branco, mesma fonte do rodapé
+          data.cell.styles.fillColor  = [180, 30, 30];
+          data.cell.styles.textColor  = [255, 255, 255];
+        }
+        if (data.row.index === 2) {
+          // linha total final: verde escuro com texto branco
+          data.cell.styles.fillColor  = [31, 51, 27];
+          data.cell.styles.textColor  = [255, 255, 255];
+          data.cell.styles.fontStyle  = 'bold';
+          data.cell.styles.fontSize   = 11;
+        }
+      }
+    },
+    columnStyles: {
+      0: { cellWidth: "auto" },
+      1: { halign: "center", cellWidth: 16 },
+      2: { halign: "right",  minCellWidth: 44 },
+      3: { halign: "right",  minCellWidth: 44 },
+    },
+  };
+
+  // ── Tabela 1: Painéis / Produtos ──────────────────────────────────────
+  doc.autoTable({
+    startY: 60,
+    head: [["Painéis / Produtos", "Qtd.", "Preço Unit.", "Subtotal"]],
+    body: paineisVisiveis.length
+      ? paineisVisiveis.map(it => [
+          it.nome + (it.isAvulso ? ' ★' : ''),
+          String(it.qtdFinal),
+          it.temPreco ? brlFmt(it.precoFinal) : "—",
+          it.temPreco ? brlFmt(it.subtotal)   : "—",
+        ])
+      : [["— nenhum painel —", "", "", ""]],
+    // Só recebe o rodapé de totais aqui se não houver insumos a seguir.
+    ...(insumosVisiveis.length ? {} : { foot: totaisFoot }),
+    ...tableBaseOpts,
+  });
+
+  // ── Tabela 2: Insumos complementares ────────────────────────────────────
+  if (insumosVisiveis.length) {
+    doc.autoTable({
+      startY: (doc.lastAutoTable?.finalY || 60) + 8,
+      head: [["Insumos complementares", "Qtd.", "Preço Unit.", "Subtotal"]],
+      body: insumosVisiveis.map(it => [
+        it.nome,
+        String(it.qtdFinal),
+        it.temPreco ? brlFmt(it.precoFinal) : "—",
+        it.temPreco ? brlFmt(it.subtotal)   : "—",
+      ]),
+      foot: totaisFoot,
+      ...tableBaseOpts,
+    });
+  }
+
+  const fname = `orcamento-${proj.replace(/\s+/g,"-").toLowerCase()}`;
+  if (action === 'preview') {
+    document.getElementById('previewFrame').src = doc.output('bloburl');
+    document.getElementById('previewScrim').classList.add('show');
+    document.getElementById('previewSaveBtn').onclick = () => { doc.save(fname+".pdf"); };
+  } else {
+    doc.save(fname+".pdf");
+  }
+}
+
+// Wire the button
+document.getElementById("btnQuant").addEventListener("click", ()=>{ qViewTab='paineis'; abrirQuantitativo(); });
+// Botão Sair: apaga token salvo e recarrega a página para voltar ao login
+const voltarParaPortal = () => {
+  location.href = window.SuperAppAuth.getPortalUrl();
+};
+document.getElementById("btnLogout").addEventListener("click", voltarParaPortal);
+document.getElementById("side-logout-planta").addEventListener("click", voltarParaPortal);
+// Alterna entre tema claro/escuro e salva a escolha para as próximas sessões
+document.getElementById("themeToggle").addEventListener("click", () => {
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  if (isDark) {
+    document.documentElement.removeAttribute("data-theme");
+    try { localStorage.setItem("321modular_theme", "light"); } catch(e){}
+  } else {
+    document.documentElement.setAttribute("data-theme", "dark");
+    try { localStorage.setItem("321modular_theme", "dark"); } catch(e){}
+  }
+});
+/* ==========================================================================
+   VISUALIZAÇÃO 3D — aba alternável (2D/3D) do stage.
+   Isolado do restante do app: não reescreve nem depende de nenhuma lógica
+   interna do editor 2D além dos helpers já existentes (typeOf, wallTypeOf,
+   contentBBox, state.panels, state.wallInstances). Não usa/renomeia
+   state.tabs/activeTab (isso é outro conceito — abas de projeto).
+   ========================================================================== */
+
+// ---- DOM refs -------------------------------------------------------------
+const stage3dEl   = document.getElementById("stage3d");
+const canvas3d    = document.getElementById("canvas3d");
+const loading3dEl = document.getElementById("stage3dLoading");
+const viewSwitchEl= document.getElementById("viewSwitch");
+
+// ---- Estado interno do módulo 3D ------------------------------------------
+let scene3D=null, camera3D=null, renderer3D=null, controls3D=null;
+let panelsGroup3D=null, wallsGroup3D=null, groundMesh3D=null, blocksGroup3D=null, blockMaterial3D=null;
+// Altura (m) onde o "chão" do chalé (piso/parede/mezanino/escada) começa —
+// exatamente em cima do topo dos blocos de fundação (ver blocksGroup3D),
+// que vão de y=0 até y=HOUSE_BASE_Y. Antes tudo começava em y=0 (flutuando
+// dentro do bloco); agora cada modelo importado nasce já deslocado pra cá.
+const HOUSE_BASE_Y = 0.5;
+let sun3D=null;                 // referência à luz direcional (precisa pra reconfigurar sombras em runtime)
+let clock3D=null;               // THREE.Clock — usado pro deltaTime do movimento WASD
+let raf3D=null;                 // id do requestAnimationFrame ativo (loop só roda em modo 3D)
+let sceneReady3D=false;         // true depois do initScene3D()
+let resizeObserver3D=null;      // guardado pra poder desconectar em disposeScene3D()
+let rebuildToken3D=0;           // evita corrida: uma reconstrução antiga não pisa numa mais nova
+
+// Cenário externo: céu procedural (com sol) + árvores geradas ao redor da
+// planta. Substituídos por um ambiente HDR de verdade se o usuário colar um
+// link (ver applyHdrEnvironment3D). treesGroup3D é reconstruído a cada
+// rebuildScene3D (depende do tamanho da planta); o céu é montado uma vez.
+let skyGroup3D=null, sunSprite3D=null, treesGroup3D=null;
+let hdrTexture3D=null, pmremGenerator3D=null;
+let ambientLight3D=null; // referência à luz ambiente (pra reconfigurar a "iluminação global" em runtime)
+let hemiLight3D=null;    // HemisphereLight (céu/chão) — parte da iluminação global (GI), dá o tom de cor do bounce
+let fillLight3D=null;    // luz direcional secundária, sem sombra — evita duplicar sombras e só equilibra o céu
+
+// Presets de textura por NOME — "sempre que uma textura com esse nome
+// aparecer, aplica automaticamente estes ajustes" (matiz/saturação/
+// luminosidade/rugosidade/reflexo). Persistido no JSON da planta (ver
+// serialize()/load()). Chave = nome exato da textura (trim), valor =
+// {hue,sat,light,rough,metal}. Independente da cena atual — pode conter
+// nomes que nem apareceram ainda no projeto aberto.
+//
+// Agora separados por qualidade do modelo (Leve/Detalhado) — pedido
+// explícito: a versão "achatada" (Flat Textures) de uma textura pode
+// precisar de um ajuste bem diferente da versão 4k original, então cada
+// qualidade guarda seu próprio conjunto de presets por nome.
+// materialPresetsAll3D = { detalhado:{nome:preset}, leve:{nome:preset} }.
+// materialPresets3D continua existindo, mas agora é só um ALIAS pro bucket
+// da qualidade ATIVA na cena agora (render3DQuality) — é o que
+// collectSceneMaterials3D/reapplyAllMaterialPresets3D/findPresetForName3D
+// devem usar pra aplicar de verdade na cena (ver syncActiveMaterialPresetsBucket3D).
+// O painel de presets (🎨) pode editar um bucket diferente do ativo (ver
+// presetEditQuality3D mais abaixo), pra dar pra configurar a qualidade que
+// não está sendo exibida agora sem precisar reabrir o 3D nela.
+let materialPresetsAll3D={ detalhado:{}, leve:{} };
+let materialPresets3D=materialPresetsAll3D.detalhado;
 function syncActiveMaterialPresetsBucket3D(){
   materialPresets3D = materialPresetsAll3D[render3DQuality] || (materialPresetsAll3D[render3DQuality]={});
 }
@@ -13601,6 +13398,13 @@ document.addEventListener('click', (event) => {
         adjust.getAttribute('data-planta-q-adjust') || '',
         Number(adjust.getAttribute('data-planta-q-delta') || 0)
       );
+      return;
+    }
+
+    const pdf = closest(event, '[data-planta-pdf]');
+    if (pdf) {
+      event.preventDefault();
+      gerarPDFOrcamento(pdf.getAttribute('data-planta-pdf') || 'preview');
       return;
     }
 
