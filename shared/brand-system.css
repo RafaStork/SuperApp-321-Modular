@@ -237,23 +237,7 @@ html[data-app-code="checklist"] .bottom {
     min-height: 0;
     overflow: hidden;
   }
-
-  html[data-app-code="gestao"] #app-shell,
-  html[data-app-code="gestao"] main {
-    height: 100dvh;
-    max-height: 100dvh;
-    min-height: 0;
-    overflow: hidden;
-  }
-  html[data-app-code="gestao"] aside {
-    position: sticky;
-    top: 0;
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
-  }
-
-  html[data-app-code="planta"] main {
+html[data-app-code="planta"] main {
     flex: 1 1 auto;
     height: auto;
     min-height: 0;
@@ -299,20 +283,26 @@ html[data-app-code="checklist"] .bottom {
     height: 100dvh;
     max-height: 100dvh;
     min-height: 0;
+    padding-top: 0;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
+  html[data-app-code="simulacao"] .top {
+    top: 0;
+    padding-top: 25px;
+    background: var(--bg);
+  }
 }
 /* Preserve mobile drawer positioning after the shared desktop shell rules. */
 @media screen and (max-width: 880px) {
-  html[data-app-code="gestao"] aside {
-    position: fixed;
-    top: 0;
-    bottom: 0;
+  html[data-app-code="simulacao"] .main {
+    padding-top: 0;
   }
-}
-@media screen and (max-width: 760px) {
+  html[data-app-code="simulacao"] .top {
+    padding-top: 16px;
+  }
+}@media screen and (max-width: 760px) {
   html[data-app-code="planta"] #aside {
     position: absolute;
     top: 0;
