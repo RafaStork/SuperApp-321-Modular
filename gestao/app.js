@@ -49,20 +49,23 @@ function ativarRedimensionamentoColunas(table, scope){
   if (headers.length < 2) return;
   const storageKey = `gestao_colunas_v1_${currentUser.id}_${scope}`;
   const clamp = (value, min, max)=>Math.min(max, Math.max(min, Math.round(Number(value)||min)));
-  const minimums = headers.map(th=>th.querySelector('.th-inner') ? 96 : 48);
-  let widths = headers.map((th,index)=>clamp(th.getBoundingClientRect().width, minimums[index], 640));
+  // O tamanho que o navegador calculou antes de ativar o recurso é o mínimo.
+  // Isso preserva exatamente a largura original de cada coluna.
+  const minimums = headers.map(th=>Math.max(1, Math.ceil(th.getBoundingClientRect().width)));
+  const maximums = minimums.map(minimum=>Math.max(640, minimum));
+  let widths = minimums.slice();
 
   try{
     const saved = JSON.parse(localStorage.getItem(storageKey)||'null');
     if (Array.isArray(saved) && saved.length===headers.length){
-      widths = saved.map((value,index)=>clamp(value, minimums[index], 640));
+      widths = saved.map((value,index)=>clamp(value, minimums[index], maximums[index]));
     }
   }catch(_){ /* preferência local inválida: usa a largura atual */ }
 
   function applyWidths(){
     let total = 0;
     headers.forEach((th,index)=>{
-      const width = clamp(widths[index], minimums[index], 640);
+      const width = clamp(widths[index], minimums[index], maximums[index]);
       widths[index] = width;
       th.style.width = `${width}px`;
       th.style.minWidth = `${width}px`;
@@ -75,7 +78,7 @@ function ativarRedimensionamentoColunas(table, scope){
     try{ localStorage.setItem(storageKey, JSON.stringify(widths)); }catch(_){ /* armazenamento indisponível */ }
   }
   function resizeColumn(index, delta){
-    widths[index] = clamp(widths[index] + delta, minimums[index], 640);
+    widths[index] = clamp(widths[index] + delta, minimums[index], maximums[index]);
     applyWidths();
   }
 
@@ -101,7 +104,7 @@ function ativarRedimensionamentoColunas(table, scope){
       document.body.classList.add('column-resizing');
 
       const onMove = moveEvent=>{
-        widths[index] = clamp(startWidth + moveEvent.clientX - startX, minimums[index], 640);
+        widths[index] = clamp(startWidth + moveEvent.clientX - startX, minimums[index], maximums[index]);
         applyWidths();
       };
       const onEnd = ()=>{
