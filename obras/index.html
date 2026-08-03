@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https://tile.openstreetmap.org; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Acompanhamento de Obras | 321 Modular</title>
   <meta name="description" content="Acompanhamento de obras em Kanban, calendário e mapa.">
   <link rel="icon" type="image/svg+xml" href="../shared/IconAcompanhamentoObras.svg">
@@ -14,17 +15,18 @@
   <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
   <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
   <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
-  <link rel="stylesheet" href="./styles.css?v=20260803-obras-1">
+  <link rel="stylesheet" href="./vendor/leaflet.css?v=1.9.4">
+  <link rel="stylesheet" href="./styles.css?v=20260804-obras-2">
 </head>
 <body>
   <div class="app-shell" id="app-shell" aria-busy="true">
     <div class="aside-backdrop" id="aside-backdrop"></div>
     <aside id="aside">
-      <div class="side-brand"><img class="brand-logo superapp-brand-logo" alt="321 Modular"><strong>Acompanhamento<br>de Obras</strong></div>
+      <div class="side-brand"><img class="brand-logo" src="../shared/Logo321Modular.svg" alt="321 Modular"><strong class="brand-name">Acompanhamento<br>de Obras</strong></div>
       <div class="nav-scroll"><nav class="tabs" aria-label="Navegação principal">
-        <button class="tab-btn active" type="button" data-view="painel"><span aria-hidden="true">▦</span> Painel</button>
-        <button class="tab-btn" type="button" data-view="calendario"><span aria-hidden="true">□</span> Calendário de obras</button>
-        <button class="tab-btn" type="button" data-view="locais"><span aria-hidden="true">⌖</span> Locais das obras</button>
+        <button class="tab-btn active" type="button" data-view="painel"><span class="nav-icon dashboard-icon" aria-hidden="true"></span> Painel</button>
+        <button class="tab-btn" type="button" data-view="calendario"><span class="nav-icon calendar-icon" aria-hidden="true"></span> Calendário de obras</button>
+        <button class="tab-btn" type="button" data-view="locais"><span class="nav-icon location-icon" aria-hidden="true"></span> Locais das obras</button>
       </nav></div>
       <footer class="side-footer"><button class="theme-toggle" id="theme-toggle" type="button" title="Alternar tema" aria-label="Alternar tema"><span class="knob">☀</span></button><div class="side-session"><span class="side-session-copy"><strong id="side-user-name">—</strong><small id="side-user-role">—</small></span><button class="tab-btn exit-btn" id="exit-btn" type="button">Sair</button></div></footer>
     </aside>
@@ -33,13 +35,14 @@
       <section class="toolbar" aria-label="Filtros"><label class="search-field"><span class="sr-only">Buscar obras</span><input id="search-input" type="search" placeholder="Buscar obra, cidade ou responsável…" autocomplete="off"></label><label class="select-field"><span class="sr-only">Filtrar por franquia</span><select id="franchise-filter"><option value="">Todas as franquias acessíveis</option></select></label><span class="result-count" id="result-count">0 obras</span></section>
       <div class="view-root" id="view-root">
         <section class="view active" id="view-painel" aria-labelledby="page-title"><div class="kanban" id="kanban"></div></section>
-        <section class="view" id="view-calendario" aria-labelledby="page-title"><div class="calendar-head"><button class="btn" id="calendar-prev" type="button" aria-label="Mês anterior">←</button><button class="btn" id="calendar-today" type="button">Hoje</button><button class="btn" id="calendar-next" type="button" aria-label="Próximo mês">→</button><strong id="calendar-label"></strong></div><div class="calendar" id="calendar"></div></section>
-        <section class="view" id="view-locais" aria-labelledby="page-title"><div class="map-layout"><div class="map-card"><div class="map-stage" id="map-stage"><svg id="brazil-map" viewBox="0 0 760 760" role="img" aria-label="Mapa do Brasil com as obras cadastradas"><g id="map-regions"></g><g id="map-markers"></g></svg><div class="map-empty" id="map-empty">Cadastre latitude e longitude para exibir uma obra no mapa.</div></div></div><aside class="location-list" id="location-list" aria-label="Obras no mapa"></aside></div></section>
+        <section class="view" id="view-calendario" aria-labelledby="page-title"><div class="calendar-head"><div class="calendar-nav"><button class="btn" id="calendar-prev" type="button" aria-label="Mês anterior">←</button><button class="btn" id="calendar-today" type="button">Hoje</button><button class="btn" id="calendar-next" type="button" aria-label="Próximo mês">→</button><strong id="calendar-label"></strong></div><div class="view-switch" role="group" aria-label="Visualização do calendário"><button type="button" class="active" data-calendar-mode="month">Mês</button><button type="button" data-calendar-mode="planner">Planner</button></div></div><div class="calendar" id="calendar"></div><div class="planner hidden" id="planner"></div></section>
+        <section class="view" id="view-locais" aria-labelledby="page-title"><div class="map-layout"><div class="map-card"><div class="map-stage" id="map-stage"><div id="interactive-map" aria-label="Mapa interativo das obras"></div><div class="map-empty" id="map-empty">Cadastre latitude e longitude para exibir uma obra no mapa.</div></div></div><section class="location-list" id="location-list" aria-label="Obras no mapa"></section></div></section>
       </div>
     </main>
   </div>
   <div class="modal-backdrop" id="modal-backdrop" aria-hidden="true"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><header><div><small id="modal-eyebrow">CADASTRO</small><h2 id="modal-title">Nova obra</h2></div><button class="icon-btn" id="modal-close" type="button" aria-label="Fechar">×</button></header><form id="work-form"><div id="work-fields"></div><div class="modal-actions"><button class="btn danger hidden" id="delete-btn" type="button">Excluir</button><span class="modal-spacer"></span><button class="btn" id="cancel-btn" type="button">Cancelar</button><button class="btn btn-primary" id="save-btn" type="submit">Salvar obra</button></div></form></section></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js?v=20260803-obras-1"></script>
+  <script src="./vendor/leaflet.js?v=1.9.4"></script>
+  <script src="./app.js?v=20260804-obras-2"></script>
 </body>
 </html>

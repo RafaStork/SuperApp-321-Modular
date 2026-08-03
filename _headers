@@ -8,3 +8,9 @@
 
 /planta/*
   Content-Security-Policy: default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net 'sha256-XOzT6OF3f/mmmiVkT8ddz2tHeP/fErjSGZmTLlfYj7k='; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev https://drive.google.com https://raw.githubusercontent.com https://github.com; img-src 'self' data: blob: https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev https://*.supabase.co https://drive.google.com https://lh3.googleusercontent.com https://raw.githubusercontent.com https://github.com; frame-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+
+/obras/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; font-src 'self' data:; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests
+  Referrer-Policy: strict-origin-when-cross-origin
+
