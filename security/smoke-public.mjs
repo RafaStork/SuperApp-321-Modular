@@ -18,6 +18,7 @@ const routes = [
   '/financeiro/index.html',
   '/playbook/index.html',
   '/simulacao/index.html',
+  '/obras/index.html',
   'https://checklist.321modular.com.br/',
   '/shared/runtime-config.js',
 ];

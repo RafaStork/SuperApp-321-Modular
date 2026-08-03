@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="title desc">
+  <title id="title">Ícone Acompanhamento de Obras</title>
+  <desc id="desc">Estrutura de obra em evolução com etapas conectadas e validação de progresso.</desc>
+
+  <rect width="1254" height="1254" fill="#1f331b"/>
+
+  <!-- Moldura da linguagem visual do conjunto -->
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity="0.26">
+    <circle cx="627" cy="627" r="366"/>
+    <path d="M282 338V282H338M916 282H972V338M282 916V972H338M916 972H972V916"/>
+  </g>
+
+  <!-- Guias técnicas discretas -->
+  <g fill="none" stroke="#a7c798" stroke-width="2.5" opacity="0.22" stroke-dasharray="12 12">
+    <path d="M318 426H936M318 606H936M318 786H936M388 342V926M590 342V926M792 342V926"/>
+  </g>
+
+  <!-- Painéis que representam etapas executadas da obra -->
+  <g stroke="none">
+    <rect x="398" y="774" width="166" height="104" fill="#ed6b1d"/>
+    <rect x="600" y="628" width="166" height="104" fill="#f9b215"/>
+    <rect x="398" y="482" width="166" height="104" fill="#2d5da9"/>
+  </g>
+
+  <!-- Estrutura e andaime -->
+  <g fill="none" stroke="#a7c798" stroke-linecap="square" stroke-linejoin="miter">
+    <path stroke-width="18" d="M360 886H804M382 886V438H782V886M382 594H782M382 740H782"/>
+    <path stroke-width="9" opacity="0.9" d="M398 594L564 740M564 594L398 740M600 740L766 886M766 740L600 886"/>
+    <path stroke-width="8" d="M438 438V358M438 358H458M706 438V358M706 358H726"/>
+    <path stroke-width="8" opacity="0.9" d="M342 438H822"/>
+  </g>
+
+  <!-- Linha de acompanhamento das etapas -->
+  <path d="M890 806V454" fill="none" stroke="#a7c798" stroke-width="8" stroke-linecap="round" opacity="0.9"/>
+  <g stroke="#1f331b" stroke-width="10">
+    <circle cx="890" cy="806" r="34" fill="#ed6b1d"/>
+    <circle cx="890" cy="688" r="34" fill="#f9b215"/>
+    <circle cx="890" cy="570" r="34" fill="#2d5da9"/>
+  </g>
+
+  <!-- Etapa concluída -->
+  <circle cx="890" cy="426" r="66" fill="#a7c798"/>
+  <path fill="none" stroke="#1f331b" stroke-width="22" stroke-linecap="square" stroke-linejoin="miter" d="M852 426L879 453L930 392"/>
+</svg>
