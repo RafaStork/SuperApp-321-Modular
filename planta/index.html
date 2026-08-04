@@ -19,7 +19,7 @@
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
 <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260804-mobile3d-1">
+<link rel="stylesheet" href="./styles-external.css?v=20260804-planta-25">
 <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
 <!-- three.js - usado apenas pela aba de Visualizacao 3D (ver bloco "VISUALIZACAO 3D" no script principal, perto do final do arquivo).
      A partir da r160 o three.js só distribui os addons (GLTFLoader, DRACOLoader, OrbitControls) como ES Modules -
@@ -287,7 +287,8 @@
          <button class="tbtn" data-planta-close-preview="true">Fechar</button>
       </div>
     </div>
-    <iframe id="previewFrame" class="planta-csp-014"></iframe>
+    <iframe id="previewFrame" class="planta-csp-014" title="Pré-visualização do PDF"></iframe>
+    <div class="pdf-mobile-preview" id="previewMobileFallback"><strong>PDF pronto para visualizar</strong><p>Em celulares e tablets, abra o arquivo no visualizador seguro do dispositivo.</p><a class="tbtn accent" id="previewOpenBtn" target="_blank" rel="noopener noreferrer">Abrir PDF</a></div>
   </div>
 </div>
 
@@ -301,6 +302,6 @@
   <div class="modal" id="confirmModalBody"></div>
 </div>
 
-<script src="./app.js?v=20260804-mobile3d-1"></script>
-<script src="./pdf-commercial.js?v=20260801-pdf-commercial-11"></script>
+<script src="./app.js?v=20260804-planta-25"></script>
+<script src="./pdf-commercial.js?v=20260804-pdf-mobile-1"></script>
 

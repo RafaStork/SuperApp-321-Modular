@@ -270,6 +270,189 @@ function bootObras(){
     document.querySelectorAll('[data-view]').forEach(btn=>btn.classList.toggle('active',btn.dataset.view===view));document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+view));$('page-title').textContent=VIEW_META[view][0];$('page-subtitle').textContent=VIEW_META[view][1];$('new-work-btn').hidden=view!=='painel'||isMFrq();toggleAside(false);render();if(view==='locais')setTimeout(()=>state.map?.invalidateSize(),80)
   }
   document.addEventListener('click',event=>{const status=$('status-filter');if(status?.open&&!event.target.closest('#status-filter'))status.open=false});
-  async function boot(){try{state.client=SuperAppAuth.getScopedClient('core');state.profile=await SuperAppAuth.getProfile();if(isMFrq())state.visibleStatuses=new Set(['em_andamento']);profileCopy();configureTheme();configureShell();await Promise.all([loadLocations(),loadWorks()]);$('app-shell').setAttribute('aria-busy','false');SuperAppAuth.releaseAppGuard()}catch(error){toast(safeMessage(error,'Não foi possível iniciar o acompanhamento de obras.'),'error');SuperAppAuth.releaseAppGuard()}}
+
+  /* Obras V25: cronograma contínuo, salto temporal e PDF */
+  const TIMELINE_INITIAL_DAYS=1464,TIMELINE_CHUNK_DAYS=732;
+  function ensureTimelineWindow(target){const base=target instanceof Date?target:new Date();if(!state.timelineWindowStart){state.timelineWindowStart=isoDate(new Date(base.getFullYear()-1,0,1,12));state.timelineWindowDays=TIMELINE_INITIAL_DAYS}}
+  function timelineRange(){ensureTimelineWindow(state.timelineAnchor||new Date());return{start:state.timelineWindowStart,end:addIsoDays(state.timelineWindowStart,state.timelineWindowDays-1),days:state.timelineWindowDays}}
+  function visibleTimelineDate(grid,range){const labelWidth=Math.min(340,Math.max(190,grid.clientWidth*.24)),day=Math.max(0,Math.round((grid.scrollLeft-labelWidth+(grid.clientWidth-labelWidth)/2)/TIMELINE_DAY));return parseIsoDate(addIsoDays(range.start,day))||new Date()}
+  function updateTimelineVisibleLabel(grid,range){$('timeline-label').textContent=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(visibleTimelineDate(grid,range))}
+  function timelineTargetLeft(grid,range,targetIso){const labelWidth=Math.min(340,Math.max(190,grid.clientWidth*.24));return Math.max(0,labelWidth+isoDayDiff(range.start,targetIso)*TIMELINE_DAY-(grid.clientWidth-labelWidth)/2)}
+  function animateTimelineScroll(grid,target,duration=920){if(state.timelineScrollRaf)cancelAnimationFrame(state.timelineScrollRaf);const start=grid.scrollLeft,delta=target-start,started=performance.now();const step=now=>{const t=Math.min(1,(now-started)/duration),eased=t<.5?16*t*t*t*t*t:1-Math.pow(-2*t+2,5)/2;grid.scrollLeft=start+delta*eased;if(t<1)state.timelineScrollRaf=requestAnimationFrame(step);else state.timelineScrollRaf=null};state.timelineScrollRaf=requestAnimationFrame(step)}
+  function ensureTimelineDateInWindow(targetIso){const range=timelineRange();if(targetIso>=range.start&&targetIso<=range.end)return false;const target=parseIsoDate(targetIso);state.timelineWindowStart=isoDate(new Date(target.getFullYear()-1,0,1,12));state.timelineWindowDays=TIMELINE_INITIAL_DAYS;return true}
+  function goToTimelineDate(target,animate=true){const targetIso=isoDate(target),changed=ensureTimelineDateInWindow(targetIso);state.timelineJumpDate=targetIso;state.timelineJumpAnimate=animate;state.timelineAutoCenter=false;if(changed)renderTimeline(filtered(),false);else{const grid=$('timeline')?.querySelector('.gantt-grid');if(!grid)return;const left=timelineTargetLeft(grid,timelineRange(),targetIso);if(animate)animateTimelineScroll(grid,left);else grid.scrollLeft=left}}
+  function shiftTimelineMonth(amount){const grid=$('timeline')?.querySelector('.gantt-grid'),range=timelineRange(),current=grid?visibleTimelineDate(grid,range):(state.timelineAnchor||new Date());goToTimelineDate(new Date(current.getFullYear(),current.getMonth()+amount,1,12),true)}
+  function expandTimelineWindow(direction,grid){if(state.timelineExpanding)return;state.timelineExpanding=true;const oldLeft=grid.scrollLeft,oldTop=grid.scrollTop;if(direction<0){state.timelineWindowStart=addIsoDays(state.timelineWindowStart,-TIMELINE_CHUNK_DAYS);state.timelineWindowDays+=TIMELINE_CHUNK_DAYS;state.timelineRestoreLeft=oldLeft+TIMELINE_CHUNK_DAYS*TIMELINE_DAY}else{state.timelineWindowDays+=TIMELINE_CHUNK_DAYS;state.timelineRestoreLeft=oldLeft}state.timelineRestoreTop=oldTop;requestAnimationFrame(()=>{renderTimeline(filtered(),false);state.timelineExpanding=false})}
+  function bindInfiniteTimeline(grid,range){let ticking=false;grid.addEventListener('scroll',()=>{if(ticking)return;ticking=true;requestAnimationFrame(()=>{ticking=false;updateTimelineVisibleLabel(grid,range);if(state.timelineScrollRaf||state.timelineSaving)return;if(grid.scrollLeft<420)expandTimelineWindow(-1,grid);else if(grid.scrollLeft+grid.clientWidth>grid.scrollWidth-420)expandTimelineWindow(1,grid)})},{passive:true})}
+  function renderTimeline(list,keepScroll=false){const root=$('timeline');if(!root)return;const previous=root.querySelector('.gantt-grid'),scrollLeft=keepScroll&&previous?previous.scrollLeft:0,scrollTop=keepScroll&&previous?previous.scrollTop:0;if(state.timelineAutoCenter)ensureTimelineDateInWindow(isoDate(new Date()));const data=timelineData(list),range=timelineRange();let rows='';sortWorks(data).forEach(work=>{const workCollapsed=state.timelineCollapsed.has(work.id),color=timelineColor(work.id),workPeriod=workTimelinePeriod(work),workAttr='data-work-row="'+esc(work.id)+'"';rows+=timelineRow('<button class="gantt-toggle" type="button" data-timeline-work="'+esc(work.id)+'" aria-expanded="'+String(!workCollapsed)+'"><span>▾</span><strong>'+esc(work.title)+'</strong></button>','level-work',timelineBar(workPeriod,range,{className:'work-period',color,label:work.title,workId:work.id}),workAttr);if(workCollapsed)return;work.checklist_groups.forEach(group=>{const groupCollapsed=state.timelineGroupCollapsed.has(group.id),period=derivedPeriod(group.items),groupAttr='data-parent-work="'+esc(work.id)+'" data-row-group="'+esc(group.id)+'"';rows+=timelineRow('<button class="gantt-toggle group" type="button" data-timeline-group="'+esc(group.id)+'" aria-expanded="'+String(!groupCollapsed)+'"><span>▾</span><strong>'+esc(group.title)+'</strong></button>','level-group',timelineBar(period,range,{className:'group-period',color,label:group.title,workId:work.id,groupId:group.id}),groupAttr);if(groupCollapsed)return;group.items.forEach(item=>{const itemLabel=item.title||item.text||'Tarefa',itemAttr='data-parent-work="'+esc(work.id)+'" data-parent-group="'+esc(group.id)+'"';rows+=timelineRow('<div class="gantt-item-label '+(item.done?'done':'')+'"><span></span><strong>'+esc(itemLabel)+'</strong></div>','level-item',timelineBar({start:item.start_date,end:item.end_date},range,{kind:'item',className:'item-period '+(item.done?'done':''),color,label:itemLabel,workId:work.id,groupId:group.id,itemId:item.id}),itemAttr)})})});root.innerHTML=data.length?'<div class="gantt-grid" style="--timeline-days:'+range.days+';--timeline-width:'+(range.days*TIMELINE_DAY)+'px" data-range-start="'+range.start+'"><div class="gantt-corner">Obras e etapas</div><div class="gantt-header">'+timelineHeader(range)+'</div>'+rows+'</div>':'<div class="timeline-empty"><strong>Nenhuma etapa programada</strong><span>Defina início e conclusão nas tarefas de uma obra não concluída.</span></div>';const grid=root.querySelector('.gantt-grid');if(!grid)return;if(state.timelineRestoreLeft!=null){grid.scrollLeft=state.timelineRestoreLeft;grid.scrollTop=state.timelineRestoreTop||0;state.timelineRestoreLeft=null;state.timelineRestoreTop=null}else if(state.timelineJumpDate){const left=timelineTargetLeft(grid,range,state.timelineJumpDate);grid.scrollTop=scrollTop;if(state.timelineJumpAnimate)requestAnimationFrame(()=>animateTimelineScroll(grid,left));else grid.scrollLeft=left;state.timelineJumpDate=null;state.timelineJumpAnimate=false}else if(state.timelineAutoCenter){grid.scrollLeft=timelineTargetLeft(grid,range,isoDate(new Date()));state.timelineAutoCenter=false}else{grid.scrollLeft=scrollLeft;grid.scrollTop=scrollTop}updateTimelineVisibleLabel(grid,range);bindInfiniteTimeline(grid,range);root.querySelectorAll('[data-timeline-work]').forEach(button=>button.addEventListener('click',()=>animateTimelineBranch('work',button.dataset.timelineWork,data)));root.querySelectorAll('[data-timeline-group]').forEach(button=>button.addEventListener('click',()=>animateTimelineBranch('group',button.dataset.timelineGroup,data)));bindTimelineBars(root,range)}
+  function closeTimelineJump(){const panel=$('timeline-jump-popover');if(!panel)return;panel.hidden=true;panel.setAttribute('aria-hidden','true');$('timeline-jump-btn')?.classList.remove('active')}
+  function openTimelineJump(){const panel=$('timeline-jump-popover'),button=$('timeline-jump-btn'),grid=$('timeline')?.querySelector('.gantt-grid'),date=grid?visibleTimelineDate(grid,timelineRange()):new Date(),month=$('timeline-jump-month');month.value=String(date.getMonth());refreshCustomSelect(month);$('timeline-jump-year').value=String(date.getFullYear());const rect=button.getBoundingClientRect();panel.hidden=false;panel.setAttribute('aria-hidden','false');button.classList.add('active');panel.style.left=Math.max(10,Math.min(rect.left,window.innerWidth-310))+'px';panel.style.top=(rect.bottom+7)+'px'}
+  function eligibleTimelinePdfWorks(){return state.works.filter(work=>work.status!=='concluida'&&(!isMFrq()||work.status==='em_andamento'))}
+  function openTimelinePdf(){const works=eligibleTimelinePdfWorks(),list=$('timeline-pdf-list');list.innerHTML=works.length?sortWorks(works).map(work=>'<label><input type="checkbox" value="'+esc(work.id)+'" checked><span><strong>'+esc(work.title)+'</strong><small>'+esc(work.city||work.franchise_name||'Obra em andamento')+'</small></span></label>').join(''):'<p class="empty-state">Nenhuma obra não concluída disponível.</p>';$('timeline-pdf-backdrop').classList.add('open');$('timeline-pdf-backdrop').setAttribute('aria-hidden','false')}
+  function closeTimelinePdf(){$('timeline-pdf-backdrop').classList.remove('open');$('timeline-pdf-backdrop').setAttribute('aria-hidden','true')}
+  function selectedTimelinePdfWorks(){const ids=new Set([...$('timeline-pdf-list').querySelectorAll('input:checked')].map(input=>input.value));return eligibleTimelinePdfWorks().filter(work=>ids.has(work.id))}
+  function hexRgb(value){const clean=String(value||'').replace('#',''),n=parseInt(clean.length===3?clean.split('').map(c=>c+c).join(''):clean,16);return Number.isFinite(n)?[(n>>16)&255,(n>>8)&255,n&255]:[239,108,26]}
+  function timelinePdfRows(work){const rows=[{type:'work',label:work.title,period:workTimelinePeriod(work)}];(work.checklist_groups||[]).forEach(group=>{const items=(group.items||[]).filter(item=>item.start_date&&item.end_date);if(!items.length)return;rows.push({type:'group',label:group.title,period:derivedPeriod(items)});items.forEach(item=>rows.push({type:'item',label:item.title||item.text||'Tarefa',period:{start:item.start_date,end:item.end_date},done:item.done}))});return rows}
+  let obrasPdfFontsPromise=null;
+  function arrayBufferToBase64(buffer){
+    const bytes=new Uint8Array(buffer),chunk=0x8000;
+    let binary='';
+    for(let index=0;index<bytes.length;index+=chunk)binary+=String.fromCharCode(...bytes.subarray(index,index+chunk));
+    return btoa(binary);
+  }
+  async function registerObrasPdfFonts(doc){
+    if(!obrasPdfFontsPromise){
+      obrasPdfFontsPromise=Promise.all([
+        fetch('../shared/Montserrat-Variable.ttf',{credentials:'same-origin',cache:'force-cache'}),
+        fetch('../shared/Montserrat-Bold.ttf',{credentials:'same-origin',cache:'force-cache'})
+      ]).then(async responses=>{
+        if(responses.some(response=>!response.ok))throw new Error('Não foi possível carregar as fontes do PDF.');
+        const buffers=await Promise.all(responses.map(response=>response.arrayBuffer()));
+        return buffers.map(arrayBufferToBase64);
+      });
+    }
+    const [regular,bold]=await obrasPdfFontsPromise;
+    doc.addFileToVFS('Montserrat-Regular.ttf',regular);
+    doc.addFont('Montserrat-Regular.ttf','Montserrat','normal');
+    doc.addFileToVFS('Montserrat-Bold.ttf',bold);
+    doc.addFont('Montserrat-Bold.ttf','Montserrat','bold');
+  }
+  async function buildTimelinePdf(works){
+    const PDF=window.jspdf&&window.jspdf.jsPDF;
+    if(!PDF)throw new Error('Gerador de PDF indisponível.');
+    if(!works.length)throw new Error('Selecione ao menos uma obra.');
+    const entries=works
+      .map(work=>({work,rows:timelinePdfRows(work)}))
+      .filter(entry=>entry.rows.some(row=>row.period?.start&&row.period?.end));
+    if(!entries.length)throw new Error('As obras selecionadas não possuem atividades com início e fim definidos.');
+
+    const doc=new PDF({orientation:'landscape',unit:'mm',format:'a4'});
+    await registerObrasPdfFonts(doc);
+    const pageW=297,pageH=210,left=9,labelW=68,chartX=77,chartW=211;
+    const daysPerPage=28,rowH=8,rowsPerPage=17;
+    let firstPage=true;
+
+    entries.forEach(entry=>{
+      const dated=entry.rows.filter(row=>row.period?.start&&row.period?.end);
+      const dates=dated.flatMap(row=>[row.period.start,row.period.end]).sort();
+      const firstIso=dates[0],lastIso=dates[dates.length-1];
+      const totalDays=isoDayDiff(firstIso,lastIso)+1;
+      const color=hexRgb(timelineColor(entry.work.id));
+
+      for(let dayOffset=0;dayOffset<totalDays;dayOffset+=daysPerPage){
+        const segmentStart=addIsoDays(firstIso,dayOffset);
+        const segmentDays=Math.min(daysPerPage,totalDays-dayOffset);
+        const segmentEnd=addIsoDays(segmentStart,segmentDays-1);
+
+        for(let rowOffset=0;rowOffset<dated.length;rowOffset+=rowsPerPage){
+          if(!firstPage)doc.addPage('a4','landscape');
+          firstPage=false;
+          const pageRows=dated.slice(rowOffset,rowOffset+rowsPerPage);
+          const dayW=chartW/daysPerPage,top=32;
+
+          doc.setFillColor(28,31,36);
+          doc.rect(0,0,pageW,25,'F');
+          doc.setTextColor(255,255,255);
+          doc.setFont('Montserrat','bold');
+          doc.setFontSize(15);
+          doc.text('Cronograma de Obras',left,11);
+          doc.setFontSize(9);
+          doc.text(String(entry.work.title||'Obra'),left,18);
+          doc.setTextColor(190,195,202);
+          doc.setFontSize(7);
+          doc.text(dateLabel(segmentStart)+' - '+dateLabel(segmentEnd),pageW-9,16,{align:'right'});
+
+          doc.setFillColor(238,240,242);
+          doc.rect(left,top,labelW,10,'F');
+          doc.setTextColor(70,77,87);
+          doc.setFontSize(7);
+          doc.text('OBRAS E ETAPAS',left+3,top+6);
+
+          for(let dayIndex=0;dayIndex<daysPerPage;dayIndex++){
+            const x=chartX+dayIndex*dayW;
+            const date=parseIsoDate(addIsoDays(segmentStart,dayIndex));
+            const weekend=date.getDay()===0||date.getDay()===6;
+            doc.setFillColor(weekend?245:250,247,249);
+            doc.rect(x,top,dayW,10,'F');
+            doc.setDrawColor(224,227,231);
+            doc.rect(x,top,dayW,10);
+            if(dayIndex<segmentDays){
+              doc.setTextColor(80,88,98);
+              doc.setFontSize(6);
+              doc.text(String(date.getDate()),x+dayW/2,top+6,{align:'center'});
+            }
+          }
+
+          pageRows.forEach((row,index)=>{
+            const y=top+10+index*rowH;
+            const shade=row.type==='work'?[235,237,240]:row.type==='group'?[244,245,247]:[251,251,252];
+            doc.setFillColor(...shade);
+            doc.rect(left,y,labelW,rowH,'F');
+            doc.setDrawColor(228,230,233);
+            doc.rect(left,y,labelW,rowH);
+            doc.setFont('Montserrat',row.type==='item'?'normal':'bold');
+            doc.setFontSize(row.type==='work'?7.4:row.type==='group'?6.8:6.5);
+            doc.setTextColor(45,49,56);
+            const indent=row.type==='item'?7:row.type==='group'?4:2;
+            const shortLabel=doc.splitTextToSize(String(row.label||''),labelW-indent-2)[0]||'';
+            doc.text(shortLabel,left+indent,y+5.2);
+
+            for(let dayIndex=0;dayIndex<daysPerPage;dayIndex++){
+              const x=chartX+dayIndex*dayW;
+              const alternate=dayIndex%2===1;
+              doc.setFillColor(alternate?252:248,alternate?252:249,alternate?253:250);
+              doc.rect(x,y,dayW,rowH,'F');
+              doc.setDrawColor(235,237,239);
+              doc.rect(x,y,dayW,rowH);
+            }
+
+            const visibleStart=row.period.start<segmentStart?segmentStart:row.period.start;
+            const visibleEnd=row.period.end>segmentEnd?segmentEnd:row.period.end;
+            if(visibleStart<=visibleEnd){
+              const barX=chartX+isoDayDiff(segmentStart,visibleStart)*dayW+.7;
+              const barW=Math.max(2,(isoDayDiff(visibleStart,visibleEnd)+1)*dayW-1.4);
+              doc.setFillColor(...color);
+              doc.roundedRect(barX,y+2,barW,rowH-4,1,1,'F');
+            }
+          });
+        }
+      }
+    });
+
+    const pages=doc.getNumberOfPages();
+    for(let page=1;page<=pages;page++){
+      doc.setPage(page);
+      doc.setFont('Montserrat','normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(110,116,124);
+      doc.text('321 Modular | Acompanhamento de Obras',left,pageH-6);
+      doc.text(page+' / '+pages,pageW-9,pageH-6,{align:'right'});
+    }
+    doc.setProperties({
+      title:'Cronograma de Obras - 321 Modular',
+      subject:'Cronograma das obras selecionadas',
+      creator:'321 Modular SuperApp'
+    });
+    return doc;
+  }  let obrasPdfPreviewUrl=null,obrasPdfPreviewDoc=null,obrasPdfPreviewName='cronograma-de-obras.pdf';
+  function closeObrasPdfPreview(){$('obras-pdf-preview-backdrop').classList.remove('open');$('obras-pdf-preview-backdrop').setAttribute('aria-hidden','true');$('obras-pdf-preview-frame').removeAttribute('src');$('obras-pdf-open').removeAttribute('href');if(obrasPdfPreviewUrl){URL.revokeObjectURL(obrasPdfPreviewUrl);obrasPdfPreviewUrl=null}obrasPdfPreviewDoc=null}
+  function showObrasPdfPreview(doc){closeObrasPdfPreview();obrasPdfPreviewDoc=doc;obrasPdfPreviewUrl=URL.createObjectURL(doc.output('blob'));$('obras-pdf-preview-frame').src=obrasPdfPreviewUrl;$('obras-pdf-open').href=obrasPdfPreviewUrl;$('obras-pdf-preview-backdrop').classList.add('open');$('obras-pdf-preview-backdrop').setAttribute('aria-hidden','false')}
+  async function createTimelinePdf(action){
+    const buttons=[$('timeline-pdf-preview-btn'),$('timeline-pdf-download-btn')].filter(Boolean);
+    buttons.forEach(button=>button.disabled=true);
+    try{
+      toast('Preparando PDF...');
+      const doc=await buildTimelinePdf(selectedTimelinePdfWorks());
+      closeTimelinePdf();
+      if(action==='preview')showObrasPdfPreview(doc);
+      else{doc.save(obrasPdfPreviewName);toast('PDF do Cronograma gerado.')}
+    }catch(error){
+      toast(error.message||'Não foi possível gerar o PDF.','error');
+    }finally{
+      buttons.forEach(button=>button.disabled=false);
+    }
+  }
+  function configureTimelineV25(){const month=$('timeline-jump-month');enhanceSelect(month);$('timeline-jump-btn').addEventListener('click',event=>{event.stopPropagation();$('timeline-jump-popover').hidden?openTimelineJump():closeTimelineJump()});$('timeline-jump-cancel').addEventListener('click',closeTimelineJump);$('timeline-jump-go').addEventListener('click',()=>{const year=Number($('timeline-jump-year').value),monthValue=Number(month.value);if(!Number.isInteger(year)||year<1900||year>2300){toast('Informe um ano entre 1900 e 2300.','error');return}closeTimelineJump();goToTimelineDate(new Date(year,monthValue,1,12),true)});$('timeline-pdf-btn').addEventListener('click',openTimelinePdf);$('timeline-pdf-close').addEventListener('click',closeTimelinePdf);$('timeline-pdf-cancel').addEventListener('click',closeTimelinePdf);$('timeline-pdf-toggle-all').addEventListener('click',()=>{const boxes=[...$('timeline-pdf-list').querySelectorAll('input')],all=boxes.length&&boxes.every(box=>box.checked);boxes.forEach(box=>box.checked=!all)});$('timeline-pdf-preview-btn').addEventListener('click',()=>createTimelinePdf('preview'));$('timeline-pdf-download-btn').addEventListener('click',()=>createTimelinePdf('download'));$('timeline-pdf-backdrop').addEventListener('click',event=>{if(event.target===$('timeline-pdf-backdrop'))closeTimelinePdf()});$('obras-pdf-preview-close').addEventListener('click',closeObrasPdfPreview);$('obras-pdf-preview-cancel').addEventListener('click',closeObrasPdfPreview);$('obras-pdf-preview-backdrop').addEventListener('click',event=>{if(event.target===$('obras-pdf-preview-backdrop'))closeObrasPdfPreview()});$('obras-pdf-save').addEventListener('click',()=>obrasPdfPreviewDoc?.save(obrasPdfPreviewName));document.addEventListener('click',event=>{if(!$('timeline-jump-popover').hidden&&!event.target.closest('#timeline-jump-popover,#timeline-jump-btn'))closeTimelineJump()})}
+  async function boot(){try{state.client=SuperAppAuth.getScopedClient('core');state.profile=await SuperAppAuth.getProfile();if(isMFrq())state.visibleStatuses=new Set(['em_andamento']);profileCopy();configureTheme();configureShell();configureTimelineV25();await Promise.all([loadLocations(),loadWorks()]);$('app-shell').setAttribute('aria-busy','false');SuperAppAuth.releaseAppGuard()}catch(error){toast(safeMessage(error,'Não foi possível iniciar o acompanhamento de obras.'),'error');SuperAppAuth.releaseAppGuard()}}
   window.addEventListener('superapp:authorized',boot,{once:true});
 } bootObras();

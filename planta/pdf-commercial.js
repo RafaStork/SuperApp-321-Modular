@@ -610,13 +610,7 @@ function drawCommercialBenefit(doc,fontFamily,x,title,text){
 function showGeneratedPdf(doc,action,fileName,successMessage){
   applyPdfDocumentName(doc,fileName);
   if(action==="preview"){
-    const frame=document.getElementById("previewFrame");
-    const saveButton=document.getElementById("previewSaveBtn");
-    frame.title=fileName;
-    frame.src=doc.output("bloburl");
-    document.getElementById("previewScrim").classList.add("show");
-    saveButton.title=`Salvar ${fileName}`;
-    saveButton.onclick=()=>doc.save(fileName);
+    window.showPlantaPdfPreview(doc,fileName);
   }else{
     doc.save(fileName);
     toast(successMessage);

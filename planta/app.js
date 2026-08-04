@@ -9580,9 +9580,7 @@ async function generatePDF(action = 'save', dimMode = 'auto', incluirOrcamento =
       if (incluirOrcamento) appendOrcamentoSimplificadoAoPDF(doc);
       if(typeof applyPdfDocumentName==="function") applyPdfDocumentName(doc,fname+".pdf");
       if (action === 'preview') {
-          document.getElementById('previewFrame').src = doc.output('bloburl');
-          document.getElementById('previewScrim').classList.add('show');
-          document.getElementById('previewSaveBtn').onclick = () => { doc.save(fname+".pdf"); };
+          showPlantaPdfPreview(doc,fname+".pdf");
       } else {
           doc.save(fname+".pdf");
           toast("PDF vetorial gerado.");
@@ -9608,10 +9606,8 @@ async function generatePDF(action = 'save', dimMode = 'auto', incluirOrcamento =
             if (incluirOrcamento) appendOrcamentoSimplificadoAoPDF(doc);
             if(typeof applyPdfDocumentName==="function") applyPdfDocumentName(doc,fname+".pdf");
             if (action === 'preview') {
-                document.getElementById('previewFrame').src = doc.output('bloburl');
-                document.getElementById('previewScrim').classList.add('show');
-                document.getElementById('previewSaveBtn').onclick = () => { doc.save(fname+".pdf"); };
-            } else {
+          showPlantaPdfPreview(doc,fname+".pdf");
+      } else {
                 doc.save(fname+".pdf");
                 toast("PDF gerado (raster).");
             }
@@ -9620,16 +9616,15 @@ async function generatePDF(action = 'save', dimMode = 'auto', incluirOrcamento =
     }
     cv.toBlob(b=>{
         const a=document.createElement("a");
-        const purl=URL.createObjectURL(b);
-        a.href=purl;
         if (action === 'preview') {
-            document.getElementById('previewFrame').src = purl;
-            document.getElementById('previewScrim').classList.add('show');
-            document.getElementById('previewSaveBtn').onclick = () => {
-                a.download=fname+".png"; a.click(); 
-            };
+            showPlantaPdfPreview(null,fname+".png",b,()=>{
+                const downloadUrl=URL.createObjectURL(b);
+                a.href=downloadUrl;a.download=fname+".png";a.click();
+                setTimeout(()=>URL.revokeObjectURL(downloadUrl),1000);
+            });
         } else {
-            a.download=fname+".png";a.click();URL.revokeObjectURL(purl);
+            const purl=URL.createObjectURL(b);
+            a.href=purl;a.download=fname+".png";a.click();setTimeout(()=>URL.revokeObjectURL(purl),1000);
             toastError("Gerador de PDF indisponível — baixei como PNG.");
         }
     },"image/png");
@@ -9637,6 +9632,25 @@ async function generatePDF(action = 'save', dimMode = 'auto', incluirOrcamento =
   img.onerror=()=>alert("Falha ao gerar o PDF.");img.src=url;
 }
 
+let plantaPreviewObjectUrl=null;
+function closePlantaPdfPreview(){
+  document.getElementById('previewScrim')?.classList.remove('show');
+  const frame=document.getElementById('previewFrame');if(frame)frame.removeAttribute('src');
+  const open=document.getElementById('previewOpenBtn');if(open)open.removeAttribute('href');
+  if(plantaPreviewObjectUrl){URL.revokeObjectURL(plantaPreviewObjectUrl);plantaPreviewObjectUrl=null}
+}
+function showPlantaPdfPreview(doc,fileName,blobOverride,onSave){
+  closePlantaPdfPreview();
+  const blob=blobOverride||(doc&&doc.output?doc.output('blob'):null);if(!blob)throw new Error('PDF indisponível para pré-visualização.');
+  plantaPreviewObjectUrl=URL.createObjectURL(blob);
+  const frame=document.getElementById('previewFrame'),open=document.getElementById('previewOpenBtn'),save=document.getElementById('previewSaveBtn');
+  if(frame){frame.title=fileName||'Pré-visualização do PDF';frame.src=plantaPreviewObjectUrl}
+  if(open){open.href=plantaPreviewObjectUrl;open.setAttribute('aria-label','Abrir '+(fileName||'PDF'))}
+  if(save){save.title='Salvar '+(fileName||'PDF');save.onclick=()=>onSave?onSave():(doc?doc.save(fileName):null)}
+  document.getElementById('previewScrim')?.classList.add('show');
+}
+window.showPlantaPdfPreview=showPlantaPdfPreview;
+window.closePlantaPdfPreview=closePlantaPdfPreview;
 let toastT;function toast(msg){let t=document.getElementById("_toast");
   if(!t){t=document.createElement("div");t.id="_toast";
     t.style.cssText="position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#1C1F24;color:#fff;padding:9px 16px;border-radius:8px;font-family:'Montserrat',sans-serif;font-size:13px;z-index:99;transition:opacity .3s;box-shadow:var(--shadow);pointer-events:none;";
@@ -10732,10 +10746,8 @@ function gerarPDFOrcamento(action = 'save') {
     : `orcamento-${proj.replace(/\s+/g,"-").toLowerCase()}`;
   if(typeof applyPdfDocumentName==="function") applyPdfDocumentName(doc,fname+".pdf");
   if (action === 'preview') {
-    document.getElementById('previewFrame').src = doc.output('bloburl');
-    document.getElementById('previewScrim').classList.add('show');
-    document.getElementById('previewSaveBtn').onclick = () => { doc.save(fname+".pdf"); };
-  } else {
+          showPlantaPdfPreview(doc,fname+".pdf");
+      } else {
     doc.save(fname+".pdf");
   }
 }
@@ -10787,6 +10799,7 @@ let raf3D=null;                 // id do requestAnimationFrame ativo (loop só r
 let sceneReady3D=false;         // true depois do initScene3D()
 let resizeObserver3D=null;      // guardado pra poder desconectar em disposeScene3D()
 let rebuildToken3D=0;           // evita corrida: uma reconstrução antiga não pisa numa mais nova
+let sceneLifecycle3D=0;          // invalida HDR/ambiente assíncrono pertencente a cenas já descartadas
 
 // Cenário externo: céu procedural (com sol) + árvores geradas ao redor da
 // planta. Substituídos por um ambiente HDR de verdade se o usuário colar um
@@ -11103,6 +11116,7 @@ function buildInstanceNode3D(ty, inst, placeholderFn){
 // ---- Setup da cena (uma única vez) ----------------------------------------
 function initScene3D(){
   if(sceneReady3D) return;
+  sceneLifecycle3D++;
   scene3D=new THREE.Scene();
   scene3D.background=new THREE.Color(0xEEF0F3); // usado só como cor de fallback; o céu procedural (esfera) cobre isso visualmente
 
@@ -11567,23 +11581,26 @@ function bakeProceduralEnvironment3D(){
 
 function applyHdrEnvironment3D(url){
   if(!scene3D||!renderer3D) return Promise.reject(new Error('Cena 3D ainda não iniciada.'));
-  ensurePMREMGenerator3D();
+  const lifecycle=sceneLifecycle3D,targetScene=scene3D,targetGenerator=ensurePMREMGenerator3D();
   const loader=new THREE.RGBELoader();
   return new Promise((resolve,reject)=>{
     loader.load(url, tex=>{
       try{
-        const envMap=pmremGenerator3D.fromEquirectangular(tex).texture;
+        if(lifecycle!==sceneLifecycle3D||targetScene!==scene3D||targetGenerator!==pmremGenerator3D){tex.dispose();resolve(false);return}
+        const envMap=targetGenerator.fromEquirectangular(tex).texture;
         tex.dispose();
+        if(lifecycle!==sceneLifecycle3D||targetScene!==scene3D){envMap.dispose();resolve(false);return}
         if(hdrTexture3D) hdrTexture3D.dispose();
         if(bakedEnvTexture3D){ bakedEnvTexture3D.dispose(); bakedEnvTexture3D=null; }
         hdrTexture3D=envMap;
-        scene3D.background=envMap;
-        scene3D.environment=envMap;
+        targetScene.background=envMap;
+        targetScene.environment=envMap;
+        normalizeSceneLighting3D();
         syncMaterialsEnvMap3D();
         if(skyGroup3D) skyGroup3D.visible=false;
-        resolve();
+        resolve(true);
       }catch(e){ reject(e); }
-    }, undefined, err=>reject(err));
+    }, undefined, err=>lifecycle===sceneLifecycle3D?reject(err):resolve(false));
   });
 }
 function clearHdrEnvironment3D(){
@@ -11701,7 +11718,8 @@ function loadRender3dConfig(render3d){
     }
     if(newHdrUrl){
       if(typeof v3dHdrStatus!=='undefined' && v3dHdrStatus) v3dHdrStatus.textContent='Carregando ambiente HDR salvo no arquivo...';
-      applyHdrEnvironment3D(newHdrUrl).then(()=>{
+      applyHdrEnvironment3D(newHdrUrl).then(applied=>{
+        if(applied===false)return;
         if(typeof v3dHdrStatus!=='undefined' && v3dHdrStatus) v3dHdrStatus.textContent='HDR aplicado (salvo no arquivo) — o sol/reflexo vêm da imagem carregada.';
         toast('Ambiente HDR do arquivo aplicado.');
       }).catch(err=>{
@@ -11719,6 +11737,14 @@ function loadRender3dConfig(render3d){
   }
 }
 
+function normalizeSceneLighting3D(){
+  if(renderer3D){renderer3D.toneMapping=THREE.ACESFilmicToneMapping;renderer3D.toneMappingExposure=1.05;renderer3D.outputColorSpace=THREE.SRGBColorSpace;renderer3D.setClearColor(0xEEF0F3,1)}
+  if(scene3D&&'environmentIntensity' in scene3D)scene3D.environmentIntensity=1;
+  if(sun3D)sun3D.intensity=2.6;
+  if(ambientLight3D)ambientLight3D.intensity=0.08;
+  applyAmbientLevel();
+  applyReflectionQuality();
+}
 function aspect3D(){
   const r=stage3dEl.getBoundingClientRect();
   return Math.max(0.01, r.width/Math.max(1,r.height));
@@ -12219,6 +12245,7 @@ function rebuildScene3D(st){
     if(renderer3D) renderer3D.shadowMap.needsUpdate=true;
     collectSceneMaterials3D();
     bakeProceduralEnvironment3D();
+    normalizeSceneLighting3D();
     frameCamera3D();
   });
 }
@@ -12628,6 +12655,8 @@ function disposeObjectDeep3D(obj){
 // reenquadrada a cada abertura via frameCamera3D, então não existe nenhum
 // estado "perdido" com isso).
 function disposeScene3D(){
+  sceneLifecycle3D++;
+  rebuildToken3D++;
   stopRenderLoop3D();
   if(!sceneReady3D) return;
 
@@ -12769,6 +12798,7 @@ function setViewMode3D(mode){
   if(showSvg && selbarEl) selbarEl.style.removeProperty('display');
 
   stage3dEl.classList.toggle('show', mode==='3d');
+  document.documentElement.classList.toggle('planta-3d-active',mode==='3d');
 
   if(mode==='3d'){
     if(typeof showPdfLoading==='function') showPdfLoading('Preparando bibliotecas e modelos...', 'Carregando 3D');
@@ -12778,6 +12808,7 @@ function setViewMode3D(mode){
       // quando a CSP/rede bloquear uma dependência, mostra a causa resumida.
       toastError('Carregando bibliotecas 3D...');
       state.viewMode='2d';
+      document.documentElement.classList.remove('planta-3d-active');
       let bootstrap=window.__THREE_BOOTSTRAP_PROMISE;
       // Fallback: se o host publicou o app.js mas omitiu o arquivo auxiliar
       // three-bootstrap.js, inicializa os mesmos módulos usando o import map
@@ -12952,7 +12983,8 @@ v3dHdrApply.addEventListener('click', ()=>{
   const finalUrl=normalizeAssetUrl(url);
   v3dHdrApply.disabled=true; v3dHdrApply.textContent='Carregando…';
   v3dHdrStatus.textContent='Carregando ambiente HDR...';
-  applyHdrEnvironment3D(finalUrl).then(()=>{
+  applyHdrEnvironment3D(finalUrl).then(applied=>{
+    if(applied===false)return;
     render3DSettings.hdrUrl=finalUrl;
     syncStateRender3D();
     v3dHdrApply.disabled=false; v3dHdrApply.textContent='Aplicar HDR';
@@ -13430,7 +13462,7 @@ document.addEventListener('click', (event) => {
   const target = event.target.closest?.('[data-planta-close-preview]');
   if (!target) return;
   event.preventDefault();
-  document.getElementById('previewScrim')?.classList.remove('show');
+  window.closePlantaPdfPreview?.();
   const returnToPdf=window.__plantaPreviewReturn;
   window.__plantaPreviewReturn=null;
   if(typeof returnToPdf==='function')setTimeout(returnToPdf,0);
