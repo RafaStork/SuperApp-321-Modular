@@ -19,7 +19,7 @@
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
 <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260804-planta-25">
+<link rel="stylesheet" href="./styles-external.css?v=20260804-planta-26">
 <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
 <!-- three.js - usado apenas pela aba de Visualizacao 3D (ver bloco "VISUALIZACAO 3D" no script principal, perto do final do arquivo).
      A partir da r160 o three.js só distribui os addons (GLTFLoader, DRACOLoader, OrbitControls) como ES Modules -
@@ -107,7 +107,7 @@
     <div id="stage3d">
       <canvas id="canvas3d"></canvas>
       <div class="mobile-3d-controls" id="mobile3dControls" aria-label="Controles móveis da câmera 3D">
-        <div class="mobile-3d-control"><div class="mobile-3d-joystick" id="mobile3dMove" role="application" aria-label="Joystick de movimento"><span class="mobile-3d-knob"></span></div><small>MOVER</small></div>
+        <div class="mobile-3d-control"><div class="mobile-3d-joystick" id="mobile3dMove" role="application" aria-label="Joystick de movimento"><span class="mobile-3d-knob"></span></div><small>MOVER</small></div><div class="mobile-3d-elevation" aria-label="Controle de altura da câmera"><button type="button" id="mobile3dUp" aria-label="Subir câmera">↑</button><small>ALTURA</small><button type="button" id="mobile3dDown" aria-label="Descer câmera">↓</button></div>
         <div class="mobile-3d-control"><div class="mobile-3d-joystick" id="mobile3dLook" role="application" aria-label="Joystick para olhar ao redor"><span class="mobile-3d-knob"></span></div><small>OLHAR</small></div>
       </div>
       <button type="button" class="v3d-gear v3d-gear-2" id="view3dMaterialsBtn" title="Cor/rugosidade/reflexo das texturas">🎨</button>
@@ -302,6 +302,6 @@
   <div class="modal" id="confirmModalBody"></div>
 </div>
 
-<script src="./app.js?v=20260804-planta-25"></script>
+<script src="./app.js?v=20260804-planta-26"></script>
 <script src="./pdf-commercial.js?v=20260804-pdf-mobile-1"></script>
 

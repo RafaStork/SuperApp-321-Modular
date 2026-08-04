@@ -10800,6 +10800,8 @@ let sceneReady3D=false;         // true depois do initScene3D()
 let resizeObserver3D=null;      // guardado pra poder desconectar em disposeScene3D()
 let rebuildToken3D=0;           // evita corrida: uma reconstrução antiga não pisa numa mais nova
 let sceneLifecycle3D=0;          // invalida HDR/ambiente assíncrono pertencente a cenas já descartadas
+let sceneContentFingerprintValue3D=null;
+function sceneContentFingerprint3D(){try{return JSON.stringify({quality:render3DQuality,panels:state.panels,wallInstances:state.wallInstances,types:state.types,wallTypes:state.wallTypes,render3d:state.render3d})}catch(error){return null}}
 
 // Cenário externo: céu procedural (com sol) + árvores geradas ao redor da
 // planta. Substituídos por um ambiente HDR de verdade se o usuário colar um
@@ -12246,6 +12248,7 @@ function rebuildScene3D(st){
     collectSceneMaterials3D();
     bakeProceduralEnvironment3D();
     normalizeSceneLighting3D();
+    sceneContentFingerprintValue3D=sceneContentFingerprint3D();
     frameCamera3D();
   });
 }
@@ -12267,8 +12270,8 @@ const WASD_SPACE_MULTIPLIER=0.35; // ESPAÇO desacelera — oposto do SHIFT
 const CAMERA_MIN_HEIGHT=0.35; // "chão" da câmera — nunca deixa ela afundar na grama
 function applyWASDMovement3D(dt){
   if(!camera3D||!controls3D) return;
-  const {w,a,s,d}=moveKeys3D;
-  if(!w&&!a&&!s&&!d) return;
+  const {w,a,s,d}=moveKeys3D,vertical=mobile3DState?.vertical||0;
+  if(!w&&!a&&!s&&!d&&!vertical) return;
 
   const forward=new THREE.Vector3();
   camera3D.getWorldDirection(forward); // mantém o componente Y (inclinação) — usado só pra W/S
@@ -12283,6 +12286,7 @@ function applyWASDMovement3D(dt){
   if(s) delta.addScaledVector(forward,-1);
   if(d) delta.add(right);
   if(a) delta.addScaledVector(right,-1);
+  if(vertical) delta.y+=vertical;
   if(delta.lengthSq()===0) return;
 
   delta.normalize().multiplyScalar(speed*dt);
@@ -12690,6 +12694,7 @@ function disposeScene3D(){
 
     materialRegistry3D.clear();
     modelCache.clear(); // descarrega os .glb já baixados também — recarrega do zero na próxima abertura
+    sceneContentFingerprintValue3D=null;
   } finally {
     // Sempre executa, mesmo se algo acima lançar erro — senão sceneReady3D
     // ficaria travado em "true" com a cena meio-destruída, e initScene3D()
@@ -12752,16 +12757,16 @@ window.addEventListener('blur', ()=>{ resetMobile3DControls(); shiftHeld3D=false
 
 
 // ---- Controles moveis 3D V1 -----------------------------------------------
-const mobile3DState={movePointer:null,lookPointer:null,lookX:0,lookY:0,lookRaf:null};
+const mobile3DState={movePointer:null,lookPointer:null,lookX:0,lookY:0,lookRaf:null,vertical:0,verticalPointer:null};
 function resetMobile3DControls(){
   moveKeys3D.w=moveKeys3D.a=moveKeys3D.s=moveKeys3D.d=false;
-  mobile3DState.movePointer=mobile3DState.lookPointer=null;mobile3DState.lookX=mobile3DState.lookY=0;
-  document.querySelectorAll('.mobile-3d-joystick').forEach(control=>{control.classList.remove('active');const knob=control.querySelector('.mobile-3d-knob');if(knob)knob.style.transform='translate(-50%,-50%)'});
+  mobile3DState.movePointer=mobile3DState.lookPointer=mobile3DState.verticalPointer=null;mobile3DState.lookX=mobile3DState.lookY=mobile3DState.vertical=0;
+  document.querySelectorAll('.mobile-3d-joystick,.mobile-3d-elevation button').forEach(control=>{control.classList.remove('active');const knob=control.querySelector('.mobile-3d-knob');if(knob)knob.style.transform='translate(-50%,-50%)'});
 }
 function applyMobileLook3D(){
   if(mobile3DState.lookPointer==null||state.viewMode!=='3d'||!camera3D||!controls3D){mobile3DState.lookRaf=null;return}
   const euler=new THREE.Euler().setFromQuaternion(camera3D.quaternion,'YXZ');
-  euler.y-=mobile3DState.lookX*0.035;euler.x-=mobile3DState.lookY*0.028;
+  euler.y-=mobile3DState.lookX*0.012;euler.x-=mobile3DState.lookY*0.010;
   const limit=Math.PI/2-0.025;euler.x=Math.max(-limit,Math.min(limit,euler.x));camera3D.quaternion.setFromEuler(euler);
   const distance=Math.max(2,camera3D.position.distanceTo(controls3D.target)||10),forward=new THREE.Vector3();camera3D.getWorldDirection(forward);controls3D.target.copy(camera3D.position).addScaledVector(forward,distance);controls3D.update();
   mobile3DState.lookRaf=requestAnimationFrame(applyMobileLook3D);
@@ -12774,7 +12779,8 @@ function setupMobile3DJoystick(root,kind){
   root.addEventListener('pointermove',event=>{const key=kind==='move'?'movePointer':'lookPointer';if(mobile3DState[key]!==event.pointerId)return;event.preventDefault();event.stopPropagation();update(event)});
   root.addEventListener('pointerup',finish);root.addEventListener('pointercancel',finish);root.addEventListener('lostpointercapture',finish);
 }
-function setupMobile3DControls(){setupMobile3DJoystick(document.getElementById('mobile3dMove'),'move');setupMobile3DJoystick(document.getElementById('mobile3dLook'),'look')}
+function setupMobile3DElevationButton(button,direction){if(!button||button.dataset.ready==='true')return;button.dataset.ready='true';const finish=event=>{if(mobile3DState.verticalPointer!==event.pointerId)return;mobile3DState.verticalPointer=null;mobile3DState.vertical=0;button.classList.remove('active')};button.addEventListener('pointerdown',event=>{if(state.viewMode!=='3d')return;event.preventDefault();event.stopPropagation();mobile3DState.verticalPointer=event.pointerId;mobile3DState.vertical=direction;button.classList.add('active');try{button.setPointerCapture(event.pointerId)}catch(error){}});button.addEventListener('pointerup',finish);button.addEventListener('pointercancel',finish);button.addEventListener('lostpointercapture',finish)}
+function setupMobile3DControls(){setupMobile3DJoystick(document.getElementById('mobile3dMove'),'move');setupMobile3DJoystick(document.getElementById('mobile3dLook'),'look');setupMobile3DElevationButton(document.getElementById('mobile3dUp'),1);setupMobile3DElevationButton(document.getElementById('mobile3dDown'),-1)}
 setupMobile3DControls();
 // ---- Switch 2D/3D -----------------------------------------------------------
 function setViewMode3D(mode){
@@ -12854,20 +12860,24 @@ function setViewMode3D(mode){
     // desktop apenas — no mobile o aside já é escondido por outro mecanismo).
     const asideEl3D=document.getElementById('aside');
     if(asideEl3D) asideEl3D.classList.add('aside-collapsed');
+    const canReuseScene=sceneReady3D&&sceneContentFingerprintValue3D===sceneContentFingerprint3D();
     initScene3D();
     resizeRenderer3D();
-    // Só aplica HDR/presets de textura DEPOIS que a cena termina de
-    // carregar de verdade (peças + materiais prontos) — ver
-    // loadRender3dConfig/state.render3d. rebuildScene3D() agora devolve uma
-    // promise que só resolve nesse ponto (ver comentário na própria função).
-    rebuildScene3D(state).then(()=>{
-      if(typeof loadRender3dConfig==='function') loadRender3dConfig(state.render3d);
-    }).catch(error=>{
-      console.error('Falha ao montar visualização 3D.',error);
-      toastError('Não foi possível concluir o carregamento do 3D.');
-    }).finally(()=>{
+    if(canReuseScene){
+      normalizeSceneLighting3D();
       if(typeof hidePdfLoading==='function') hidePdfLoading();
-    });
+    }else{
+      // Reconstrói somente quando o conteúdo mudou ou a GPU foi liberada.
+      // Alternar 2D/3D sem editar reutiliza a mesma cena e evita rebakes cumulativos.
+      rebuildScene3D(state).then(()=>{
+        if(typeof loadRender3dConfig==='function') loadRender3dConfig(state.render3d);
+      }).catch(error=>{
+        console.error('Falha ao montar visualização 3D.',error);
+        toastError('Não foi possível concluir o carregamento do 3D.');
+      }).finally(()=>{
+        if(typeof hidePdfLoading==='function') hidePdfLoading();
+      });
+    }
     startRenderLoop3D();
   } else {
     resetMobile3DControls();
@@ -12875,10 +12885,11 @@ function setViewMode3D(mode){
     // Volta a mostrar o menu lateral, com a mesma animação, ao voltar pro 2D.
     const asideEl3D=document.getElementById('aside');
     if(asideEl3D) asideEl3D.classList.remove('aside-collapsed');
-    // Descarrega a cena de verdade (não só pausa) — ver disposeScene3D. O
-    // usuário pediu isso especificamente pra evitar travamentos: reabrir o
-    // 3D reconstrói tudo do zero (mesmo fluxo de sempre).
-    disposeScene3D();
+    // Pausa a renderização ao alternar para 2D, mas preserva a cena já
+    // normalizada. A proteção de memória continua em visibilitychange, que
+    // libera a GPU quando a aba fica oculta.
+    stopRenderLoop3D();
+    closeAll3DPanels();
   }
 }
 

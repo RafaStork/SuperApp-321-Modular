@@ -511,3 +511,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or)!impo
 .side-footer .side-session .tab-btn{display:flex;align-items:center;gap:10px;position:relative;overflow:visible;justify-content:flex-start;align-self:auto;flex:0 0 auto;padding:7px 10px;background:var(--wh);border:1px solid var(--bdr);border-radius:8px;color:var(--t2);text-align:left;font-size:12.5px;font-weight:600;min-height:100%;transition:background .2s var(--ease-out),color .2s var(--ease-out),padding-left .22s var(--ease-out),box-shadow .2s var(--ease-out),transform .12s var(--ease-spring)}
 .side-footer .side-session .tab-btn::before{content:"";position:absolute;left:5px;top:50%;width:3px;height:0;border-radius:99px;background:var(--or);transform:translateY(-50%);transition:height .22s var(--ease-out)}
 .side-footer .side-session .tab-btn:hover{background:var(--gc);color:var(--t1);border-color:var(--tm);padding-left:16px}.side-footer .side-session .tab-btn:hover::before{height:15px}.side-footer .side-session .tab-btn:active{transform:scale(.98)}
+
+/* Sair V3: mesma largura e deslocamento interno do Gestão */
+.side-footer .side-session .tab-btn{width:56px;min-width:56px;max-width:56px;justify-content:center!important;padding:7px 10px!important;box-sizing:border-box}.side-footer .side-session .tab-btn:hover{padding-left:16px!important;padding-right:4px!important}

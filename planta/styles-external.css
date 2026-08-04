@@ -892,3 +892,11 @@ main{position:relative}
   html.planta-3d-active body>main{height:100dvh;flex:1 1 100dvh}
   html.planta-3d-active #stage3d{inset:0}
 }
+/* Planta V26: altura móvel, sensibilidade refinada e botão Sair estável */
+.mobile-3d-elevation{display:grid;grid-template-rows:46px auto 46px;justify-items:center;align-items:center;gap:5px;pointer-events:none;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+.mobile-3d-elevation small{font:800 8px/1 'Montserrat',sans-serif;letter-spacing:.1em}
+.mobile-3d-elevation button{width:46px;height:46px;border:1px solid rgba(255,255,255,.48);border-radius:13px;background:rgba(18,22,27,.5);color:#fff;box-shadow:0 7px 22px rgba(0,0,0,.28);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font:800 21px/1 'Montserrat',sans-serif;pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent}
+.mobile-3d-elevation button.active{border-color:#f9b215;background:rgba(249,178,21,.72);transform:scale(.96)}
+.side-footer .side-session #side-logout-planta{width:56px;min-width:56px;max-width:56px;justify-content:center!important;padding:7px 10px!important;box-sizing:border-box}
+.side-footer .side-session #side-logout-planta:hover{padding-left:16px!important;padding-right:4px!important}
+@media (max-width:560px) and (orientation:portrait){.mobile-3d-elevation{grid-template-rows:40px auto 40px}.mobile-3d-elevation button{width:40px;height:40px}.mobile-3d-controls{gap:8px}}
