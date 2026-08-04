@@ -200,3 +200,26 @@ body.modal-open .app-shell{filter:blur(5px);transition:filter .16s ease}
 .app-date-field.is-readonly .date-display{padding-right:12px!important;background:var(--surface-2)!important;color:var(--dim)!important;cursor:default}.app-date-field.is-readonly .date-trigger{display:none}.app-date-field.is-readonly{opacity:.86}
 @media(max-width:900px){.timeline-head{height:auto;min-height:58px;align-items:flex-start;flex-direction:column}.timeline-head small{white-space:normal}.timeline{height:calc(100% - 72px)}.gantt-grid{grid-template-columns:220px var(--timeline-width)}.gantt-label.level-item{padding-left:32px!important}}
 @media(max-width:560px){.gantt-grid{grid-template-columns:190px var(--timeline-width)}.gantt-corner{padding:0 10px}.gantt-label{padding:6px 8px}.gantt-toggle{font-size:9px}.gantt-toggle.group{padding-left:12px}.gantt-label.level-item{padding-left:22px!important}}
+/* Obras V22: refinamentos de interação, checklist e cronograma */
+.tabs .tab-btn{gap:0}
+.filter-menu summary{min-width:112px;justify-content:space-between;background:var(--bg-soft);color:var(--text);font:500 14px var(--font);padding:10px 13px}
+.filter-menu[open] summary{border-color:var(--accent);box-shadow:var(--ring);background:var(--surface)}
+.app-confirm-backdrop{position:fixed;inset:0;z-index:13000;display:grid;place-items:center;padding:18px;background:rgba(9,12,15,.74);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
+.app-confirm-backdrop.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .2s ease}
+.app-confirm{width:min(430px,100%);display:grid;grid-template-columns:44px minmax(0,1fr);gap:14px;padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 70px rgba(0,0,0,.38);animation:confirmIn .22s var(--ease-out)}
+.app-confirm-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;background:color-mix(in srgb,var(--red) 15%,transparent);color:var(--red);font:900 20px var(--font)}
+.app-confirm small{color:var(--red);font:800 9px var(--font);letter-spacing:.12em}.app-confirm h2{margin:4px 0 7px;font-size:18px}.app-confirm p{margin:0;color:var(--dim);font-size:12px;line-height:1.55}.app-confirm footer{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;padding-top:5px}
+@keyframes confirmIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+.checklist-item-copy{min-width:0;display:grid;gap:7px}.checklist-item-copy label{min-width:0}.checklist-item-copy label>span{display:block;margin:0 0 4px;color:var(--faint);font:750 8px var(--font);letter-spacing:.06em;text-transform:uppercase}
+.checklist-item-title{width:100%;min-height:38px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:9px;padding:8px 10px;font:700 12px var(--font);outline:none}.checklist-item-title:focus{border-color:var(--accent);box-shadow:var(--ring)}
+.checklist-item-row{align-items:start}.checklist-check,.checklist-remove{margin-top:24px}.checklist-item-dates{padding-top:20px}
+.work-checklist-group{overflow:hidden}.checklist-collapsible{will-change:height,opacity,transform}
+.gantt-label.level-work,.gantt-track.level-work{border-top:7px solid var(--bg);min-height:56px!important;background:color-mix(in srgb,var(--surface-2) 84%,var(--accent-soft))!important}
+.gantt-label.level-work{box-shadow:inset 4px 0 0 var(--accent)}
+.gantt-bar{overflow:visible}
+.gantt-bar>span{overflow:hidden;border-radius:inherit}
+.gantt-bar::after{content:attr(data-tooltip);position:absolute;left:50%;bottom:calc(100% + 10px);z-index:80;width:max-content;max-width:280px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);box-shadow:var(--shadow);font:700 10px/1.35 var(--font);white-space:normal;text-align:center;opacity:0;visibility:hidden;pointer-events:none;transform:translate(-50%,5px);transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+.gantt-bar::before{content:"";position:absolute;left:50%;bottom:calc(100% + 5px);z-index:81;width:8px;height:8px;background:var(--surface);border-right:1px solid var(--border);border-bottom:1px solid var(--border);opacity:0;visibility:hidden;transform:translateX(-50%) rotate(45deg);transition:opacity .16s ease,visibility 0s linear .16s}
+.gantt-bar:hover,.gantt-bar:focus{z-index:70;outline:none}.gantt-bar:hover::after,.gantt-bar:focus::after,.gantt-bar:hover::before,.gantt-bar:focus::before{opacity:1;visibility:visible;transition-delay:0s}.gantt-bar:hover::after,.gantt-bar:focus::after{transform:translate(-50%,0)}
+.timeline-empty{height:100%;display:grid;place-content:center;gap:5px;text-align:center;color:var(--dim)}.timeline-empty strong{color:var(--text);font-size:14px}.timeline-empty span{font-size:10px}
+@media(max-width:900px){.checklist-item-copy{grid-column:2/3}.checklist-item-dates{padding-top:0}.checklist-check,.checklist-remove{margin-top:24px}}
