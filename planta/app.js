@@ -12766,7 +12766,7 @@ function resetMobile3DControls(){
 function applyMobileLook3D(){
   if(mobile3DState.lookPointer==null||state.viewMode!=='3d'||!camera3D||!controls3D){mobile3DState.lookRaf=null;return}
   const euler=new THREE.Euler().setFromQuaternion(camera3D.quaternion,'YXZ');
-  euler.y-=mobile3DState.lookX*0.012;euler.x-=mobile3DState.lookY*0.010;
+  euler.y-=mobile3DState.lookX*0.0145;euler.x-=mobile3DState.lookY*0.012;
   const limit=Math.PI/2-0.025;euler.x=Math.max(-limit,Math.min(limit,euler.x));camera3D.quaternion.setFromEuler(euler);
   const distance=Math.max(2,camera3D.position.distanceTo(controls3D.target)||10),forward=new THREE.Vector3();camera3D.getWorldDirection(forward);controls3D.target.copy(camera3D.position).addScaledVector(forward,distance);controls3D.update();
   mobile3DState.lookRaf=requestAnimationFrame(applyMobileLook3D);
