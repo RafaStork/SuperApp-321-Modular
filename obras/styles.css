@@ -159,6 +159,7 @@ body.modal-open .app-shell{filter:blur(5px);transition:filter .16s ease}
 .checklist-text{field-sizing:content;min-block-size:44px!important;height:auto;max-height:none!important;overflow-y:hidden!important}
 .checklist-item-row{height:auto!important}
 .location-list{position:relative;z-index:2}.toast{z-index:13000!important}
+.location-item-unmapped{cursor:default;opacity:.82}.location-copy strong,.location-copy small,.location-copy em{display:block}.location-copy em{margin-top:7px;color:var(--faint);font-size:9px;font-style:normal;font-weight:700}.location-item>button{width:100%;border:0;background:transparent;color:inherit;padding:0;text-align:left;cursor:pointer}.location-actions{display:flex;gap:8px;align-items:center;margin-top:9px}.location-actions a,.location-actions button{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:7px;padding:6px 8px;font:700 9px var(--font);text-decoration:none;cursor:pointer}.location-actions a:hover,.location-actions button:hover{border-color:var(--accent);color:var(--accent)}
 @media(max-width:900px){
   .select-popover,.date-popover{z-index:12050!important}
 }
