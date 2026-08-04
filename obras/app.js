@@ -31,7 +31,7 @@ function bootObras(){
   const PRIORITY={baixa:'#2B8A3E',media:'#d6a620',alta:'#E8590C',urgente:'#c0392b'};
   const VIEW_META={painel:['Painel','Acompanhe cada etapa das obras da franquia.'],calendario:['Calendário de obras','Visualize as datas previstas das obras por mês.'],locais:['Locais das obras','Navegue pelo mapa completo das obras cadastradas.']};
   const $=id=>document.getElementById(id);
-  const state={client:null,profile:null,franchises:[],carpenters:[],works:[],locations:{states:[],cities:[]},view:'painel',query:'',franchise:'',calendar:new Date(),sort:'recent',hideOldCompleted:true,visibleStatuses:new Set(STATUS.map(item=>item.id)),editing:null,dragged:null,map:null,mapLayer:null,mapBaseLayers:null,mapMarkers:new Map(),mapHasFit:false,datePicker:null};
+  const state={client:null,profile:null,franchises:[],carpenters:[],works:[],locations:{states:[],cities:[]},view:'painel',query:'',franchise:'',calendar:new Date(),sort:'recent',hideOldCompleted:true,visibleStatuses:new Set(STATUS.map(item=>item.id)),editing:null,dragged:null,map:null,mapLayer:null,mapBaseLayers:null,mapMarkers:new Map(),mapHasFit:false,datePicker:null,loadingWorks:false,loadError:false};
   const esc=value=>String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const statusBy=id=>STATUS.find(item=>item.id===id)||STATUS[0];
   const dateLabel=value=>value?new Intl.DateTimeFormat('pt-BR').format(new Date(value+'T12:00:00')):'Sem data';
@@ -39,6 +39,7 @@ function bootObras(){
   function toast(message,type){const el=$('toast');el.textContent=message;el.className='toast show '+(type||'');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.className='toast',3200)}
   function safeMessage(error,fallback){console.error('[obras]',error);return window.SuperAppAuth?.getSafeAuthMessage?.(error,fallback)||fallback}
   async function rpc(name,params){const {data,error}=await state.client.rpc(name,params||{});if(error)throw error;return data}
+  function withTimeout(promise,timeoutMs,label){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label||'Tempo limite excedido')),timeoutMs)})]).finally(()=>clearTimeout(timer))}
   function rows(value){if(Array.isArray(value))return value;if(Array.isArray(value?.items))return value.items;return value?[value]:[]}
   function isMFrq(){return state.profile?.role_code==='MFrq'}
   function availableStatuses(){return isMFrq()?STATUS.filter(item=>item.id==='em_andamento'):STATUS}
@@ -84,7 +85,29 @@ function bootObras(){
   }
   function bindDatePickers(root){root.querySelectorAll('[data-date-field]').forEach(field=>{if(field.dataset.bound)return;field.dataset.bound='true';const display=field.querySelector('.date-display'),trigger=field.querySelector('.date-trigger');trigger.addEventListener('click',event=>{event.stopPropagation();openDatePicker(field)});display.addEventListener('focus',()=>openDatePicker(field));display.addEventListener('input',()=>{let digits=display.value.replace(/\D/g,'').slice(0,8);if(digits.length>4)digits=digits.slice(0,2)+'/'+digits.slice(2,4)+'/'+digits.slice(4);else if(digits.length>2)digits=digits.slice(0,2)+'/'+digits.slice(2);display.value=digits});display.addEventListener('blur',()=>{const iso=displayToIso(display.value);if(iso)setDateField(field,iso);else if(!display.value)setDateField(field,'');else display.value=isoToDisplay(field.querySelector('.date-value').value)})})}
   async function loadLocations(){try{const response=await fetch('./ibge-locations.json');if(!response.ok)throw new Error('IBGE local indisponível');const data=await response.json();state.locations={states:Array.isArray(data.states)?data.states:[],cities:Array.isArray(data.cities)?data.cities:[]}}catch(error){console.warn(error);toast('Não foi possível carregar as localidades do IBGE.','error')}}
-  async function loadWorks(){setBusy(true);try{const [works,franchises,carpenters]=await Promise.all([rpc('obras_list'),rpc('obras_list_franchises'),rpc('obras_list_carpenters')]);state.works=rows(works);state.franchises=rows(franchises);state.carpenters=rows(carpenters);state.mapHasFit=false;renderFranchises();render()}catch(error){toast(safeMessage(error,'Não foi possível carregar as obras.'),'error')}finally{setBusy(false)}}  function render(){const list=filtered();$('result-count').textContent=list.length+' '+(list.length===1?'obra':'obras');if(state.view==='painel')renderKanban(list);if(state.view==='calendario')renderCalendar(list);if(state.view==='locais')renderMap(mapFiltered())}
+  async function loadWorks(){
+    if(state.loadingWorks)return false;
+    state.loadingWorks=true;state.loadError=false;setBusy(true);
+    try{
+      const [worksResult,franchisesResult,carpentersResult]=await Promise.allSettled([
+        withTimeout(rpc('obras_list'),15000,'Tempo limite ao carregar obras'),
+        withTimeout(rpc('obras_list_franchises'),15000,'Tempo limite ao carregar franquias'),
+        withTimeout(rpc('obras_list_carpenters'),15000,'Tempo limite ao carregar carpinteiros')
+      ]);
+      if(worksResult.status==='rejected')throw worksResult.reason;
+      state.works=rows(worksResult.value);
+      if(franchisesResult.status==='fulfilled')state.franchises=rows(franchisesResult.value);
+      if(carpentersResult.status==='fulfilled')state.carpenters=rows(carpentersResult.value);
+      state.mapHasFit=false;renderFranchises();render();
+      if(franchisesResult.status==='rejected'||carpentersResult.status==='rejected')toast('Obras carregadas. Alguns dados auxiliares estão temporariamente indisponíveis.','error');
+      return true;
+    }catch(error){
+      state.loadError=true;state.works=[];renderFranchises();render();
+      toast(safeMessage(error,'Não foi possível carregar as obras.'),'error');
+      return false;
+    }finally{state.loadingWorks=false;setBusy(false)}
+  }
+  function render(){const list=filtered();$('result-count').textContent=list.length+' '+(list.length===1?'obra':'obras');if(state.view==='painel')renderKanban(list);if(state.view==='calendario')renderCalendar(list);if(state.view==='locais')renderMap(mapFiltered())}
   function cardHtml(work){const priority=PRIORITY[work.priority]||PRIORITY.media;return '<article class="work-card" draggable="true" data-id="'+esc(work.id)+'"><div class="card-top"><span class="priority-dot" style="--priority-color:'+priority+'" title="Prioridade '+esc(titleCase(work.priority))+'"></span><small>'+esc(work.code||work.franchise_name||'OBRA')+'</small></div><h3>'+esc(work.title)+'</h3><p>'+esc([work.city,work.state].filter(Boolean).join(' · ')||'Local ainda não definido')+'</p><div class="card-meta"><span>'+esc(dateLabel(work.start_date))+'</span><span>'+esc(work.responsible_name||'Sem responsável')+'</span></div><div class="card-footer"><div class="progress"><span style="width:'+Number(work.progress||0)+'%"></span></div><small>'+Number(work.progress||0)+'%</small></div><select class="mobile-status" data-status-id="'+esc(work.id)+'" aria-label="Mover obra">'+availableStatuses().map(item=>'<option value="'+item.id+'" '+(item.id===work.status?'selected':'')+'>'+esc(item.label)+'</option>').join('')+'</select></article>'}
   function renderKanban(list){$('kanban').innerHTML=availableStatuses().filter(status=>state.visibleStatuses.has(status.id)).map(status=>{const cards=sortWorks(list.filter(work=>work.status===status.id));return '<section class="kanban-column" style="--status-color:'+status.color+'"><header class="column-head"><strong>'+esc(status.label)+'</strong><span class="column-count">'+cards.length+'</span></header><div class="card-list" data-status="'+status.id+'">'+(cards.map(cardHtml).join('')||'<p class="empty-state">Nenhuma obra nesta etapa.</p>')+'</div></section>'}).join('');
     document.querySelectorAll('.work-card').forEach(card=>{card.addEventListener('click',e=>{if(e.target.matches('select'))return;openModal(state.works.find(w=>w.id===card.dataset.id))});card.addEventListener('dragstart',()=>{state.dragged=card.dataset.id;card.classList.add('dragging')});card.addEventListener('dragend',()=>{state.dragged=null;card.classList.remove('dragging')})});
@@ -103,6 +126,7 @@ function bootObras(){
   function markerIcon(){return L.divIcon({className:'work-map-div-icon',html:'<svg class="work-map-marker-svg" viewBox="0 0 32 42" aria-hidden="true"><path fill="#f9b215" stroke="#ffffff" stroke-width="2.5" d="M16 1.5C8.2 1.5 2 7.7 2 15.5 2 26 16 40.5 16 40.5S30 26 30 15.5C30 7.7 23.8 1.5 16 1.5Z"/><circle cx="16" cy="15.5" r="5.5" fill="#ffffff"/></svg>',iconSize:[32,42],iconAnchor:[16,42],popupAnchor:[0,-39]})}
   function renderMap(list){
     const entries=list.map(work=>({work,coords:workCoordinates(work)})),mapped=entries.filter(entry=>entry.coords),empty=$('map-empty'),locationList=$('location-list');
+    if(state.loadError){empty.textContent='Não foi possível carregar as obras.';empty.hidden=false;locationList.innerHTML='<div class="map-load-error"><strong>Falha ao carregar as obras</strong><small>Verifique a conexão e tente novamente.</small><button class="btn" type="button" data-obras-retry>Tentar novamente</button></div>';locationList.querySelector('[data-obras-retry]').addEventListener('click',loadWorks);try{ensureMap();setTimeout(()=>state.map?.invalidateSize(),60)}catch(error){console.error('[obras:map]',error)}return}
     locationList.innerHTML=entries.length?entries.map(({work,coords})=>{const location=esc([work.city,work.state,work.franchise_name].filter(Boolean).join(' · ')||'Local ainda não definido');if(!coords)return '<article class="location-item location-item-unmapped"><div class="location-copy"><strong>'+esc(work.title)+'</strong><small>'+location+'</small><em>Localização não cadastrada</em></div></article>';const url=googleMapUrl({...work,latitude:coords.latitude,longitude:coords.longitude});return '<article class="location-item"><button type="button" data-location-id="'+esc(work.id)+'"><strong>'+esc(work.title)+'</strong><small>'+location+'</small></button><div class="location-actions"><a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">Abrir rota</a><button type="button" data-copy-map="'+esc(work.id)+'">Copiar link</button></div></article>'}).join(''):'<p class="empty-state">Nenhuma obra disponível no seu escopo de acesso.</p>';
     document.querySelectorAll('[data-copy-map]').forEach(button=>button.addEventListener('click',async()=>{const work=state.works.find(item=>item.id===button.dataset.copyMap);if(!work)return;try{await navigator.clipboard.writeText(googleMapUrl(work));toast('Link do Google Maps copiado.')}catch(_){toast('Não foi possível copiar o link neste navegador.','error')}}));
     if(!window.L){empty.textContent='O mapa não pôde ser iniciado. As obras continuam disponíveis na lista.';empty.hidden=false;return}
