@@ -223,3 +223,12 @@ body.modal-open .app-shell{filter:blur(5px);transition:filter .16s ease}
 .gantt-bar:hover,.gantt-bar:focus{z-index:70;outline:none}.gantt-bar:hover::after,.gantt-bar:focus::after,.gantt-bar:hover::before,.gantt-bar:focus::before{opacity:1;visibility:visible;transition-delay:0s}.gantt-bar:hover::after,.gantt-bar:focus::after{transform:translate(-50%,0)}
 .timeline-empty{height:100%;display:grid;place-content:center;gap:5px;text-align:center;color:var(--dim)}.timeline-empty strong{color:var(--text);font-size:14px}.timeline-empty span{font-size:10px}
 @media(max-width:900px){.checklist-item-copy{grid-column:2/3}.checklist-item-dates{padding-top:0}.checklist-check,.checklist-remove{margin-top:24px}}
+/* Padrao Sair Gestao V1 */
+.side-footer .side-session .exit-btn{position:relative;overflow:hidden;justify-content:center;flex:0 0 auto;align-self:stretch;border:1px solid var(--border);background:var(--surface);color:var(--dim);padding:7px 10px;min-height:100%;border-radius:8px;font-size:12.5px;font-weight:600;transition:background .2s var(--ease-out),color .2s var(--ease-out),padding-left .22s var(--ease-out),box-shadow .2s var(--ease-out),transform .12s var(--ease-spring),border-color .2s}
+.side-footer .side-session .exit-btn:before{content:"";position:absolute;left:5px;top:50%;width:3px;height:0;border-radius:99px;background:var(--accent);transform:translateY(-50%);transition:height .22s var(--ease-out)}
+.side-footer .side-session .exit-btn:hover{background:var(--bg-soft);color:var(--text);border-color:var(--faint);padding-left:16px}.side-footer .side-session .exit-btn:hover:before{height:15px}.side-footer .side-session .exit-btn:active{transform:scale(.98)}
+
+/* Cronograma V23: coluna fixa sempre acima das barras */
+.gantt-label{z-index:35;isolation:isolate;box-shadow:1px 0 0 var(--border)}
+.gantt-label.level-work{z-index:37}.gantt-corner{z-index:60}.gantt-header{z-index:45}
+.gantt-bar,.gantt-bar:hover,.gantt-bar:focus{z-index:7}

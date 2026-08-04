@@ -865,3 +865,17 @@ main{position:relative}
 }
 [data-planta-wood="dark"] { background: #8B5A2B; }
 [data-planta-wood="light"] { background: #D8A878; }
+/* Padrao Sair Gestao V1 */
+.side-footer .side-session #side-logout-planta{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;flex:0 0 auto;align-self:stretch;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);padding:7px 10px;min-height:100%;border-radius:8px;font-size:12.5px;font-weight:600;transition:background .2s cubic-bezier(.16,.84,.44,1),color .2s cubic-bezier(.16,.84,.44,1),padding-left .22s cubic-bezier(.16,.84,.44,1),box-shadow .2s cubic-bezier(.16,.84,.44,1),transform .12s cubic-bezier(.34,1.56,.64,1),border-color .2s}
+.side-footer .side-session #side-logout-planta:before{content:"";position:absolute;left:5px;top:50%;width:3px;height:0;border-radius:99px;background:var(--accent);transform:translateY(-50%);transition:height .22s cubic-bezier(.16,.84,.44,1)}
+.side-footer .side-session #side-logout-planta:hover{background:var(--paper);color:var(--ink);border-color:var(--ink-faint);padding-left:16px}.side-footer .side-session #side-logout-planta:hover:before{height:15px}.side-footer .side-session #side-logout-planta:active{transform:scale(.98)}
+/* Controles moveis 3D V1 */
+.mobile-3d-controls{display:none;position:absolute;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom));z-index:8;align-items:flex-end;justify-content:space-between;padding:0 clamp(16px,4vw,42px);pointer-events:none}
+.mobile-3d-control{display:grid;justify-items:center;gap:7px;color:#fff;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+.mobile-3d-control small{font:800 9px/1 'Montserrat',sans-serif;letter-spacing:.12em}
+.mobile-3d-joystick{position:relative;width:clamp(94px,16vw,124px);height:clamp(94px,16vw,124px);border:1px solid rgba(255,255,255,.42);border-radius:50%;background:rgba(18,22,27,.42);box-shadow:inset 0 0 0 10px rgba(255,255,255,.035),0 8px 28px rgba(0,0,0,.26);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);touch-action:none;pointer-events:auto;-webkit-tap-highlight-color:transparent}
+.mobile-3d-joystick:before,.mobile-3d-joystick:after{content:"";position:absolute;background:rgba(255,255,255,.14);pointer-events:none}.mobile-3d-joystick:before{left:50%;top:12px;bottom:12px;width:1px}.mobile-3d-joystick:after{top:50%;left:12px;right:12px;height:1px}
+.mobile-3d-knob{position:absolute;left:50%;top:50%;width:42%;height:42%;border-radius:50%;background:linear-gradient(145deg,rgba(255,180,31,.96),rgba(232,89,12,.96));border:2px solid rgba(255,255,255,.72);box-shadow:0 5px 16px rgba(0,0,0,.38);transform:translate(-50%,-50%);will-change:transform;pointer-events:none}
+.mobile-3d-joystick.active{border-color:rgba(249,178,21,.9);box-shadow:inset 0 0 0 10px rgba(249,178,21,.06),0 8px 30px rgba(0,0,0,.3)}
+@media (hover:none) and (pointer:coarse){#stage3d.show .mobile-3d-controls{display:flex}}
+@media(max-width:560px) and (orientation:portrait){.mobile-3d-controls{padding:0 14px}.mobile-3d-joystick{width:92px;height:92px}}

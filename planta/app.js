@@ -12719,8 +12719,34 @@ window.addEventListener('keyup', e=>{
   if(e.code==='Space'||e.key===' '){ spaceHeld3D=false; }
 });
 // Solta as teclas se a janela perder o foco (alt-tab etc.) pra não "grudar" o movimento.
-window.addEventListener('blur', ()=>{ moveKeys3D.w=moveKeys3D.a=moveKeys3D.s=moveKeys3D.d=false; shiftHeld3D=false; spaceHeld3D=false; });
+window.addEventListener('blur', ()=>{ resetMobile3DControls(); shiftHeld3D=false; spaceHeld3D=false; });
 
+
+// ---- Controles moveis 3D V1 -----------------------------------------------
+const mobile3DState={movePointer:null,lookPointer:null,lookX:0,lookY:0,lookRaf:null};
+function resetMobile3DControls(){
+  moveKeys3D.w=moveKeys3D.a=moveKeys3D.s=moveKeys3D.d=false;
+  mobile3DState.movePointer=mobile3DState.lookPointer=null;mobile3DState.lookX=mobile3DState.lookY=0;
+  document.querySelectorAll('.mobile-3d-joystick').forEach(control=>{control.classList.remove('active');const knob=control.querySelector('.mobile-3d-knob');if(knob)knob.style.transform='translate(-50%,-50%)'});
+}
+function applyMobileLook3D(){
+  if(mobile3DState.lookPointer==null||state.viewMode!=='3d'||!camera3D||!controls3D){mobile3DState.lookRaf=null;return}
+  const euler=new THREE.Euler().setFromQuaternion(camera3D.quaternion,'YXZ');
+  euler.y-=mobile3DState.lookX*0.035;euler.x-=mobile3DState.lookY*0.028;
+  const limit=Math.PI/2-0.025;euler.x=Math.max(-limit,Math.min(limit,euler.x));camera3D.quaternion.setFromEuler(euler);
+  const distance=Math.max(2,camera3D.position.distanceTo(controls3D.target)||10),forward=new THREE.Vector3();camera3D.getWorldDirection(forward);controls3D.target.copy(camera3D.position).addScaledVector(forward,distance);controls3D.update();
+  mobile3DState.lookRaf=requestAnimationFrame(applyMobileLook3D);
+}
+function setupMobile3DJoystick(root,kind){
+  if(!root||root.dataset.ready==='true')return;root.dataset.ready='true';const knob=root.querySelector('.mobile-3d-knob');
+  const update=event=>{const rect=root.getBoundingClientRect(),radius=Math.max(24,rect.width*.3),dx=event.clientX-(rect.left+rect.width/2),dy=event.clientY-(rect.top+rect.height/2),length=Math.hypot(dx,dy)||1,scale=Math.min(1,radius/length),x=dx*scale/radius,y=dy*scale/radius;knob.style.transform='translate(calc(-50% + '+(x*radius)+'px),calc(-50% + '+(y*radius)+'px))';if(kind==='move'){moveKeys3D.w=y<-.18;moveKeys3D.s=y>.18;moveKeys3D.a=x<-.18;moveKeys3D.d=x>.18}else{mobile3DState.lookX=x;mobile3DState.lookY=y}};
+  const finish=event=>{const key=kind==='move'?'movePointer':'lookPointer';if(mobile3DState[key]!==event.pointerId)return;mobile3DState[key]=null;root.classList.remove('active');knob.style.transform='translate(-50%,-50%)';if(kind==='move')moveKeys3D.w=moveKeys3D.a=moveKeys3D.s=moveKeys3D.d=false;else{mobile3DState.lookX=mobile3DState.lookY=0}};
+  root.addEventListener('pointerdown',event=>{if(state.viewMode!=='3d')return;event.preventDefault();event.stopPropagation();const key=kind==='move'?'movePointer':'lookPointer';mobile3DState[key]=event.pointerId;root.classList.add('active');try{root.setPointerCapture(event.pointerId)}catch(error){}update(event);if(kind==='look'&&mobile3DState.lookRaf==null)mobile3DState.lookRaf=requestAnimationFrame(applyMobileLook3D)});
+  root.addEventListener('pointermove',event=>{const key=kind==='move'?'movePointer':'lookPointer';if(mobile3DState[key]!==event.pointerId)return;event.preventDefault();event.stopPropagation();update(event)});
+  root.addEventListener('pointerup',finish);root.addEventListener('pointercancel',finish);root.addEventListener('lostpointercapture',finish);
+}
+function setupMobile3DControls(){setupMobile3DJoystick(document.getElementById('mobile3dMove'),'move');setupMobile3DJoystick(document.getElementById('mobile3dLook'),'look')}
+setupMobile3DControls();
 // ---- Switch 2D/3D -----------------------------------------------------------
 function setViewMode3D(mode){
   if(mode===state.viewMode) return;
@@ -12813,6 +12839,7 @@ function setViewMode3D(mode){
     });
     startRenderLoop3D();
   } else {
+    resetMobile3DControls();
     if(typeof hidePdfLoading==='function') hidePdfLoading();
     // Volta a mostrar o menu lateral, com a mesma animação, ao voltar pro 2D.
     const asideEl3D=document.getElementById('aside');
