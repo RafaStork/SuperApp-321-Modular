@@ -275,3 +275,24 @@ body.modal-open .app-shell{filter:blur(5px);transition:filter .16s ease}
 @media(max-width:560px){.timeline-jump-popover .select-popover-contained{max-height:44dvh!important}}
 /* Sair V3: mesma largura e deslocamento interno do Gestão */
 .side-footer .side-session .exit-btn{width:56px;min-width:56px;max-width:56px;justify-content:center!important;padding:7px 10px!important;box-sizing:border-box}.side-footer .side-session .exit-btn:hover{padding-left:16px!important;padding-right:4px!important}
+
+/* Obras V29: seletor temporal isolado e modal PDF sem altura vazia em tablets */
+.timeline-month-field{position:relative;min-width:0}
+.timeline-month-control{position:relative;display:block;min-width:0}
+.timeline-month-toggle{width:100%;height:43px;border:1.5px solid var(--border);border-radius:10px;background:var(--bg-soft);color:var(--text);padding:0 12px;display:flex;align-items:center;justify-content:space-between;gap:9px;font:600 13px var(--font);cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s}
+.timeline-month-toggle:focus,.timeline-month-toggle.open{outline:0;border-color:var(--accent);box-shadow:var(--ring);background:var(--surface)}
+.timeline-month-toggle i{width:7px;height:7px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim);transform:rotate(45deg);transition:transform .18s var(--ease);flex:none}
+.timeline-month-toggle.open i{transform:rotate(225deg)}
+.timeline-month-menu[hidden]{display:none!important}
+.timeline-month-menu{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;display:grid;max-height:min(310px,52dvh);padding:7px;overflow-y:auto;background:var(--surface);border:1px solid var(--border);border-radius:11px;box-shadow:0 18px 45px rgba(0,0,0,.3);animation:selectOpen .18s var(--ease-out)}
+.timeline-month-menu button{width:100%;border:0;border-radius:7px;background:transparent;color:var(--text);padding:9px 10px;text-align:left;font:600 12px var(--font);cursor:pointer}
+.timeline-month-menu button:hover,.timeline-month-menu button:focus-visible{outline:0;background:var(--bg-soft)}
+.timeline-month-menu button.selected{background:var(--accent-soft);color:var(--accent)}
+.timeline-year-steps button svg{display:block;width:10px;height:6px;fill:currentColor;pointer-events:none}
+.timeline-year-steps button span{display:none!important}
+@media(min-width:561px) and (max-width:900px) and (orientation:portrait){
+  #timeline-pdf-backdrop{padding:16px}
+  #timeline-pdf-backdrop .timeline-pdf-modal{width:min(720px,100%);height:auto!important;max-height:min(88dvh,760px)!important;border-radius:16px}
+  #timeline-pdf-backdrop .timeline-pdf-content{flex:0 1 auto;min-height:0;max-height:calc(88dvh - 154px);padding:18px 20px}
+  #timeline-pdf-backdrop .timeline-pdf-actions{position:relative!important;bottom:auto!important;flex:none;padding-bottom:calc(13px + env(safe-area-inset-bottom))}
+}
