@@ -143,3 +143,66 @@ body.modal-open .app-shell{overflow:hidden!important}
 @media(max-width:900px){.toolbar{z-index:1200}.filter-popover{position:fixed!important;left:12px!important;right:12px!important;top:auto!important;bottom:calc(12px + env(safe-area-inset-bottom))!important;width:auto!important;z-index:2800!important}.checklist-item-row{grid-template-columns:25px minmax(0,1fr) 36px}.checklist-item-dates{grid-column:2/3}.true-gantt{--gantt-cell:30px;min-width:3110px}.true-gantt .gantt-row{grid-template-columns:310px repeat(var(--gantt-days),var(--gantt-cell))}}
 @media(max-width:560px){.side-brand{grid-template-columns:96px minmax(0,1fr)!important}.side-brand .brand-name{font-size:9px!important}.date-popover{left:10px!important;right:10px!important;bottom:calc(10px + env(safe-area-inset-bottom))!important;top:auto!important;width:auto!important;border-radius:16px}.work-checklist-head{grid-template-columns:32px minmax(0,1fr) auto}.checklist-delete-group{grid-column:2/4;width:max-content}.checklist-item-dates{grid-template-columns:1fr}.checklist-head{top:27px}.modal-tabs{overflow-x:auto}}
 @keyframes datePickerIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+/* Obras V12: overlay, checklist multiline, map and Planner V2 */
+.modal-backdrop{z-index:10000!important;background:rgba(9,12,15,.72)!important;backdrop-filter:blur(9px)!important;-webkit-backdrop-filter:blur(9px)!important}
+.modal-backdrop.open{display:grid!important}
+.modal-backdrop .modal{position:relative;z-index:1}
+body.modal-open .app-shell{filter:blur(5px);transition:filter .16s ease}
+.checklist-text{display:block;width:100%;min-height:44px!important;height:auto;color:var(--text)!important;background:transparent!important;border:1px solid transparent!important;border-radius:8px;padding:9px!important;font:500 12px/1.45 var(--font)!important;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;resize:none;overflow:hidden}
+.checklist-text:hover{background:var(--surface)!important;border-color:var(--border-soft)!important}
+.checklist-text:focus{color:var(--text)!important;background:var(--surface)!important;border-color:var(--accent)!important;box-shadow:var(--ring)!important;outline:0}
+[data-theme=dark] .checklist-text,[data-theme=dark] .checklist-group-title input,[data-theme=dark] .work-checklist-body,[data-theme=dark] .work-checklist-group{color:var(--text)!important}
+.checklist-item-row{align-items:start!important;min-height:64px}
+.checklist-check,.checklist-remove{margin-top:6px!important}
+.checklist-item-dates{align-self:start}
+.checklist-group-period{display:grid;grid-template-columns:repeat(2,minmax(0,220px));gap:10px;padding:10px 12px 3px}
+.checklist-group-period>label>span{display:block;margin:0 0 5px;color:var(--dim);font:800 8px var(--font);letter-spacing:.05em;text-transform:uppercase}
+.work-checklist-group.recolhido .checklist-group-period{display:none}
+.work-map-div-icon{background:transparent!important;border:0!important}
+.work-map-marker-svg{display:block;width:32px;height:42px;filter:drop-shadow(0 4px 5px rgba(0,0,0,.35))}
+.planner{--planner-cell:34px;background:var(--surface);overflow:auto;border:1px solid var(--border);border-radius:var(--r-lg);overscroll-behavior:contain}
+.planner-v2-grid{min-width:calc(330px + var(--planner-days)*var(--planner-cell));position:relative;color:var(--text)}
+.planner-v2-row{display:grid;grid-template-columns:330px repeat(var(--planner-days),var(--planner-cell));min-height:42px}
+.planner-v2-sticky{position:sticky;left:0;z-index:16;background:var(--surface);border-right:1px solid var(--border);border-bottom:1px solid var(--border-soft)}
+.planner-v2-month-row{position:sticky;top:0;z-index:30;min-height:34px}
+.planner-v2-day-row{position:sticky;top:34px;z-index:29;min-height:36px}
+.planner-v2-corner{z-index:33!important;padding:7px 12px;display:flex;justify-content:center;flex-direction:column}
+.planner-v2-corner strong{font-size:10px}.planner-v2-corner small,.planner-v2-corner span{font-size:7.5px;color:var(--faint)}
+.planner-v2-month{display:grid;place-items:center;background:var(--surface-2);border-right:1px solid var(--border);border-bottom:1px solid var(--border);font:800 9px var(--font);text-transform:capitalize}
+.planner-v2-day{display:grid;place-items:center;align-content:center;gap:1px;background:var(--surface);border-right:1px solid var(--border-soft);border-bottom:1px solid var(--border)}
+.planner-v2-day strong{font-size:8px}.planner-v2-day small{font-size:6.5px;color:var(--faint)}
+.planner-v2-day.weekend{background:var(--bg-soft)}.planner-v2-day.today{background:var(--accent-soft);box-shadow:inset 2px 0 var(--accent)}
+.planner-v2-work-row{min-height:48px}
+.planner-v2-work-label{width:100%;border:0;padding:7px 11px;display:grid;grid-template-columns:20px 5px minmax(0,1fr);align-items:center;gap:8px;text-align:left;color:var(--text);cursor:pointer}
+.planner-v2-work-label>i{width:5px;height:28px;border-radius:99px;background:var(--work-color)}
+.planner-v2-work-label strong,.planner-v2-work-label small,.planner-v2-stage-label strong,.planner-v2-stage-label small{display:block;min-width:0}
+.planner-v2-work-label strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.planner-v2-work-label small{margin-top:2px;color:var(--faint);font-size:8px}
+.planner-v2-chevron{display:grid;place-items:center;font-size:18px;transform:rotate(0);transition:transform .18s}.planner-v2-chevron.open{transform:rotate(90deg)}
+.planner-v2-stage-row{min-height:54px}
+.planner-v2-stage-label{width:100%;border:0;padding:7px 12px 7px 47px;display:grid;grid-template-columns:5px minmax(0,1fr);align-items:center;gap:9px;text-align:left;color:var(--text);cursor:pointer}
+.planner-v2-stage-label>i{width:5px;height:30px;border-radius:99px;background:color-mix(in srgb,var(--work-color),#fff 18%)}
+.planner-v2-stage-label strong{font-size:9.5px;white-space:normal;line-height:1.25}
+.planner-v2-stage-label small{margin-top:3px;color:var(--faint);font-size:7.5px}
+.planner-v2-track{grid-column:2/-1;position:relative;min-height:inherit;border-bottom:1px solid var(--border-soft);background:repeating-linear-gradient(to right,transparent 0,transparent calc(var(--planner-cell) - 1px),var(--border-soft) calc(var(--planner-cell) - 1px),var(--border-soft) var(--planner-cell))}
+.planner-v2-work-row .planner-v2-track{background-color:var(--bg-soft)}
+.planner-v2-work-summary{position:absolute;left:calc(var(--stage-left)*var(--planner-cell) + 3px);width:calc(var(--stage-span)*var(--planner-cell) - 6px);top:19px;height:9px;border-radius:99px;background:var(--work-color);opacity:.72}
+.planner-v2-stage-bar{position:absolute;left:calc(var(--stage-left)*var(--planner-cell) + 3px);width:calc(var(--stage-span)*var(--planner-cell) - 6px);top:9px;height:35px;min-width:18px;border-radius:7px;background:linear-gradient(135deg,var(--work-color),color-mix(in srgb,var(--work-color),#fff 17%));color:#fff;box-shadow:0 3px 8px rgba(0,0,0,.2);display:flex;align-items:center;touch-action:none;cursor:grab;user-select:none;overflow:visible;transition:box-shadow .16s,filter .16s}
+.planner-v2-stage-bar:hover{filter:brightness(1.06);box-shadow:0 5px 13px rgba(0,0,0,.25)}
+.planner-v2-stage-bar.dragging{z-index:40;cursor:grabbing;filter:brightness(1.12);box-shadow:0 8px 18px rgba(0,0,0,.35);transition:none}
+.planner-v2-stage-bar.readonly{cursor:default}
+.planner-v2-stage-bar b{display:block;min-width:0;width:100%;padding:0 13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:800 8.5px var(--font);pointer-events:none}
+.planner-v2-resize{position:absolute;top:0;bottom:0;width:9px;cursor:ew-resize;z-index:2}
+.planner-v2-resize.start{left:0}.planner-v2-resize.end{right:0}
+.planner-v2-resize:after{content:"";position:absolute;top:9px;bottom:9px;width:2px;border-radius:2px;background:rgba(255,255,255,.72)}
+.planner-v2-resize.start:after{left:4px}.planner-v2-resize.end:after{right:4px}
+.planner-v2-stage-bar.readonly .planner-v2-resize{display:none}
+.planner-v2-empty,.planner-v2-no-period{position:absolute;left:8px;top:11px;color:var(--faint);font:600 8px var(--font)}
+.planner-v2-no-period{border:1px dashed var(--border);border-radius:6px;background:var(--surface);padding:6px 8px;cursor:pointer;top:10px}
+body.planner-dragging{cursor:grabbing!important;user-select:none!important}
+@media(max-width:900px){
+  .aside-backdrop{background:rgba(8,11,14,.58)!important;backdrop-filter:blur(7px)!important;-webkit-backdrop-filter:blur(7px)!important}
+  body.menu-open main{filter:blur(5px);transition:filter .18s ease}
+  .planner{--planner-cell:32px}.planner-v2-grid{min-width:calc(280px + var(--planner-days)*var(--planner-cell))}.planner-v2-row{grid-template-columns:280px repeat(var(--planner-days),var(--planner-cell))}.planner-v2-stage-label{padding-left:36px}
+  .checklist-group-period{grid-template-columns:1fr}
+}
