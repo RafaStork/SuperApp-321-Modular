@@ -223,10 +223,10 @@ body.modal-open .app-shell{filter:blur(5px);transition:filter .16s ease}
 .gantt-bar:hover,.gantt-bar:focus{z-index:70;outline:none}.gantt-bar:hover::after,.gantt-bar:focus::after,.gantt-bar:hover::before,.gantt-bar:focus::before{opacity:1;visibility:visible;transition-delay:0s}.gantt-bar:hover::after,.gantt-bar:focus::after{transform:translate(-50%,0)}
 .timeline-empty{height:100%;display:grid;place-content:center;gap:5px;text-align:center;color:var(--dim)}.timeline-empty strong{color:var(--text);font-size:14px}.timeline-empty span{font-size:10px}
 @media(max-width:900px){.checklist-item-copy{grid-column:2/3}.checklist-item-dates{padding-top:0}.checklist-check,.checklist-remove{margin-top:24px}}
-/* Padrao Sair Gestao V2 — copia fiel da interacao do Gestao */
-.side-footer .side-session .exit-btn{display:flex;align-items:center;gap:10px;position:relative;overflow:visible;justify-content:flex-start;align-self:auto;flex:0 0 auto;padding:7px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--dim);text-align:left;font-size:12.5px;font-weight:600;min-height:100%;transition:background .2s var(--ease-out),color .2s var(--ease-out),padding-left .22s var(--ease-out),box-shadow .2s var(--ease-out),transform .12s var(--ease-spring)}
-.side-footer .side-session .exit-btn::before{content:"";position:absolute;left:5px;top:50%;width:3px;height:0;border-radius:99px;background:var(--accent);transform:translateY(-50%);transition:height .22s var(--ease-out)}
-.side-footer .side-session .exit-btn:hover{background:var(--bg-soft);color:var(--text);border-color:var(--faint);padding-left:16px}.side-footer .side-session .exit-btn:hover::before{height:15px}.side-footer .side-session .exit-btn:active{transform:scale(.98)}
+/* Botão Sair controlado exclusivamente pelo padrão compartilhado */
+
+
+
 
 /* Cronograma V23: coluna fixa sempre acima das barras */
 .gantt-label{z-index:35;isolation:isolate;box-shadow:1px 0 0 var(--border)}
@@ -273,8 +273,8 @@ body.modal-open .app-shell{filter:blur(5px);transition:filter .16s ease}
 .obras-pdf-preview .obras-pdf-mobile{border-top:1px solid var(--border)}
 @media(min-width:901px){.obras-pdf-preview .obras-pdf-mobile{display:flex;flex:0 0 auto;padding:8px 14px;gap:10px;flex-direction:row;align-items:center;justify-content:center}.obras-pdf-preview .obras-pdf-mobile strong,.obras-pdf-preview .obras-pdf-mobile p{font-size:9px}.obras-pdf-preview .obras-pdf-mobile .btn{padding:7px 10px}}
 @media(max-width:560px){.timeline-jump-popover .select-popover-contained{max-height:44dvh!important}}
-/* Sair V3: mesma largura e deslocamento interno do Gestão */
-.side-footer .side-session .exit-btn{width:56px;min-width:56px;max-width:56px;justify-content:center!important;padding:7px 10px!important;box-sizing:border-box}.side-footer .side-session .exit-btn:hover{padding-left:16px!important;padding-right:4px!important}
+
+
 
 /* Obras V29: seletor temporal isolado e modal PDF sem altura vazia em tablets */
 .timeline-month-field{position:relative;min-width:0}

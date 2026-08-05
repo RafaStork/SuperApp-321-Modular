@@ -16,6 +16,7 @@
 
 /* Playbook: mesma geometria e hierarquia visual da navegação do Gestão */
 #playbook-sidebar{width:242px!important;padding:20px 0 0!important;background:var(--wh)!important}
+#playbook-sidebar .side-footer{--sf-hover:color-mix(in srgb,var(--wh) 78%,var(--bg))}
 #playbook-sidebar .side-brand{display:flex!important;align-items:center!important;gap:12px!important;padding:0 18px 20px!important;border-bottom:1px solid var(--bdr)!important;margin-bottom:14px!important;background:var(--wh)!important}
 #playbook-sidebar .brand-logo-wrap{padding:0!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
 #playbook-sidebar .brand-mark-img{height:34px!important;width:auto!important}
