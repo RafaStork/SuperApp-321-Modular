@@ -296,3 +296,10 @@ body.modal-open .app-shell{filter:blur(5px);transition:filter .16s ease}
   #timeline-pdf-backdrop .timeline-pdf-content{flex:0 1 auto;min-height:0;max-height:calc(88dvh - 154px);padding:18px 20px}
   #timeline-pdf-backdrop .timeline-pdf-actions{position:relative!important;bottom:auto!important;flex:none;padding-bottom:calc(13px + env(safe-area-inset-bottom))}
 }
+/* Obras V30: interação do cronograma e checklist concluído */
+.checklist-item-row.done .checklist-item-title,.checklist-item-row.done .checklist-text{text-decoration:line-through;text-decoration-thickness:1.5px;color:var(--faint)!important;opacity:.78}
+.checklist-item-row.done{background:color-mix(in srgb,var(--green) 4%,transparent)}
+.checklist-item-row{transition:background .2s var(--ease),box-shadow .2s var(--ease)}
+.checklist-item-row.checklist-target-focus{box-shadow:0 0 0 3px var(--accent-soft);background:var(--surface)}
+.timeline-row-editable{cursor:pointer}
+.gantt-label.level-item.timeline-row-editable:hover,.gantt-track.level-item.timeline-row-editable:hover{background-color:color-mix(in srgb,var(--accent) 5%,var(--surface))!important}
