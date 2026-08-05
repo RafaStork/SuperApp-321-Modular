@@ -42,20 +42,40 @@ function buildPdfFileBase(meta,defaultModel){
 
 const PROPOSAL_PAYMENT_KINDS=["Entrada","Parcela"];
 const PROPOSAL_PAYMENT_TYPES=["PIX","Cartão de crédito","Cartão de débito","Boleto","Dinheiro","Transferência bancária","Financiamento","Permuta","Outro"];
+function normalizeProposalPaymentAmount(value){
+  if(typeof value==="number"&&Number.isFinite(value))return Math.max(0,Math.round(value*100)/100);
+  const raw=String(value??"").trim();
+  if(!raw)return 0;
+  if(/^\d+(?:\.\d+)?$/.test(raw)){
+    const numeric=Number(raw);
+    return Number.isFinite(numeric)?Math.max(0,Math.round(numeric*100)/100):0;
+  }
+  if(/[R$.,]/.test(raw)){
+    const cents=Number.parseInt(raw.replace(/\D/g,""),10);
+    return Number.isFinite(cents)?Math.max(0,cents/100):0;
+  }
+  const numeric=Number(raw);
+  return Number.isFinite(numeric)?Math.max(0,Math.round(numeric*100)/100):0;
+}
+function formatProposalCurrency(value){
+  return normalizeProposalPaymentAmount(value).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+}
 function normalizeProposalPayments(value){
   const source=Array.isArray(value)?value:[];
   return source.slice(0,8).map(item=>{
     const kind=PROPOSAL_PAYMENT_KINDS.includes(String(item?.kind||""))?String(item.kind):"Parcela";
     const type=PROPOSAL_PAYMENT_TYPES.includes(String(item?.type||""))?String(item.type):"Outro";
     const installments=kind==="Entrada"?1:Math.min(120,Math.max(1,Number.parseInt(item?.installments,10)||1));
+    const amount=normalizeProposalPaymentAmount(item?.amount);
     const details=String(item?.details||"").trim().slice(0,160);
-    return{kind,type,installments,details};
+    return{kind,type,installments,amount,details};
   });
 }
 function proposalPaymentRowHtml(item={}){
   const kind=PROPOSAL_PAYMENT_KINDS.includes(String(item.kind||""))?String(item.kind):"Parcela";
   const type=PROPOSAL_PAYMENT_TYPES.includes(String(item.type||""))?String(item.type):"";
   const installments=kind==="Entrada"?1:Math.min(120,Math.max(1,Number.parseInt(item.installments,10)||1));
+  const amount=normalizeProposalPaymentAmount(item.amount);
   return `<div class="pdf-payment-row">
     <label class="pdf-payment-field"><span>Classificação</span><select class="pdf-payment-kind" aria-label="Classificação do pagamento">
       ${PROPOSAL_PAYMENT_KINDS.map(option=>`<option value="${esc(option)}" ${option===kind?"selected":""}>${esc(option)}</option>`).join("")}
@@ -65,6 +85,7 @@ function proposalPaymentRowHtml(item={}){
       ${PROPOSAL_PAYMENT_TYPES.map(option=>`<option value="${esc(option)}" ${option===type?"selected":""}>${esc(option)}</option>`).join("")}
     </select></label>
     <label class="pdf-payment-field pdf-payment-installments-field"><span>Parcelas</span><input class="pdf-payment-installments" type="number" min="1" max="120" step="1" value="${installments}" inputmode="numeric"></label>
+    <label class="pdf-payment-field pdf-payment-amount-field"><span>Valor neste método</span><input class="pdf-payment-amount" type="text" value="${esc(formatProposalCurrency(amount))}" data-payment-value="${amount}" inputmode="numeric" autocomplete="off"></label>
     <label class="pdf-payment-field pdf-payment-details-field"><span>Condição</span><input class="pdf-payment-details" maxlength="160" value="${esc(item.details||"")}" placeholder="Vencimento ou observação"></label>
     <button type="button" class="pdf-payment-remove" aria-label="Remover forma de pagamento">×</button>
   </div>`;
@@ -79,18 +100,59 @@ function syncProposalPaymentRow(row){
     input.disabled=isEntry;
   }
   field?.classList.toggle("is-disabled",isEntry);
+  const amountInput=row.querySelector(".pdf-payment-amount");
+  if(amountInput&&!amountInput.dataset.paymentWired){
+    amountInput.dataset.paymentWired="true";
+    const initial=normalizeProposalPaymentAmount(amountInput.dataset.paymentValue||amountInput.value);
+    amountInput.dataset.paymentValue=String(initial);
+    amountInput.value=formatProposalCurrency(initial);
+    amountInput.addEventListener("input",()=>{
+      const digits=amountInput.value.replace(/\D/g,"").slice(0,13);
+      const amount=digits?Number.parseInt(digits,10)/100:0;
+      amountInput.dataset.paymentValue=String(amount);
+      amountInput.value=formatProposalCurrency(amount);
+      updateProposalPaymentBalance();
+    });
+  }
 }
 function collectProposalPayments(){
   return [...document.querySelectorAll("#m_com_payments .pdf-payment-row")].map(row=>({
     kind:row.querySelector(".pdf-payment-kind")?.value||"Parcela",
     type:row.querySelector(".pdf-payment-type")?.value||"",
     installments:row.querySelector(".pdf-payment-installments")?.value||1,
+    amount:row.querySelector(".pdf-payment-amount")?.dataset.paymentValue||0,
     details:row.querySelector(".pdf-payment-details")?.value||""
   })).filter(item=>item.type).map(item=>normalizeProposalPayments([item])[0]);
 }
 function proposalPaymentLabel(item){
-  const installmentText=item.kind==="Entrada"?"":(item.installments>1?`${item.installments} parcelas`:"parcela única");
-  return [item.kind,item.type,installmentText,item.details].filter(Boolean).join(" · ");
+  const amount=normalizeProposalPaymentAmount(item.amount);
+  const amountText=formatProposalCurrency(amount);
+  const installments=Math.max(1,Number.parseInt(item.installments,10)||1);
+  const paymentText=item.kind==="Entrada"
+    ?`${item.kind} via ${item.type}: ${amountText}`
+    :`${item.type}: ${installments} ${installments===1?"parcela":"parcelas"} de ${formatProposalCurrency(amount/installments)} (total ${amountText})`;
+  return [paymentText,item.details].filter(Boolean).join(" · ");
+}
+function proposalPaymentReconciliation(){
+  const target=proposalInvestmentValue();
+  const informed=collectProposalPayments().reduce((sum,item)=>sum+normalizeProposalPaymentAmount(item.amount),0);
+  return{target,informed,difference:Math.round((target-informed)*100)/100};
+}
+function updateProposalPaymentBalance(){
+  const box=document.getElementById("m_com_payment_balance");
+  if(!box)return;
+  const{target,informed,difference}=proposalPaymentReconciliation();
+  box.classList.remove("is-complete","is-missing","is-excess");
+  if(target<=0){
+    box.classList.add("is-missing");
+    box.innerHTML="<strong>Valor da proposta indisponível</strong><span>Calcule o Quantitativo para conferir as formas de pagamento.</span>";
+    return;
+  }
+  let message="Valor fechado.";
+  if(difference>0.009){box.classList.add("is-missing");message=`Faltam ${formatProposalCurrency(difference)} para fechar o valor.`;}
+  else if(difference<-.009){box.classList.add("is-excess");message=`O valor informado excede a proposta em ${formatProposalCurrency(Math.abs(difference))}.`;}
+  else box.classList.add("is-complete");
+  box.innerHTML=`<span>Proposta: <b>${formatProposalCurrency(target)}</b></span><span>Informado: <b>${formatProposalCurrency(informed)}</b></span><strong>${message}</strong>`;
 }
 function applyPdfDocumentName(doc,fileName){
   const title=String(fileName||"Documento.pdf").replace(/\.pdf$/i,"");
@@ -398,6 +460,7 @@ function openPdfModal(){
             <button type="button" class="tbtn" id="m_com_payment_add">+ Adicionar</button>
           </div>
           <div class="pdf-payment-list" id="m_com_payments">${(existingPayments.length?existingPayments:[{}]).map(proposalPaymentRowHtml).join("")}</div>
+          <div class="pdf-payment-balance" id="m_com_payment_balance" role="status" aria-live="polite"></div>
         </div>
         <div class="pdf-option-card">
           <label class="pdf-check"><input type="checkbox" id="m_com_incluir_valor" checked>Apresentar investimento estimado</label>
@@ -463,18 +526,21 @@ function openPdfModal(){
   localUploadInput.onchange=()=>{addLocalProposalPictures(localUploadInput.files);localUploadInput.value="";};
   const paymentList=document.getElementById("m_com_payments");
   paymentList.querySelectorAll(".pdf-payment-row").forEach(syncProposalPaymentRow);
+  updateProposalPaymentBalance();
   document.getElementById("m_com_payment_add").onclick=()=>{
     if(paymentList.children.length>=8){toastError("Use no máximo 8 formas de pagamento.");return;}
     paymentList.insertAdjacentHTML("beforeend",proposalPaymentRowHtml({}));
     syncProposalPaymentRow(paymentList.lastElementChild);
+    updateProposalPaymentBalance();
     paymentList.lastElementChild.querySelector("select")?.focus();
   };
   paymentList.addEventListener("change",event=>{
     if(event.target.matches(".pdf-payment-kind"))syncProposalPaymentRow(event.target.closest(".pdf-payment-row"));
+    updateProposalPaymentBalance();
   });
   paymentList.addEventListener("click",event=>{
     const remove=event.target.closest(".pdf-payment-remove");
-    if(remove)remove.closest(".pdf-payment-row")?.remove();
+    if(remove){remove.closest(".pdf-payment-row")?.remove();updateProposalPaymentBalance();}
   });
 
   const updateMeta=()=>{
@@ -512,6 +578,15 @@ function openPdfModal(){
       return;
     }
     const includeInvestment=document.getElementById("m_com_incluir_valor").checked;
+    const reconciliation=proposalPaymentReconciliation();
+    if(reconciliation.target>0&&Math.abs(reconciliation.difference)>.009){
+      updateProposalPaymentBalance();
+      toastError(reconciliation.difference>0
+        ?`Faltam ${formatProposalCurrency(reconciliation.difference)} para fechar o valor da proposta.`
+        :`Os pagamentos excedem a proposta em ${formatProposalCurrency(Math.abs(reconciliation.difference))}.`);
+      document.getElementById("m_com_payment_balance")?.scrollIntoView({behavior:"smooth",block:"center"});
+      return;
+    }
     const images=[...proposalSelectedPictures.values()].slice(0,PROPOSAL_MAX_IMAGES);
     closeModal();
     generateCommercialProposal(action,{includeInvestment,images});
@@ -731,26 +806,20 @@ function normalizeProposalLines(value,fallback){
     .map(line=>line.slice(0,300));
 }
 
-function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,images,payments=[]){
+function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,images){
   const sections=[
     {title:"ITENS QUE COMPÕEM O ORÇAMENTO",items:includedItems,color:[31,51,27]},
     {title:"O QUE NÃO ESTÁ INCLUSO",items:excludedItems,color:[180,58,45]}
   ].filter(section=>section.items.length);
-  if(!sections.length&&!images.length&&!payments.length)return;
+  if(!sections.length&&!images.length)return;
   doc.addPage();
   doc.setFont(fontFamily,"bold");
   doc.setFontSize(15);
   doc.setTextColor(31,51,27);
   doc.text(sections.length?"ESCOPO E REFERÊNCIAS":"REFERÊNCIAS DO PROJETO",14,43);
-  let galleryTop=payments.length?169:55;
-  if(payments.length){
-    const paymentLines=doc.splitTextToSize(payments.map(proposalPaymentLabel).join("   |   "),170).slice(0,5);
-    doc.setFillColor(245,247,244);doc.setDrawColor(218,224,215);doc.roundedRect(14,53,182,28,3,3,"FD");
-    doc.setFont(fontFamily,"bold");doc.setFontSize(7);doc.setTextColor(105,113,103);doc.text("CONDIÇÕES DE PAGAMENTO",20,61);
-    doc.setFont(fontFamily,"bold");doc.setFontSize(7.2);doc.setTextColor(31,51,27);doc.text(paymentLines,20,67);
-  }
+  let galleryTop=55;
   if(sections.length){
-    const columnWidth=87,scopeTop=payments.length?87:53,scopeBottom=payments.length?157:133;
+    const columnWidth=87,scopeTop=53,scopeBottom=133;
     sections.forEach((section,index)=>{
       const x=index===0?14:109;
       let y=scopeTop;
@@ -781,7 +850,7 @@ function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,ima
         doc.text(`+ ${omitted} item(ns) adicional(is)`,x+7,scopeBottom);
       }
     });
-    galleryTop=payments.length?169:145;
+    galleryTop=145;
   }
   if(images.length){
     doc.setFont(fontFamily,"bold");
@@ -802,10 +871,11 @@ function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,ima
 function drawCommercialPaymentSummary(doc,fontFamily,payments){
   if(!payments.length)return;
   const labels=payments.map(proposalPaymentLabel);
-  const wrapped=doc.splitTextToSize(labels.join("   |   "),168).slice(0,3);
+  const wrapped=doc.splitTextToSize(labels.join("   |   "),168);
+  const cardHeight=Math.min(108,17+wrapped.length*3.25);
   doc.setFillColor(245,247,244);
   doc.setDrawColor(218,224,215);
-  doc.roundedRect(14,126,182,26,3,3,"FD");
+  doc.roundedRect(14,126,182,cardHeight,3,3,"FD");
   doc.setFont(fontFamily,"bold");
   doc.setFontSize(6.8);
   doc.setTextColor(105,113,103);
@@ -813,7 +883,7 @@ function drawCommercialPaymentSummary(doc,fontFamily,payments){
   doc.setFont(fontFamily,"bold");
   doc.setFontSize(7.6);
   doc.setTextColor(31,51,27);
-  doc.text(wrapped,20,140);
+  doc.text(wrapped,20,140,{lineHeightFactor:1.15});
 }
 function extractCommercialFloorDrawingSvg(svgString){
   const parser=new DOMParser();
@@ -985,7 +1055,7 @@ async function generateCommercialProposal(action="save",options={}){
 
     updatePdfLoading("Montando as plantas baixas...");
     await addCommercialFloorPlansPage(doc,fontFamily);
-    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,loaded,payments);
+    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,loaded);
 
     const totalPages=doc.getNumberOfPages();
     for(let page=1;page<=totalPages;page++){

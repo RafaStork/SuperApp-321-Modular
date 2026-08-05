@@ -195,3 +195,13 @@ body.portal-page .login-card .password-toggle:focus-visible{outline:2px solid va
 body.portal-page .turnstile-widget{display:flex;align-items:center;justify-content:center;width:100%;min-height:65px;margin:4px 0;overflow:hidden}
 body.portal-page .turnstile-widget iframe{max-width:100%}
 body.portal-page .primary-button:disabled{cursor:not-allowed;filter:none;opacity:.58;transform:none}
+
+/* Menus da Administração alinhados ao padrão visual do app Obras. */
+.admin-table button.admin-inline-select{min-height:43px;border-radius:10px;padding:10px 13px;background:var(--landing-bg-soft)}
+.admin-select-chevron{font-size:0!important;display:block;flex:0 0 7px;width:7px;height:7px;margin:0 2px 3px 6px;border-right:2px solid var(--landing-faint);border-bottom:2px solid var(--landing-faint);transform:rotate(45deg);transform-origin:center}
+.admin-dropdown.is-open .admin-select-chevron{border-color:var(--landing-accent);transform:rotate(225deg);margin-bottom:-3px}
+.admin-dropdown-menu{gap:2px;padding:7px;border:1px solid var(--landing-border);border-radius:11px;background:var(--landing-surface);box-shadow:0 18px 45px rgba(0,0,0,.24)}
+.admin-table button.admin-dropdown-option{min-height:38px;border:1px solid transparent;border-radius:7px;padding:9px 10px;background:transparent}
+.admin-table button.admin-dropdown-option:hover{border-color:transparent;color:var(--landing-text);background:var(--landing-bg-soft);transform:none}
+.admin-table button.admin-dropdown-option[aria-selected="true"],
+html[data-theme="dark"] .admin-table button.admin-dropdown-option[aria-selected="true"]{border-color:var(--landing-accent);color:var(--landing-accent);background:var(--landing-accent-soft);box-shadow:none}
