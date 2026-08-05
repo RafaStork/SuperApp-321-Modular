@@ -40,39 +40,57 @@ function buildPdfFileBase(meta,defaultModel){
   ].join(" - ");
 }
 
-const PROPOSAL_PAYMENT_TYPES=["PIX","Cartão de crédito","Cartão de débito","Boleto","Dinheiro","Transferência bancária","Financiamento","Outro"];
+const PROPOSAL_PAYMENT_KINDS=["Entrada","Parcela"];
+const PROPOSAL_PAYMENT_TYPES=["PIX","Cartão de crédito","Cartão de débito","Boleto","Dinheiro","Transferência bancária","Financiamento","Permuta","Outro"];
 function normalizeProposalPayments(value){
   const source=Array.isArray(value)?value:[];
   return source.slice(0,8).map(item=>{
+    const kind=PROPOSAL_PAYMENT_KINDS.includes(String(item?.kind||""))?String(item.kind):"Parcela";
     const type=PROPOSAL_PAYMENT_TYPES.includes(String(item?.type||""))?String(item.type):"Outro";
-    const installments=Math.min(120,Math.max(1,Number.parseInt(item?.installments,10)||1));
+    const installments=kind==="Entrada"?1:Math.min(120,Math.max(1,Number.parseInt(item?.installments,10)||1));
     const details=String(item?.details||"").trim().slice(0,160);
-    return{type,installments,details};
+    return{kind,type,installments,details};
   });
 }
 function proposalPaymentRowHtml(item={}){
+  const kind=PROPOSAL_PAYMENT_KINDS.includes(String(item.kind||""))?String(item.kind):"Parcela";
   const type=PROPOSAL_PAYMENT_TYPES.includes(String(item.type||""))?String(item.type):"";
-  const installments=Math.min(120,Math.max(1,Number.parseInt(item.installments,10)||1));
+  const installments=kind==="Entrada"?1:Math.min(120,Math.max(1,Number.parseInt(item.installments,10)||1));
   return `<div class="pdf-payment-row">
-    <select class="pdf-payment-type" aria-label="Forma de pagamento">
+    <label class="pdf-payment-field"><span>Classificação</span><select class="pdf-payment-kind" aria-label="Classificação do pagamento">
+      ${PROPOSAL_PAYMENT_KINDS.map(option=>`<option value="${esc(option)}" ${option===kind?"selected":""}>${esc(option)}</option>`).join("")}
+    </select></label>
+    <label class="pdf-payment-field"><span>Método</span><select class="pdf-payment-type" aria-label="Método de pagamento">
       <option value="">Selecione</option>
       ${PROPOSAL_PAYMENT_TYPES.map(option=>`<option value="${esc(option)}" ${option===type?"selected":""}>${esc(option)}</option>`).join("")}
-    </select>
-    <label><span>Parcelas</span><input class="pdf-payment-installments" type="number" min="1" max="120" step="1" value="${installments}" inputmode="numeric"></label>
-    <input class="pdf-payment-details" maxlength="160" value="${esc(item.details||"")}" placeholder="Condição, vencimento ou observação">
+    </select></label>
+    <label class="pdf-payment-field pdf-payment-installments-field"><span>Parcelas</span><input class="pdf-payment-installments" type="number" min="1" max="120" step="1" value="${installments}" inputmode="numeric"></label>
+    <label class="pdf-payment-field pdf-payment-details-field"><span>Condição</span><input class="pdf-payment-details" maxlength="160" value="${esc(item.details||"")}" placeholder="Vencimento ou observação"></label>
     <button type="button" class="pdf-payment-remove" aria-label="Remover forma de pagamento">×</button>
   </div>`;
 }
+function syncProposalPaymentRow(row){
+  if(!row)return;
+  const isEntry=row.querySelector(".pdf-payment-kind")?.value==="Entrada";
+  const field=row.querySelector(".pdf-payment-installments-field");
+  const input=row.querySelector(".pdf-payment-installments");
+  if(input){
+    if(isEntry)input.value="1";
+    input.disabled=isEntry;
+  }
+  field?.classList.toggle("is-disabled",isEntry);
+}
 function collectProposalPayments(){
   return [...document.querySelectorAll("#m_com_payments .pdf-payment-row")].map(row=>({
+    kind:row.querySelector(".pdf-payment-kind")?.value||"Parcela",
     type:row.querySelector(".pdf-payment-type")?.value||"",
     installments:row.querySelector(".pdf-payment-installments")?.value||1,
     details:row.querySelector(".pdf-payment-details")?.value||""
   })).filter(item=>item.type).map(item=>normalizeProposalPayments([item])[0]);
 }
 function proposalPaymentLabel(item){
-  const installmentText=item.installments>1?`${item.installments} parcelas`:"à vista";
-  return [item.type,installmentText,item.details].filter(Boolean).join(" · ");
+  const installmentText=item.kind==="Entrada"?"":(item.installments>1?`${item.installments} parcelas`:"parcela única");
+  return [item.kind,item.type,installmentText,item.details].filter(Boolean).join(" · ");
 }
 function applyPdfDocumentName(doc,fileName){
   const title=String(fileName||"Documento.pdf").replace(/\.pdf$/i,"");
@@ -444,11 +462,16 @@ function openPdfModal(){
   document.getElementById("m_com_local_upload").onclick=()=>localUploadInput.click();
   localUploadInput.onchange=()=>{addLocalProposalPictures(localUploadInput.files);localUploadInput.value="";};
   const paymentList=document.getElementById("m_com_payments");
+  paymentList.querySelectorAll(".pdf-payment-row").forEach(syncProposalPaymentRow);
   document.getElementById("m_com_payment_add").onclick=()=>{
     if(paymentList.children.length>=8){toastError("Use no máximo 8 formas de pagamento.");return;}
     paymentList.insertAdjacentHTML("beforeend",proposalPaymentRowHtml({}));
+    syncProposalPaymentRow(paymentList.lastElementChild);
     paymentList.lastElementChild.querySelector("select")?.focus();
   };
+  paymentList.addEventListener("change",event=>{
+    if(event.target.matches(".pdf-payment-kind"))syncProposalPaymentRow(event.target.closest(".pdf-payment-row"));
+  });
   paymentList.addEventListener("click",event=>{
     const remove=event.target.closest(".pdf-payment-remove");
     if(remove)remove.closest(".pdf-payment-row")?.remove();
@@ -792,15 +815,28 @@ function drawCommercialPaymentSummary(doc,fontFamily,payments){
   doc.setTextColor(31,51,27);
   doc.text(wrapped,20,140);
 }
+function extractCommercialFloorDrawingSvg(svgString){
+  const parser=new DOMParser();
+  const parsed=parser.parseFromString(svgString,"image/svg+xml");
+  const svg=parsed.documentElement;
+  if(svg.nodeName.toLowerCase()!=="svg")throw new Error("Planta comercial inválida.");
+  [...svg.querySelectorAll("rect")].forEach(rect=>{
+    const x=Number(rect.getAttribute("x")||0),y=Number(rect.getAttribute("y")||0);
+    const width=Number(rect.getAttribute("width")||0),height=Number(rect.getAttribute("height")||0);
+    if((x===25&&y===7&&width===178&&height===283)||(x===0&&y===0&&width===210&&height===297))rect.remove();
+  });
+  svg.setAttribute("viewBox","25 7 178 226");
+  svg.setAttribute("width","178mm");
+  svg.setAttribute("height","226mm");
+  svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+  return new XMLSerializer().serializeToString(svg);
+}
 async function drawCommercialFloorSheet(doc,svgString,x,y,width,height){
-  doc.setFillColor(255,255,255);
-  doc.setDrawColor(218,224,215);
-  doc.roundedRect(x-1,y-1,width+2,height+2,2,2,"FD");
   if(typeof doc.svg==="function"){
     const parser=new DOMParser();
     const svgDoc=parser.parseFromString(svgString,"image/svg+xml");
     const svgElement=svgDoc.documentElement;
-    svgElement.style.cssText="position:fixed;left:-99999px;top:0;width:210mm;height:297mm;";
+    svgElement.style.cssText="position:fixed;left:-99999px;top:0;width:178mm;height:226mm;";
     document.body.appendChild(svgElement);
     try{await doc.svg(svgElement,{x,y,width,height});}
     finally{svgElement.remove();}
@@ -823,7 +859,7 @@ async function addCommercialFloorPlansPage(doc,fontFamily){
   doc.setTextColor(105,113,103);
   doc.text("Representação do primeiro e do segundo andar do projeto apresentado.",14,49);
 
-  const width=87,height=width*297/210,y=61;
+  const width=87,height=width*226/178,y=61;
   const floors=[
     {label:"1º ANDAR",mode:"andar1",available:true,x:14},
     {label:"2º ANDAR",mode:"andar2",available:state.panels.some(isFloor2Panel),x:109}
@@ -834,7 +870,7 @@ async function addCommercialFloorPlansPage(doc,fontFamily){
     doc.setTextColor(31,51,27);
     doc.text(floor.label,floor.x,y-5);
     if(floor.available){
-      const svg=makePlantSheetSvgBold(buildSheetSVGInner("auto",true,floor.mode));
+      const svg=extractCommercialFloorDrawingSvg(makePlantSheetSvgBold(buildSheetSVGInner("auto",true,floor.mode)));
       await drawCommercialFloorSheet(doc,svg,floor.x,y,width,height);
     }else{
       doc.setFillColor(245,247,244);
