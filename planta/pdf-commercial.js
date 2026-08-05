@@ -42,6 +42,11 @@ function buildPdfFileBase(meta,defaultModel){
 
 const PROPOSAL_PAYMENT_KINDS=["Entrada","Parcela"];
 const PROPOSAL_PAYMENT_TYPES=["PIX","Cartão de crédito","Cartão de débito","Boleto","Dinheiro","Transferência bancária","Financiamento","Permuta","Outro"];
+let proposalPaymentBalanceTimer=0;
+function scheduleProposalPaymentBalance(delay=650){
+  clearTimeout(proposalPaymentBalanceTimer);
+  proposalPaymentBalanceTimer=setTimeout(updateProposalPaymentBalance,delay);
+}
 function normalizeProposalPaymentAmount(value){
   if(typeof value==="number"&&Number.isFinite(value))return Math.max(0,Math.round(value*100)/100);
   const raw=String(value??"").trim();
@@ -111,6 +116,10 @@ function syncProposalPaymentRow(row){
       const amount=digits?Number.parseInt(digits,10)/100:0;
       amountInput.dataset.paymentValue=String(amount);
       amountInput.value=formatProposalCurrency(amount);
+      scheduleProposalPaymentBalance();
+    });
+    amountInput.addEventListener("blur",()=>{
+      clearTimeout(proposalPaymentBalanceTimer);
       updateProposalPaymentBalance();
     });
   }
@@ -135,14 +144,20 @@ function proposalPaymentLabel(item){
 }
 function proposalPaymentReconciliation(){
   const target=proposalInvestmentValue();
-  const informed=collectProposalPayments().reduce((sum,item)=>sum+normalizeProposalPaymentAmount(item.amount),0);
-  return{target,informed,difference:Math.round((target-informed)*100)/100};
+  const payments=collectProposalPayments();
+  const informed=payments.reduce((sum,item)=>sum+normalizeProposalPaymentAmount(item.amount),0);
+  return{target,informed,difference:Math.round((target-informed)*100)/100,count:payments.length};
 }
 function updateProposalPaymentBalance(){
   const box=document.getElementById("m_com_payment_balance");
   if(!box)return;
-  const{target,informed,difference}=proposalPaymentReconciliation();
-  box.classList.remove("is-complete","is-missing","is-excess");
+  const{target,informed,difference,count}=proposalPaymentReconciliation();
+  box.classList.remove("is-complete","is-missing","is-excess","is-empty");
+  if(!count){
+    box.classList.add("is-empty");
+    box.innerHTML=`<span>Proposta: <b>${formatProposalCurrency(target)}</b></span><strong>Formas de pagamento opcionais.</strong>`;
+    return;
+  }
   if(target<=0){
     box.classList.add("is-missing");
     box.innerHTML="<strong>Valor da proposta indisponível</strong><span>Calcule o Quantitativo para conferir as formas de pagamento.</span>";
@@ -579,7 +594,7 @@ function openPdfModal(){
     }
     const includeInvestment=document.getElementById("m_com_incluir_valor").checked;
     const reconciliation=proposalPaymentReconciliation();
-    if(reconciliation.target>0&&Math.abs(reconciliation.difference)>.009){
+    if(reconciliation.count>0&&reconciliation.target>0&&Math.abs(reconciliation.difference)>.009){
       updateProposalPaymentBalance();
       toastError(reconciliation.difference>0
         ?`Faltam ${formatProposalCurrency(reconciliation.difference)} para fechar o valor da proposta.`

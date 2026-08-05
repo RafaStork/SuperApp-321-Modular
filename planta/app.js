@@ -5120,31 +5120,35 @@ function render(){
     const pathsForDraw = dimmed ? parts.paths.filter(pd=>pd.kind!=="text") : parts.paths;
     appendPaths(grp, pathsForDraw, esqTextSink);
     // ── Rede parametrizada: crosshatch sobre área cadastrada no tipo ──────
+    // A trama usa coordenadas locais e a mesma rota??o da inst?ncia.
     const tyR=typeOf(p.typeId);
     if(tyR&&tyR.rede){
       const rd=tyR.rede;
-      const r=rectOf(p);
-      // Coordenadas locais (relativas ao canto inferior-esquerdo do piso)
-      const wx0=r.x+rd.x0, wy0=r.y+(r.h-rd.y1), rW=rd.x1-rd.x0, rH=rd.y1-rd.y0;
-      if(rW>0&&rH>0){
-        const[sx,sy]=toScreen(wx0,wy0);
-        const pw=rW*view.scale, ph=rH*view.scale;
-        // Clip path para conter as linhas dentro do rect
-        const clipId=`rede-clip-${p.id}`;
-        const cp=el("clipPath",{id:clipId});
-        cp.appendChild(el("rect",{x:sx,y:sy,width:pw,height:ph}));
-        svgDefs.appendChild(cp);
-        // Sem fundo — área totalmente vazada
-        // Trama: linhas a cada ~10cm, cor escura para visibilidade
-        const spacing=Math.max(3, 0.10*view.scale);
-        const trama=el("g",{stroke:"rgba(0,0,0,0.50)","stroke-width":"0.8","vector-effect":"non-scaling-stroke","clip-path":`url(#${clipId})`});
-        for(let y=sy;y<=sy+ph+spacing;y+=spacing)trama.appendChild(el("line",{x1:sx,y1:y,x2:sx+pw,y2:y}));
-        for(let x=sx;x<=sx+pw+spacing;x+=spacing)trama.appendChild(el("line",{x1:x,y1:sy,x2:x,y2:sy+ph}));
+      const lx0=-tyR.w/2+rd.x0;
+      const lx1=-tyR.w/2+rd.x1;
+      const ly0=tyR.d/2-rd.y1;
+      const ly1=tyR.d/2-rd.y0;
+      if(lx1>lx0&&ly1>ly0){
+        const trama=el("g",{stroke:"rgba(0,0,0,0.50)","stroke-width":"0.8","vector-effect":"non-scaling-stroke"});
+        const localToScreen=(lx,ly)=>{
+          const[rx,ry]=rotPoint(lx,ly,p.rot);
+          return toScreen(p.cx+rx,p.cy+ry);
+        };
+        const spacing=0.10;
+        for(let ly=ly0;ly<=ly1+1e-6;ly+=spacing){
+          const[aX,aY]=localToScreen(lx0,Math.min(ly,ly1));
+          const[bX,bY]=localToScreen(lx1,Math.min(ly,ly1));
+          trama.appendChild(el("line",{x1:aX,y1:aY,x2:bX,y2:bY}));
+        }
+        for(let lx=lx0;lx<=lx1+1e-6;lx+=spacing){
+          const[aX,aY]=localToScreen(Math.min(lx,lx1),ly0);
+          const[bX,bY]=localToScreen(Math.min(lx,lx1),ly1);
+          trama.appendChild(el("line",{x1:aX,y1:aY,x2:bX,y2:bY}));
+        }
         grp.appendChild(trama);
       }
     }
-    // Oitão coletado em oitaoScreenBoxes aqui (para posicionamento de labels),
-    // mas desenhado em 2ª passagem após todos os pisos/paredes (Fix 2).
+    // Oit?o coletado e desenhado na passagem seguinte.
     if(p.oitaoAtivo&&tyR&&tyR.possuiPossibilidadeOitao){
       let _owx, _owy;
       if(tyR.hwall){

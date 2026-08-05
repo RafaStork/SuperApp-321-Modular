@@ -212,7 +212,7 @@ function ligarEventosCabecalho(tableKey, colunas, linhasTodas, valorDe, onChange
 // ═══════════════════════════════════════════════════
 let __selEnhSeq=0;
 function enhanceSelect(select){
-  if(!select || select.dataset.enhanced) return;
+  if(!select || select.dataset.enhanced || select.dataset.uiEnhanced) return;
   select.dataset.enhanced='1';
   const id='selEnh_'+(++__selEnhSeq);
   const btn=document.createElement('button');
@@ -268,7 +268,19 @@ function enhanceSelect(select){
   select.__enhBtn = btn;
 }
 function enhanceAllSelects(scope){
-  (scope||document).querySelectorAll('select').forEach(enhanceSelect);
+  const root=scope||document;
+  if(root.matches?.('select')) enhanceSelect(root);
+  root.querySelectorAll?.('select').forEach(enhanceSelect);
+}
+let __financeSelectObserver=null;
+function observeFinanceSelects(){
+  if(__financeSelectObserver)return;
+  __financeSelectObserver=new MutationObserver(records=>{
+    records.forEach(record=>record.addedNodes.forEach(node=>{
+      if(node.nodeType===1)enhanceAllSelects(node);
+    }));
+  });
+  __financeSelectObserver.observe(document.body,{subtree:true,childList:true});
 }
 document.addEventListener('click', e=>{
   document.querySelectorAll('.sel-simple-btn.dd-active').forEach(b=>{ if(b!==e.target) b.classList.remove('dd-active'); });
@@ -2428,10 +2440,8 @@ async function clearAll(){
 // INIT
 // ═══════════════════════════════════════════════════
 function startApp(){
-  ['oModelo','oStatus','oTipoEnt','rObra','rTipo','rStatus','pCat','pObra','pStatus','dashPer','drePer','dreObraSel','dreObraPer','custosModo','custosFiltro'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) enhanceSelect(el);
-  });
+  enhanceAllSelects(document);
+  observeFinanceSelects();
   attachMoneyMasks(['oVenda','oEnt','oParc','oPerm','oSaldo','rPrev','rRec','pValor','pPago','royAjuste']);
   badges();
   renderDash();

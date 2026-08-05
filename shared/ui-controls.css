@@ -9,11 +9,11 @@
   --ui-control-selected:var(--accent-soft,rgba(244,111,24,.12));
   --ui-control-shadow:0 16px 42px rgba(0,0,0,.24);
 }
-*{scrollbar-width:thin!important;scrollbar-color:var(--ui-control-muted) var(--ui-control-soft)!important}
-*::-webkit-scrollbar{width:8px!important;height:8px!important}
-*::-webkit-scrollbar-track{background:var(--ui-control-soft)!important;border-radius:99px!important}
-*::-webkit-scrollbar-thumb{background:var(--ui-control-muted)!important;border:2px solid var(--ui-control-soft)!important;border-radius:99px!important}
-*::-webkit-scrollbar-thumb:hover{background:var(--ui-control-accent)!important}
+*{scrollbar-width:thin!important;scrollbar-color:var(--ui-control-line) var(--ui-control-bg)!important}
+*::-webkit-scrollbar{width:10px!important;height:10px!important}
+*::-webkit-scrollbar-track{background:var(--ui-control-bg)!important;border-radius:99px!important}
+*::-webkit-scrollbar-thumb{background:var(--ui-control-line)!important;border:1px solid var(--ui-control-bg)!important;border-radius:99px!important}
+*::-webkit-scrollbar-thumb:hover{background:var(--ui-control-muted)!important}
 input[type=number]{appearance:auto}
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button{
@@ -22,6 +22,7 @@ input[type=number]::-webkit-outer-spin-button{
 }
 input[type=number]:hover::-webkit-inner-spin-button,
 input[type=number]:focus::-webkit-inner-spin-button{opacity:1}
+.ui-control-shell{position:relative;display:block;width:100%;min-width:0}
 .ui-native-select-hidden,.ui-native-date-hidden{
   position:absolute!important;width:1px!important;height:1px!important;min-width:1px!important;
   margin:0!important;padding:0!important;border:0!important;opacity:0!important;
@@ -50,17 +51,20 @@ input[type=number]:focus::-webkit-inner-spin-button{opacity:1}
   transform:rotate(225deg) translate(-1px,-1px);border-color:var(--ui-control-accent);
 }
 .ui-select-popover,.ui-date-popover{
-  position:fixed;z-index:2147483000;left:50%;top:50%;display:flex;flex-direction:column;gap:5px;
-  width:min(360px,calc(100vw - 20px));min-width:180px;max-width:calc(100vw - 20px);max-height:min(340px,calc(100vh - 24px));
+  position:absolute;z-index:2147483000;left:0;top:calc(100% + 6px);display:flex;flex-direction:column;gap:5px;
+  width:max(100%,min(360px,calc(100vw - 20px)));min-width:180px;max-width:calc(100vw - 20px);max-height:min(340px,calc(100vh - 24px));
   padding:7px;border:1px solid color-mix(in srgb,var(--ui-control-accent) 42%,var(--ui-control-line));
   border-radius:12px;background:var(--ui-control-bg);box-shadow:var(--ui-control-shadow);
-  overflow:auto;opacity:0;transform:translate(-50%,calc(-50% - 5px)) scale(.985);transform-origin:center;
+  overflow:auto;opacity:0;transform:translateY(-5px) scale(.985);transform-origin:top left;
   visibility:hidden;pointer-events:none;
   transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s;
 }
+.ui-control-shell.ui-align-right>.ui-select-popover,.ui-control-shell.ui-align-right>.ui-date-popover{left:auto;right:0;transform-origin:top right}
+.ui-control-shell.ui-drop-up>.ui-select-popover,.ui-control-shell.ui-drop-up>.ui-date-popover{top:auto;bottom:calc(100% + 6px);transform:translateY(5px) scale(.985);transform-origin:bottom left}
+.ui-control-shell.ui-align-right.ui-drop-up>.ui-select-popover,.ui-control-shell.ui-align-right.ui-drop-up>.ui-date-popover{transform-origin:bottom right}
 .ui-select-popover[hidden],.ui-date-popover[hidden]{display:none!important}
 .ui-select-popover.is-open,.ui-date-popover.is-open{
-  opacity:1;transform:translate(-50%,-50%);visibility:visible;pointer-events:auto;transition-delay:0s;
+  opacity:1;transform:none;visibility:visible;pointer-events:auto;transition-delay:0s;
 }
 .ui-select-option{
   width:100%;padding:10px 11px;border:1px solid transparent;border-radius:8px;
@@ -109,9 +113,34 @@ input[type=number]:focus::-webkit-inner-spin-button{opacity:1}
 }
 .ui-date-action:hover{border-color:var(--ui-control-accent);color:var(--ui-control-accent)}
 @media(max-width:640px){
-  .ui-select-popover,.ui-date-popover{left:10px!important;right:10px!important;bottom:10px!important;top:auto!important;width:auto!important;max-width:none;transform:translateY(8px) scale(.985)!important;transform-origin:bottom}
-  .ui-select-popover.is-open,.ui-date-popover.is-open{transform:none!important}
+  .ui-select-popover,.ui-date-popover{max-width:calc(100vw - 20px)}
 }
+
+/* A mesma fonte visual atende os controles pr?prios de Obras e Financeiro. */
+.custom-select-button,.sel-simple-btn{
+  min-height:43px;border:1.5px solid var(--ui-control-line);border-radius:10px;
+  background:var(--ui-control-soft);color:var(--ui-control-ink);font:600 13px/1.25 inherit;
+}
+.custom-select-button:hover,.sel-simple-btn:hover{border-color:var(--ui-control-muted)}
+.custom-select-button.open,.sel-simple-btn.dd-active{
+  border-color:var(--ui-control-accent);background:var(--ui-control-bg);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-control-accent) 19%,transparent);
+}
+.custom-select-button i,.sel-simple-btn::after{
+  width:7px;height:7px;border-right:2px solid var(--ui-control-muted);border-bottom:2px solid var(--ui-control-muted);
+  transform:rotate(45deg);transform-origin:center;transition:transform .18s ease,border-color .18s ease;
+}
+.custom-select-button.open i,.sel-simple-btn.dd-active::after{transform:rotate(225deg);border-color:var(--ui-control-accent)}
+.select-popover,.dd-panel-float{
+  padding:7px;border:1px solid color-mix(in srgb,var(--ui-control-accent) 42%,var(--ui-control-line));
+  border-radius:12px;background:var(--ui-control-bg);color:var(--ui-control-ink);box-shadow:var(--ui-control-shadow);
+}
+.select-popover button,.dd-panel-float .dd-opt{border-radius:8px;color:var(--ui-control-ink);font-weight:600}
+.select-popover button:hover,.dd-panel-float .dd-opt:hover{background:color-mix(in srgb,var(--ui-control-accent) 11%,var(--ui-control-bg))}
+.select-popover button.selected,.dd-panel-float .dd-opt.dd-opt-sel{
+  background:var(--ui-control-selected);border-color:var(--ui-control-accent);color:var(--ui-control-ink);font-weight:800;
+}
+
 @media(prefers-reduced-motion:reduce){
   .ui-select-button,.ui-date-button,.ui-select-popover,.ui-date-popover,.ui-select-button-chevron{transition:none!important}
 }

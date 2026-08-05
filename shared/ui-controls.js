@@ -1,8 +1,10 @@
 "use strict";
 (()=>{
   const isObras=/(^|\/)obras\//i.test(location.pathname);
+  const isFinanceiro=/(^|\/)financeiro\//i.test(location.pathname);
   const isGestao=/(^|\/)gestao\//i.test(location.pathname);
-  if(isObras)return;
+  const appOwnsSelects=isObras||isFinanceiro;
+  const appOwnsDates=isObras||isFinanceiro;
 
   let active=null;
   const enhancedSelects=new Set();
@@ -21,6 +23,16 @@
   function positionPopover(trigger,popover){
     if(!trigger||!popover)return;
     popover.removeAttribute("hidden");
+    const shell=popover.closest(".ui-control-shell");
+    if(!shell)return;
+    shell.classList.remove("ui-align-right","ui-drop-up");
+    const triggerRect=trigger.getBoundingClientRect();
+    const popoverRect=popover.getBoundingClientRect();
+    const expectedWidth=Math.max(triggerRect.width,popoverRect.width);
+    if(triggerRect.left+expectedWidth>innerWidth-10)shell.classList.add("ui-align-right");
+    const below=innerHeight-triggerRect.bottom;
+    const above=triggerRect.top;
+    if(below<Math.min(popoverRect.height,340)+10&&above>below)shell.classList.add("ui-drop-up");
   }
   function openPopover(trigger,popover,afterOpen){
     if(active?.trigger===trigger){closeActive();return false;}
@@ -76,7 +88,7 @@
     if(active?.trigger===data.button)buildSelectOptions(select,data.popover,data.button);
   }
   function enhanceSelect(select){
-    if(isGestao||select.dataset.uiNative!==undefined||select.dataset.uiEnhanced||select.dataset.enhanced||select.multiple||Number(select.size)>1||select.closest(".ui-select-popover")||getComputedStyle(select).display==="none")return;
+    if(isGestao||appOwnsSelects||select.dataset.uiNative!==undefined||select.dataset.uiEnhanced||select.dataset.enhanced||select.multiple||Number(select.size)>1||select.closest(".ui-select-popover")||getComputedStyle(select).display==="none")return;
     select.dataset.uiEnhanced="true";
     const button=document.createElement("button");
     button.type="button";
@@ -93,9 +105,11 @@
     popover.className="ui-select-popover";
     popover.setAttribute("role","listbox");
     popover.setAttribute("hidden","");
-    document.body.append(popover);
+    const shell=document.createElement("span");
+    shell.className="ui-control-shell ui-select-shell";
+    select.parentNode.insertBefore(shell,select);
+    shell.append(select,button,popover);
     select.classList.add("ui-native-select-hidden");
-    select.insertAdjacentElement("afterend",button);
     select.__uiControl={button,label,popover};
     enhancedSelects.add(select);
     refreshSelect(select);
@@ -187,11 +201,12 @@
     const data=input.__uiControl;
     if(!data)return;
     data.label.textContent=dateLabel(input.value);
+    data.button.hidden=input.hidden;
     data.button.disabled=input.disabled||input.readOnly;
     data.button.setAttribute("aria-disabled",String(data.button.disabled));
   }
   function enhanceDate(input){
-    if(input.dataset.uiNative!==undefined||input.dataset.uiEnhanced||input.closest(".ui-date-popover"))return;
+    if(appOwnsDates||input.dataset.uiNative!==undefined||input.dataset.uiEnhanced||input.closest(".ui-date-popover"))return;
     input.dataset.uiEnhanced="true";
     const button=document.createElement("button");
     button.type="button";button.className="ui-date-button";button.setAttribute("aria-haspopup","dialog");button.setAttribute("aria-expanded","false");
@@ -199,9 +214,11 @@
     label.className="ui-date-button-label";button.append(label);
     const popover=document.createElement("div");
     popover.className="ui-date-popover";popover.setAttribute("role","dialog");popover.setAttribute("aria-label","Selecionar data");popover.setAttribute("hidden","");
-    document.body.append(popover);
+    const shell=document.createElement("span");
+    shell.className="ui-control-shell ui-date-shell";
+    input.parentNode.insertBefore(shell,input);
+    shell.append(input,button,popover);
     input.classList.add("ui-native-date-hidden");
-    input.insertAdjacentElement("afterend",button);
     input.__uiControl={button,label,popover};
     enhancedDates.add(input);
     refreshDate(input);
@@ -216,10 +233,10 @@
     input.addEventListener("focus",()=>button.focus());
   }
   function scan(root=document){
-    if(!isGestao)root.querySelectorAll?.("select").forEach(enhanceSelect);
-    root.querySelectorAll?.('input[type="date"]').forEach(enhanceDate);
-    if(root.matches?.("select"))enhanceSelect(root);
-    if(root.matches?.('input[type="date"]'))enhanceDate(root);
+    if(!isGestao&&!appOwnsSelects)root.querySelectorAll?.("select").forEach(enhanceSelect);
+    if(!appOwnsDates)root.querySelectorAll?.('input[type="date"]').forEach(enhanceDate);
+    if(!isGestao&&!appOwnsSelects&&root.matches?.("select"))enhanceSelect(root);
+    if(!appOwnsDates&&root.matches?.('input[type="date"]'))enhanceDate(root);
   }
   document.addEventListener("click",event=>{
     if(active&&!active.popover.contains(event.target)&&!active.trigger.contains(event.target))closeActive();

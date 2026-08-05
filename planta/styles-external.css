@@ -456,7 +456,8 @@
   .pdf-payment-head label{display:block;margin-bottom:3px}
   .pdf-payment-head .sub{margin:0}
   .pdf-payment-list{display:flex;flex-direction:column;gap:8px}
-  .pdf-payment-row{display:grid;grid-template-columns:minmax(104px,.75fr) minmax(138px,1fr) 82px minmax(142px,1fr) minmax(155px,1.15fr) 36px;gap:8px;align-items:end;padding:9px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface)}
+  .pdf-payment-row{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1fr) minmax(68px,.55fr) minmax(0,1.05fr) minmax(0,1.2fr) 36px;gap:6px;align-items:end;padding:9px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface)}
+  .pdf-payment-row>*{min-width:0}
   .pdf-payment-row select,.pdf-payment-row input{width:100%;min-width:0;height:38px;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;background-color:var(--surface);color:var(--ink);font:600 11.5px 'Montserrat',sans-serif;transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease}
   .pdf-payment-row select{appearance:none;-webkit-appearance:none;padding-right:34px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m6 8 4 4 4-4' fill='none' stroke='%232B8A3E' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;background-size:16px}
   [data-theme="dark"] .pdf-payment-row select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m6 8 4 4 4-4' fill='none' stroke='%2367C078' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
@@ -470,13 +471,15 @@
   .pdf-payment-balance{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:8px 18px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg);color:var(--ink-soft);font-size:11px}
   .pdf-payment-balance b{color:var(--ink);font-family:var(--mono)}
   .pdf-payment-balance strong{justify-self:end;font-size:11.5px}
+  .pdf-payment-balance.is-empty{grid-template-columns:1fr auto}
+  .pdf-payment-balance.is-empty strong{color:var(--ink-soft)}
   .pdf-payment-balance.is-complete{border-color:color-mix(in srgb,var(--ok) 55%,var(--line));background:color-mix(in srgb,var(--ok) 8%,var(--surface))}
   .pdf-payment-balance.is-complete strong{color:var(--ok)}
   .pdf-payment-balance.is-missing strong{color:var(--accent)}
   .pdf-payment-balance.is-excess{border-color:color-mix(in srgb,var(--over) 55%,var(--line));background:color-mix(in srgb,var(--over) 7%,var(--surface))}
   .pdf-payment-balance.is-excess strong{color:var(--over)}
   .pdf-payment-installments-field.is-disabled{opacity:.5}
-  .pdf-payment-installments:disabled{cursor:not-allowed;background-color:var(--bg)}  .pdf-payment-remove{width:36px;height:38px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--over);font:800 18px 'Montserrat',sans-serif;cursor:pointer}
+  .pdf-payment-installments:disabled{cursor:not-allowed;background-color:var(--bg)}  .pdf-payment-remove{width:36px;max-width:100%;height:38px;justify-self:end;align-self:end;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--over);font:800 18px 'Montserrat',sans-serif;cursor:pointer}
   .pdf-payment-remove:hover{border-color:var(--over);background:color-mix(in srgb,var(--over) 9%,var(--surface))}
   .pdf-generation-loading{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(10,14,18,.76);backdrop-filter:blur(5px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease}
   .pdf-generation-loading.show{opacity:1;visibility:visible;pointer-events:auto}
@@ -531,7 +534,7 @@
     .pdf-payment-installments-field{grid-column:1;grid-row:2}
     .pdf-payment-amount-field{grid-column:2;grid-row:2}
     .pdf-payment-details-field{grid-column:1 / 3;grid-row:3}
-    .pdf-payment-remove{grid-column:3;grid-row:1}
+    .pdf-payment-remove{grid-column:3;grid-row:1;justify-self:stretch}
     .pdf-payment-balance{grid-template-columns:1fr 1fr}
     .pdf-payment-balance strong{grid-column:1 / -1;justify-self:start}
 
