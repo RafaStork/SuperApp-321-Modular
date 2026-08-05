@@ -63,6 +63,7 @@ function chaveCatalogo(valor){
 }
 function aplicarPricingData(data) {
   pricingData = data || {};
+  if (!pricingData.podeEditar) qCostView = false;
   pricingMap  = {};
   (pricingData.produtos || []).forEach(p => {
     pricingMap[p.nome] = p;
@@ -126,6 +127,7 @@ let qNovosItens = new Set();   // nomes de produtos adicionados manualmente que 
 let qNovosInsumos = new Set(); // nomes de insumos adicionados manualmente que não estão no BOM
 let qDesconto = { tipo: 'percent', valor: 0 }; // desconto aplicado ao orçamento
 let qViewTab = 'paineis';      // 'paineis' | 'insumos' — sub-aba ativa no modal de Quantitativo
+let qCostView = false;         // custo gerencial: liberado somente após confirmação e autorização do RPC
 // Acréscimo manual de valor por item (R$), disponível para QUALQUER perfil
 // (Admin, Gestor ou Vendedor) — soma-se ao preço de tabela do item.
 // Só pode ser >= 0: dá pra cobrar a mais por um painel específico neste
@@ -7230,6 +7232,7 @@ document.addEventListener("keydown",ev=>{
 
 const scrim=document.getElementById("scrim"),modalBody=document.getElementById("modalBody");
 function closeModal(){
+  if (modalBody.dataset.modal === "quantitativo") qCostView = false;
   pmGen++; // cancela qualquer fetch/timer pendente do catálogo de plantas (ver abrirPlantasModelo)
   scrim.classList.remove("show");
   // Só tira a largura extra (q-wide, usada pelo Quantitativo) e o layout
@@ -9717,6 +9720,32 @@ function getPriceForInsumo(nome) {
   const entry = (pricingData?.insumosCatalog || []).find(i => i.nome === nome || chaveCatalogo(i.nome) === chaveCatalogo(nome));
   return entry && Number.isFinite(Number(entry.precoFinal)) ? Number(entry.precoFinal) : null;
 }
+// O frontend só monta a visão de custo quando o RPC autenticado informa
+// explicitamente que o perfil pode editar e retorna os campos gerenciais.
+function getCostForQuantItem(nome, isInsumo) {
+  if (!pricingData?.podeEditar) return null;
+  const sources = isInsumo
+    ? [...(pricingData.insumosCatalog || []), ...(pricingData.insumos || [])]
+    : (pricingData.produtos || []);
+  const entry = sources.find(item => item.nome === nome || chaveCatalogo(item.nome) === chaveCatalogo(nome));
+  const raw = entry?.precoBase ?? entry?.custoBase;
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+function aplicarModoCustoQuantitativo(itens) {
+  if (!qCostView || !pricingData?.podeEditar) return itens;
+  return itens.map(item => {
+    const custo = getCostForQuantItem(item.nome, item.isInsumo);
+    const temCusto = custo !== null;
+    return {
+      ...item,
+      precoFinal: temCusto ? custo : 0,
+      acrescimo: 0,
+      temPreco: temCusto,
+      subtotal: (temCusto ? custo : 0) * item.qtdFinal
+    };
+  });
+}
 
 // ── BOM_CONFIG — tradutor de painéis visuais → produtos reais ─────────────
 // Cada chave é o ty.name exato do painel.
@@ -9991,11 +10020,12 @@ function abrirQuantitativo() {
   const _prevScrollModal = modalBody.scrollTop;
   const _prevScrollTable = document.querySelector('.q-table-wrap')?.scrollTop || 0;
 
-  const itens      = gerarItensOrcamento();
+  const itens      = aplicarModoCustoQuantitativo(gerarItensOrcamento());
   // Aba "Painéis" só deve exibir itens que não são insumos — insumos ficam
   // exclusivamente na aba "Insumos" (tabela agrupada própria mais abaixo).
   const itensPaineis = itens.filter(it => !it.isInsumo);
   const semPreco   = itensPaineis.filter(i => !i.temPreco && !i.isNovoItem);
+  const semValorLabel = qCostView ? "sem custo" : "sem preço";
   const valorTotal = itens.reduce((s, i) => s + (i.subtotal || 0), 0);
   const totalPaineis = state.panels.length;
   const totalArea    = state.panels.reduce((s,p)=>{ const ty=typeOf(p.typeId); return s+(ty&&!ty.isStair?ty.w*ty.d:0);},0);
@@ -10030,7 +10060,7 @@ function abrirQuantitativo() {
     // Gestor ou Vendedor), sempre >= 0 (só permite cobrar a mais neste
     // orçamento específico, nunca reduzir o preço de tabela do item).
     const acrescimo = it.acrescimo || 0;
-    const precoAdj = `<div class="q-preco-adj" title="Acrescentar valor a este item neste orçamento (somente para mais — não reduz o preço de tabela)">
+    const precoAdj = qCostView ? "" : `<div class="q-preco-adj" title="Acrescentar valor a este item neste orçamento (somente para mais — não reduz o preço de tabela)">
         <span class="q-preco-adj-label">+R$</span>
         <input type="number" class="q-preco-adj-input" min="0" step="0.01"
           value="${acrescimo>0?acrescimo:''}" placeholder="0,00"
@@ -10056,16 +10086,20 @@ function abrirQuantitativo() {
   }).join('');
 
   const warn = semPreco.length
-    ? `<div class="q-warn">⚠ <b>${semPreco.length}</b> tipo(s) sem preço: ${semPreco.map(i=>`<em>${esc(i.nome)}</em>`).join(', ')}.</div>`
+    ? `<div class="q-warn">⚠ <b>${semPreco.length}</b> tipo(s) ${semValorLabel}: ${semPreco.map(i=>`<em>${esc(i.nome)}</em>`).join(', ')}.</div>`
     : '';
 
   // ── Bloco de desconto + totais ────────────────────────────
-  const descValorAbs = qDesconto.tipo === 'percent'
+  const descValorAbs = qCostView ? 0 : (qDesconto.tipo === 'percent'
     ? valorTotal * (qDesconto.valor / 100)
-    : Math.min(qDesconto.valor, valorTotal);
+    : Math.min(qDesconto.valor, valorTotal));
   const valorFinal = Math.max(0, valorTotal - descValorAbs);
 
-  const totalBlock = valorTotal > 0 ? `
+  const totalBlock = valorTotal > 0 ? (qCostView ? `
+    <div class="q-cost-total-block">
+      <span><small>CUSTO DIRETO DO QUANTITATIVO</small><b>Sem margem, imposto ou royalties</b></span>
+      <strong>R$ ${brlFmt(valorTotal)}</strong>
+    </div>` : `
     <div class="q-total-block">
       <span class="q-total-label">Subtotal</span>
       <span class="q-total-val">R$ ${brlFmt(valorTotal)}</span>
@@ -10088,7 +10122,7 @@ function abrirQuantitativo() {
     <div class="q-final-block">
       <span class="q-final-label">Valor Final</span>
       <span class="q-final-val">R$ ${brlFmt(valorFinal)}</span>
-    </div>` : '';
+    </div>`) : '';
 
   // Avulso section — botão "Adicionar" com inteiros
   const prodOpts = (pricingData?.produtos||[]).map(p=>`<option value="${esc(p.nome)}">${esc(p.nome)}</option>`).join('');
@@ -10109,9 +10143,15 @@ function abrirQuantitativo() {
   const insumosBtn = (pricingData.podeEditar)
     ? `<button class="tbtn q-conf-btn" data-planta-action="open-insumos" title="Configurar custos de insumos complementares">🧩</button>`
     : '';
+  const custoBtn = (pricingData.podeEditar)
+    ? `<button class="tbtn q-cost-btn ${qCostView?'active':''}" data-planta-action="${qCostView?'show-sale-prices':'confirm-cost-view'}" title="${qCostView?'Voltar aos preços de venda':'Visualizar custos gerenciais'}">${qCostView?'Preço de venda':'🔒 Preço de custo'}</button>`
+    : '';
+  const custoModeBanner = qCostView
+    ? `<div class="q-cost-mode-banner"><strong>VISUALIZAÇÃO GERENCIAL</strong><span>Valores sem margem, imposto ou royalties.</span></div>`
+    : '';
 
   // ── Ponto 6: aba "Insumos" — lista agrupada com checkbox "Compra com Indústria"
-  const insumosAgg = gerarInsumosAgregados();
+  const insumosAgg = aplicarModoCustoQuantitativo(gerarInsumosAgregados());
   const insumosRows = insumosAgg.map(ins => {
     const checked = insumoCompraIndustria(ins.nome);
     const nomeAttr = esc(ins.nome).replace(/"/g,'&quot;');
@@ -10139,8 +10179,8 @@ function abrirQuantitativo() {
         ${insOrigemLabel}
       </td>
       <td class="num">${insAdjBtns}</td>
-      <td class="num">${ins.precoFinal>0?`R$ ${brlFmt(ins.precoFinal)}`:`<span class="q-sem-preco">—</span>`}</td>
-      <td class="num"><b>R$ ${brlFmt(ins.subtotal)}</b></td>
+      <td class="num">${ins.temPreco?`R$ ${brlFmt(ins.precoFinal)}`:`<span class="q-sem-preco">—</span>`}</td>
+      <td class="num">${ins.temPreco?`<b>R$ ${brlFmt(ins.subtotal)}</b>`:`<span class="q-sem-preco">${semValorLabel}</span>`}</td>
     </tr>`;
   }).join('');
 
@@ -10168,14 +10208,15 @@ function abrirQuantitativo() {
   modalBody.innerHTML = `
     <div class="q-modal">
       <div class="q-header">
-        <h3>📊 Quantitativo &amp; Orçamento</h3>
+        <h3>${qCostView?"🔒 Quantitativo em preço de custo":"📊 Quantitativo &amp; Orçamento"}</h3>
         <div class="q-session">${perfilBadge}</div>
         <div class="q-summary">
           <span><b>${totalPaineis}</b> painel(s)</span>
           <span><b>${itens.length}</b> tipo(s)</span>
           <span><b>${fmt(totalArea)} m²</b></span>
-          ${semPreco.length ? `<span data-planta-style="planta-inline-086"><b>${semPreco.length}</b> sem preço</span>` : ''}
+          ${semPreco.length ? `<span data-planta-style="planta-inline-086"><b>${semPreco.length}</b> ${semValorLabel}</span>` : ''}
         </div>
+        ${custoModeBanner}
         ${viewTabsHtml}
       </div>
       <div class="q-scroll-mid">
@@ -10187,7 +10228,7 @@ function abrirQuantitativo() {
                 <th data-planta-style="planta-inline-085">Compra c/ Indústria</th>
                 <th>Insumo</th>
                 <th class="num">Qtd.</th>
-                <th class="num">Custo Unit.</th>
+                <th class="num">${qCostView?'Custo Unit.':'Preço Unit.'}</th>
                 <th class="num">Subtotal</th>
               </tr></thead>
               <tbody>${insumosRows}</tbody>
@@ -10204,7 +10245,7 @@ function abrirQuantitativo() {
             <thead><tr>
               <th>Produto / Tipo</th>
               <th class="num">Qtd. <span data-planta-style="planta-inline-089">(auto ± ajuste)</span></th>
-              <th class="num">Preço Unit.</th>
+              <th class="num">${qCostView?'Custo Unit.':'Preço Unit.'}</th>
               <th class="num">Subtotal</th>
             </tr></thead>
             <tbody>${rows}</tbody>
@@ -10216,6 +10257,7 @@ function abrirQuantitativo() {
       `}
       </div>
       <div class="modal-actions" data-planta-style="planta-inline-090">
+        ${custoBtn}
         ${confBtn}
         ${insumosBtn}
         <button class="tbtn" data-planta-action="clear-adjustments">Limpar ajustes</button>
@@ -10339,6 +10381,35 @@ function qLimparAjustes() {
   abrirQuantitativo();
 }
 
+// Confirmação isolada para dados gerenciais. O custo só é exibido quando
+// o backend já autorizou o perfil e o usuário confirma conscientemente.
+function abrirConfirmacaoCusto() {
+  if (!pricingData?.podeEditar) return;
+  const overlay = document.getElementById('gestorOverlay');
+  const body = document.getElementById('gestorModalBody');
+  body.innerHTML = `
+    <div class="gc-confirm">
+      <span class="gc-warn-icon">🔒</span>
+      <h3>Visualizar preços de custo?</h3>
+      <p>Esta é uma informação gerencial.<br>Os valores serão exibidos sem margem, imposto ou royalties.</p>
+      <div class="gc-btns">
+        <button class="gc-btn-nao" id="q_custo_nao">Não, voltar</button>
+        <button class="gc-btn-sim" id="q_custo_sim">Sim, visualizar</button>
+      </div>
+    </div>`;
+  document.getElementById('q_custo_nao').onclick = () => overlay.classList.remove('show');
+  document.getElementById('q_custo_sim').onclick = () => {
+    qCostView = true;
+    overlay.classList.remove('show');
+    abrirQuantitativo();
+  };
+  overlay.classList.add('show');
+  overlay.onclick = event => { if (event.target === overlay) overlay.classList.remove('show'); };
+}
+function sairModoCusto() {
+  qCostView = false;
+  abrirQuantitativo();
+}
 // Abre o modal isolado de configuração de margens (apenas para Gestor)
 function abrirConfigMargens() {
   if (!pricingData?.podeEditar || !pricingData.aliquotas) return;
@@ -13510,6 +13581,8 @@ document.addEventListener('click', (event) => {
     switch (action.getAttribute('data-planta-action')) {
       case 'open-margins': abrirConfigMargens(); break;
       case 'open-insumos': abrirConfigInsumos(); break;
+      case 'confirm-cost-view': abrirConfirmacaoCusto(); break;
+      case 'show-sale-prices': sairModoCusto(); break;
       case 'close-modal': closeModal(); break;
       case 'close-gestor': document.getElementById('gestorOverlay')?.classList.remove('show'); break;
       case 'add-avulso': qAdicionarAvulso(); break;

@@ -40,6 +40,40 @@ function buildPdfFileBase(meta,defaultModel){
   ].join(" - ");
 }
 
+const PROPOSAL_PAYMENT_TYPES=["PIX","Cartão de crédito","Cartão de débito","Boleto","Dinheiro","Transferência bancária","Financiamento","Outro"];
+function normalizeProposalPayments(value){
+  const source=Array.isArray(value)?value:[];
+  return source.slice(0,8).map(item=>{
+    const type=PROPOSAL_PAYMENT_TYPES.includes(String(item?.type||""))?String(item.type):"Outro";
+    const installments=Math.min(120,Math.max(1,Number.parseInt(item?.installments,10)||1));
+    const details=String(item?.details||"").trim().slice(0,160);
+    return{type,installments,details};
+  });
+}
+function proposalPaymentRowHtml(item={}){
+  const type=PROPOSAL_PAYMENT_TYPES.includes(String(item.type||""))?String(item.type):"";
+  const installments=Math.min(120,Math.max(1,Number.parseInt(item.installments,10)||1));
+  return `<div class="pdf-payment-row">
+    <select class="pdf-payment-type" aria-label="Forma de pagamento">
+      <option value="">Selecione</option>
+      ${PROPOSAL_PAYMENT_TYPES.map(option=>`<option value="${esc(option)}" ${option===type?"selected":""}>${esc(option)}</option>`).join("")}
+    </select>
+    <label><span>Parcelas</span><input class="pdf-payment-installments" type="number" min="1" max="120" step="1" value="${installments}" inputmode="numeric"></label>
+    <input class="pdf-payment-details" maxlength="160" value="${esc(item.details||"")}" placeholder="Condição, vencimento ou observação">
+    <button type="button" class="pdf-payment-remove" aria-label="Remover forma de pagamento">×</button>
+  </div>`;
+}
+function collectProposalPayments(){
+  return [...document.querySelectorAll("#m_com_payments .pdf-payment-row")].map(row=>({
+    type:row.querySelector(".pdf-payment-type")?.value||"",
+    installments:row.querySelector(".pdf-payment-installments")?.value||1,
+    details:row.querySelector(".pdf-payment-details")?.value||""
+  })).filter(item=>item.type).map(item=>normalizeProposalPayments([item])[0]);
+}
+function proposalPaymentLabel(item){
+  const installmentText=item.installments>1?`${item.installments} parcelas`:"à vista";
+  return [item.type,installmentText,item.details].filter(Boolean).join(" · ");
+}
 function applyPdfDocumentName(doc,fileName){
   const title=String(fileName||"Documento.pdf").replace(/\.pdf$/i,"");
   if(typeof doc?.setProperties==="function"){
@@ -265,6 +299,7 @@ async function loadProposalPictureCatalog(){
 
 function openPdfModal(){
   const m=state.meta||{};
+  const existingPayments=normalizeProposalPayments(m.formasPagamento);
   let exportMode=lastPdfExportMode;
   let dimMode=(state.manualDims&&state.manualDims.some(d=>(d.andar||1)===1))?"manual":"auto";
   modalBody.dataset.modal="";
@@ -339,6 +374,13 @@ function openPdfModal(){
           <label>Validade da proposta</label><input id="m_validade" value="${esc(m.validadeProposta||"")}" placeholder="ex: 15 dias" maxlength="80">
           <p class="sub">Informe por quanto tempo as condições comerciais permanecerão válidas.</p>
         </div>
+        <div class="pdf-option-card pdf-payment-card">
+          <div class="pdf-payment-head">
+            <div><label>Formas de pagamento</label><p class="sub">Cadastre uma ou mais condições para apresentar na proposta.</p></div>
+            <button type="button" class="tbtn" id="m_com_payment_add">+ Adicionar</button>
+          </div>
+          <div class="pdf-payment-list" id="m_com_payments">${(existingPayments.length?existingPayments:[{}]).map(proposalPaymentRowHtml).join("")}</div>
+        </div>
         <div class="pdf-option-card">
           <label class="pdf-check"><input type="checkbox" id="m_com_incluir_valor" checked>Apresentar investimento estimado</label>
           <p class="sub">Exibe o valor calculado no Quantitativo, quando estiver disponivel.</p>
@@ -401,6 +443,16 @@ function openPdfModal(){
   const localUploadInput=document.getElementById("m_com_local_files");
   document.getElementById("m_com_local_upload").onclick=()=>localUploadInput.click();
   localUploadInput.onchange=()=>{addLocalProposalPictures(localUploadInput.files);localUploadInput.value="";};
+  const paymentList=document.getElementById("m_com_payments");
+  document.getElementById("m_com_payment_add").onclick=()=>{
+    if(paymentList.children.length>=8){toastError("Use no máximo 8 formas de pagamento.");return;}
+    paymentList.insertAdjacentHTML("beforeend",proposalPaymentRowHtml({}));
+    paymentList.lastElementChild.querySelector("select")?.focus();
+  };
+  paymentList.addEventListener("click",event=>{
+    const remove=event.target.closest(".pdf-payment-remove");
+    if(remove)remove.closest(".pdf-payment-row")?.remove();
+  });
 
   const updateMeta=()=>{
     state.meta={
@@ -414,6 +466,7 @@ function openPdfModal(){
       vendedor:document.getElementById("m_vendedor").value.trim(),
       telefoneVendedor:formatBrazilPhone(document.getElementById("m_vendedor_tel").value),
       validadeProposta:document.getElementById("m_validade").value.trim(),
+      formasPagamento:collectProposalPayments(),
       propostaItens:document.getElementById("m_com_included").value.trim(),
       propostaNaoIncluso:document.getElementById("m_com_excluded").value.trim(),
       logo:DEFAULT_LOGO
@@ -655,20 +708,26 @@ function normalizeProposalLines(value,fallback){
     .map(line=>line.slice(0,300));
 }
 
-function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,images){
+function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,images,payments=[]){
   const sections=[
     {title:"ITENS QUE COMPÕEM O ORÇAMENTO",items:includedItems,color:[31,51,27]},
     {title:"O QUE NÃO ESTÁ INCLUSO",items:excludedItems,color:[180,58,45]}
   ].filter(section=>section.items.length);
-  if(!sections.length&&!images.length)return;
+  if(!sections.length&&!images.length&&!payments.length)return;
   doc.addPage();
   doc.setFont(fontFamily,"bold");
   doc.setFontSize(15);
   doc.setTextColor(31,51,27);
   doc.text(sections.length?"ESCOPO E REFERÊNCIAS":"REFERÊNCIAS DO PROJETO",14,43);
-  let galleryTop=55;
+  let galleryTop=payments.length?169:55;
+  if(payments.length){
+    const paymentLines=doc.splitTextToSize(payments.map(proposalPaymentLabel).join("   |   "),170).slice(0,5);
+    doc.setFillColor(245,247,244);doc.setDrawColor(218,224,215);doc.roundedRect(14,53,182,28,3,3,"FD");
+    doc.setFont(fontFamily,"bold");doc.setFontSize(7);doc.setTextColor(105,113,103);doc.text("CONDIÇÕES DE PAGAMENTO",20,61);
+    doc.setFont(fontFamily,"bold");doc.setFontSize(7.2);doc.setTextColor(31,51,27);doc.text(paymentLines,20,67);
+  }
   if(sections.length){
-    const columnWidth=87,scopeTop=53,scopeBottom=133;
+    const columnWidth=87,scopeTop=payments.length?87:53,scopeBottom=payments.length?157:133;
     sections.forEach((section,index)=>{
       const x=index===0?14:109;
       let y=scopeTop;
@@ -699,7 +758,7 @@ function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,ima
         doc.text(`+ ${omitted} item(ns) adicional(is)`,x+7,scopeBottom);
       }
     });
-    galleryTop=145;
+    galleryTop=payments.length?169:145;
   }
   if(images.length){
     doc.setFont(fontFamily,"bold");
@@ -717,6 +776,81 @@ function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,ima
   }
 }
 
+function drawCommercialPaymentSummary(doc,fontFamily,payments){
+  if(!payments.length)return;
+  const labels=payments.map(proposalPaymentLabel);
+  const wrapped=doc.splitTextToSize(labels.join("   |   "),168).slice(0,3);
+  doc.setFillColor(245,247,244);
+  doc.setDrawColor(218,224,215);
+  doc.roundedRect(14,126,182,26,3,3,"FD");
+  doc.setFont(fontFamily,"bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(105,113,103);
+  doc.text("FORMAS DE PAGAMENTO",20,134);
+  doc.setFont(fontFamily,"bold");
+  doc.setFontSize(7.6);
+  doc.setTextColor(31,51,27);
+  doc.text(wrapped,20,140);
+}
+async function drawCommercialFloorSheet(doc,svgString,x,y,width,height){
+  doc.setFillColor(255,255,255);
+  doc.setDrawColor(218,224,215);
+  doc.roundedRect(x-1,y-1,width+2,height+2,2,2,"FD");
+  if(typeof doc.svg==="function"){
+    const parser=new DOMParser();
+    const svgDoc=parser.parseFromString(svgString,"image/svg+xml");
+    const svgElement=svgDoc.documentElement;
+    svgElement.style.cssText="position:fixed;left:-99999px;top:0;width:210mm;height:297mm;";
+    document.body.appendChild(svgElement);
+    try{await doc.svg(svgElement,{x,y,width,height});}
+    finally{svgElement.remove();}
+    return;
+  }
+  const objectUrl=URL.createObjectURL(new Blob([svgString],{type:"image/svg+xml"}));
+  try{
+    const image=await rasterizeProposalImageSource(objectUrl,2000,{timeoutMs:45000});
+    addContainedProposalImage(doc,image,x,y,width,height);
+  }finally{URL.revokeObjectURL(objectUrl);}
+}
+async function addCommercialFloorPlansPage(doc,fontFamily){
+  doc.addPage();
+  doc.setFont(fontFamily,"bold");
+  doc.setFontSize(15);
+  doc.setTextColor(31,51,27);
+  doc.text("PLANTAS BAIXAS",14,43);
+  doc.setFont(fontFamily,"normal");
+  doc.setFontSize(8);
+  doc.setTextColor(105,113,103);
+  doc.text("Representação do primeiro e do segundo andar do projeto apresentado.",14,49);
+
+  const width=87,height=width*297/210,y=61;
+  const floors=[
+    {label:"1º ANDAR",mode:"andar1",available:true,x:14},
+    {label:"2º ANDAR",mode:"andar2",available:state.panels.some(isFloor2Panel),x:109}
+  ];
+  for(const floor of floors){
+    doc.setFont(fontFamily,"bold");
+    doc.setFontSize(8);
+    doc.setTextColor(31,51,27);
+    doc.text(floor.label,floor.x,y-5);
+    if(floor.available){
+      const svg=makePlantSheetSvgBold(buildSheetSVGInner("auto",true,floor.mode));
+      await drawCommercialFloorSheet(doc,svg,floor.x,y,width,height);
+    }else{
+      doc.setFillColor(245,247,244);
+      doc.setDrawColor(218,224,215);
+      doc.roundedRect(floor.x,y,width,height,2,2,"FD");
+      doc.setFont(fontFamily,"bold");
+      doc.setFontSize(8);
+      doc.setTextColor(105,113,103);
+      doc.text("Não aplicável a este projeto",floor.x+width/2,y+height/2,{align:"center"});
+    }
+  }
+  doc.setFont(fontFamily,"normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(105,113,103);
+  doc.text("As plantas integram esta proposta para referência do escopo comercial.",14,201);
+}
 async function generateCommercialProposal(action="save",options={}){
   const js=window.jspdf&&window.jspdf.jsPDF;
   if(!js){toastError("Gerador de PDF indisponivel.");return;}
@@ -746,6 +880,7 @@ async function generateCommercialProposal(action="save",options={}){
     const seller=meta.vendedor||"Não informado";
     const sellerPhone=formatBrazilPhone(meta.telefoneVendedor)||"Não informado";
     const validity=meta.validadeProposta||"Não informada";
+    const payments=normalizeProposalPayments(meta.formasPagamento);
     const franchise=pricingData?.franquia||"Não informada";
     const area=occupiedArea();
     const investment=proposalInvestmentValue();
@@ -793,6 +928,7 @@ async function generateCommercialProposal(action="save",options={}){
     drawContact(105,89,"FRANQUIA",franchise,88);
     drawContact(105,102,"VENDEDOR",seller,88);
     drawContact(105,115,"TELEFONE DO VENDEDOR",sellerPhone,88);
+    drawCommercialPaymentSummary(doc,fontFamily,payments);
 
     if(options.includeInvestment&&investment>0){
       doc.setFillColor(31,51,27);
@@ -811,7 +947,9 @@ async function generateCommercialProposal(action="save",options={}){
       doc.text("Valores e condicoes comerciais sujeitos a validacao do escopo final.",14,260);
     }
 
-    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,loaded);
+    updatePdfLoading("Montando as plantas baixas...");
+    await addCommercialFloorPlansPage(doc,fontFamily);
+    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,loaded,payments);
 
     const totalPages=doc.getNumberOfPages();
     for(let page=1;page<=totalPages;page++){
