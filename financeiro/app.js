@@ -282,6 +282,9 @@ function observeFinanceSelects(){
   });
   __financeSelectObserver.observe(document.body,{subtree:true,childList:true});
 }
+document.addEventListener('superapp:control-open',e=>{
+  if(__floatActiveBtn&&__floatActiveBtn!==e.detail?.trigger)fecharFlutuante();
+});
 document.addEventListener('click', e=>{
   document.querySelectorAll('.sel-simple-btn.dd-active').forEach(b=>{ if(b!==e.target) b.classList.remove('dd-active'); });
 });
@@ -333,7 +336,10 @@ function fecharFlutuante(){
 function abrirFlutuante(trigger, classe, montar){
   const jaEraEsse = __floatEl && __floatEl.dataset.trigger === trigger.__floatId;
   fecharFlutuante();
-  if(jaEraEsse) return; // clicar de novo no mesmo botão só fecha
+  if(jaEraEsse) return;
+  document.dispatchEvent(new CustomEvent('superapp:control-open',{detail:{trigger}}));
+  trigger.classList.add('dd-active');
+  __floatActiveBtn=trigger; // clicar de novo no mesmo botão só fecha
   if(!trigger.__floatId) trigger.__floatId = 'trg_'+Math.random().toString(36).slice(2);
   const el = document.createElement('div');
   el.className = classe;

@@ -1,12 +1,12 @@
 /* Controles visuais compartilhados — referência: Acompanhamento de Obras. */
 :root{
-  --ui-control-bg:var(--surface,var(--card,var(--bg-soft,#fff)));
-  --ui-control-soft:var(--bg-soft,var(--bg,#f4f5f3));
-  --ui-control-ink:var(--ink,var(--text,#1f251f));
-  --ui-control-muted:var(--ink-faint,var(--faint,var(--muted,#7a8279)));
-  --ui-control-line:var(--line,var(--border,#d9ded7));
-  --ui-control-accent:var(--accent,#f46f18);
-  --ui-control-selected:var(--accent-soft,rgba(244,111,24,.12));
+  --ui-control-bg:var(--surface,var(--wh,var(--card,var(--bg-soft,#fff))));
+  --ui-control-soft:var(--bg-soft,var(--gc,var(--soft,var(--bg,#f4f5f3))));
+  --ui-control-ink:var(--text,var(--t1,var(--ink,#1f251f)));
+  --ui-control-muted:var(--ink-faint,var(--faint,var(--tm,var(--muted,#7a8279))));
+  --ui-control-line:var(--border,var(--bdr,var(--line,#d9ded7)));
+  --ui-control-accent:var(--accent,var(--or,var(--orange,#f46f18)));
+  --ui-control-selected:var(--accent-soft,var(--or-soft,rgba(244,111,24,.12)));
   --ui-control-shadow:0 16px 42px rgba(0,0,0,.24);
 }
 *{scrollbar-width:thin!important;scrollbar-color:var(--ui-control-line) var(--ui-control-bg)!important}
@@ -14,14 +14,41 @@
 *::-webkit-scrollbar-track{background:var(--ui-control-bg)!important;border-radius:99px!important}
 *::-webkit-scrollbar-thumb{background:var(--ui-control-line)!important;border:1px solid var(--ui-control-bg)!important;border-radius:99px!important}
 *::-webkit-scrollbar-thumb:hover{background:var(--ui-control-muted)!important}
-input[type=number]{appearance:auto}
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button{
-  -webkit-appearance:auto;appearance:auto;opacity:.72;cursor:pointer;
-  filter:sepia(.35) saturate(1.2) hue-rotate(330deg);
+.ui-number-shell{
+  display:grid;grid-template-columns:minmax(0,1fr) 28px;align-items:stretch;
+  width:100%;min-width:0;max-width:100%;
 }
-input[type=number]:hover::-webkit-inner-spin-button,
-input[type=number]:focus::-webkit-inner-spin-button{opacity:1}
+.ui-number-shell[hidden]{display:none!important}
+.ui-number-shell>.ui-number-input{
+  width:100%!important;min-width:0!important;max-width:100%;margin:0!important;
+  border-right:0!important;border-radius:10px 0 0 10px!important;
+  background:var(--ui-control-soft)!important;color:var(--ui-control-ink)!important;
+  appearance:textfield!important;-moz-appearance:textfield!important;
+}
+.ui-number-shell>.ui-number-input::-webkit-inner-spin-button,
+.ui-number-shell>.ui-number-input::-webkit-outer-spin-button{-webkit-appearance:none!important;appearance:none!important;margin:0!important}
+.ui-number-stepper{
+  display:grid;grid-template-rows:1fr 1fr;min-width:28px;overflow:hidden;
+  border:1px solid var(--ui-control-line);border-left:1px solid var(--ui-control-line);
+  border-radius:0 10px 10px 0;background:var(--ui-control-bg);
+}
+.ui-number-shell:focus-within>.ui-number-input{border-color:var(--ui-control-accent)!important;box-shadow:none!important}
+.ui-number-shell:focus-within>.ui-number-stepper{border-color:var(--ui-control-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--ui-control-accent) 19%,transparent)}
+.ui-number-step{
+  position:relative;display:grid;place-items:center;width:100%;min-height:17px;padding:0;border:0;
+  background:transparent;color:var(--ui-control-muted);cursor:pointer;
+  transition:background-color .14s ease,color .14s ease;
+}
+.ui-number-step+.ui-number-step{border-top:1px solid var(--ui-control-line)}
+.ui-number-step::before{
+  content:"";width:6px;height:6px;border-top:1.5px solid currentColor;border-left:1.5px solid currentColor;
+  transform:rotate(45deg) translate(1px,1px);transform-origin:center;
+}
+.ui-number-down::before{transform:rotate(225deg) translate(1px,1px)}
+.ui-number-step:hover,.ui-number-step:focus-visible{outline:none;background:var(--ui-control-selected);color:var(--ui-control-accent)}
+.ui-number-step:active{background:var(--ui-control-accent);color:#fff}
+.ui-number-step:disabled{opacity:.42;cursor:not-allowed;background:transparent;color:var(--ui-control-muted)}
+.ui-number-shell.is-disabled{opacity:.62}
 .ui-control-shell{position:relative;display:block;width:100%;min-width:0}
 .ui-native-select-hidden,.ui-native-date-hidden{
   position:absolute!important;width:1px!important;height:1px!important;min-width:1px!important;
@@ -144,3 +171,5 @@ input[type=number]:focus::-webkit-inner-spin-button{opacity:1}
 @media(prefers-reduced-motion:reduce){
   .ui-select-button,.ui-date-button,.ui-select-popover,.ui-date-popover,.ui-select-button-chevron{transition:none!important}
 }
+
+[data-theme="dark"] .ui-select-popover,[data-theme="dark"] .ui-date-popover,[data-theme="dark"] .select-popover,[data-theme="dark"] .dd-panel-float,[data-theme="dark"] .ui-number-stepper{color-scheme:dark}

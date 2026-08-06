@@ -9,6 +9,7 @@
   let active=null;
   const enhancedSelects=new Set();
   const enhancedDates=new Set();
+  const enhancedNumbers=new Set();
   const monthNames=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
   const weekNames=["dom","seg","ter","qua","qui","sex","sáb"];
 
@@ -34,8 +35,12 @@
     const above=triggerRect.top;
     if(below<Math.min(popoverRect.height,340)+10&&above>below)shell.classList.add("ui-drop-up");
   }
+  function announceControlOpen(trigger){
+    document.dispatchEvent(new CustomEvent("superapp:control-open",{detail:{trigger}}));
+  }
   function openPopover(trigger,popover,afterOpen){
     if(active?.trigger===trigger){closeActive();return false;}
+    announceControlOpen(trigger);
     closeActive();
     popover.removeAttribute("hidden");
     positionPopover(trigger,popover);
@@ -232,12 +237,72 @@
     input.addEventListener("change",()=>refreshDate(input));
     input.addEventListener("focus",()=>button.focus());
   }
+  function numberHidden(input){
+    return input.hidden||getComputedStyle(input).display==="none";
+  }
+  function refreshNumber(input){
+    const data=input.__uiNumberControl;
+    if(!data)return;
+    data.shell.hidden=numberHidden(input);
+    const disabled=input.disabled||input.readOnly;
+    data.up.disabled=disabled;
+    data.down.disabled=disabled;
+    data.shell.classList.toggle("is-disabled",disabled);
+  }
+  function changeNumber(input,direction){
+    const before=input.value;
+    try{
+      if(direction>0)input.stepUp();else input.stepDown();
+    }catch{
+      const current=Number.parseFloat(input.value);
+      const stepAttr=input.getAttribute("step");
+      const step=stepAttr&&stepAttr!=="any"&&Number.isFinite(Number(stepAttr))?Number(stepAttr):1;
+      let next=(Number.isFinite(current)?current:0)+(direction*step);
+      const min=Number.parseFloat(input.min),max=Number.parseFloat(input.max);
+      if(Number.isFinite(min))next=Math.max(min,next);
+      if(Number.isFinite(max))next=Math.min(max,next);
+      input.value=String(Number(next.toFixed(10)));
+    }
+    if(input.value!==before){
+      input.dispatchEvent(new Event("input",{bubbles:true}));
+      input.dispatchEvent(new Event("change",{bubbles:true}));
+    }
+    input.focus({preventScroll:true});
+  }
+  function enhanceNumber(input){
+    if(input.dataset.uiNumberEnhanced||input.dataset.uiNative!==undefined||input.closest(".number-input,.timeline-year-control,[data-ui-number-native]"))return;
+    input.dataset.uiNumberEnhanced="true";
+    const shell=document.createElement("span");
+    shell.className="ui-number-shell";
+    const stepper=document.createElement("span");
+    stepper.className="ui-number-stepper";
+    const up=document.createElement("button");
+    up.type="button";up.className="ui-number-step ui-number-up";up.setAttribute("aria-label","Aumentar valor");
+    const down=document.createElement("button");
+    down.type="button";down.className="ui-number-step ui-number-down";down.setAttribute("aria-label","Diminuir valor");
+    input.parentNode.insertBefore(shell,input);
+    shell.append(input,stepper);
+    stepper.append(up,down);
+    input.classList.add("ui-number-input");
+    input.__uiNumberControl={shell,up,down};
+    enhancedNumbers.add(input);
+    up.addEventListener("pointerdown",event=>event.preventDefault());
+    down.addEventListener("pointerdown",event=>event.preventDefault());
+    up.addEventListener("click",()=>changeNumber(input,1));
+    down.addEventListener("click",()=>changeNumber(input,-1));
+    refreshNumber(input);
+  }
   function scan(root=document){
     if(!isGestao&&!appOwnsSelects)root.querySelectorAll?.("select").forEach(enhanceSelect);
     if(!appOwnsDates)root.querySelectorAll?.('input[type="date"]').forEach(enhanceDate);
+    root.querySelectorAll?.('input[type="number"]').forEach(enhanceNumber);
     if(!isGestao&&!appOwnsSelects&&root.matches?.("select"))enhanceSelect(root);
     if(!appOwnsDates&&root.matches?.('input[type="date"]'))enhanceDate(root);
+    if(root.matches?.('input[type="number"]'))enhanceNumber(root);
   }
+  document.addEventListener("superapp:control-open",event=>{
+    if(active&&active.trigger!==event.detail?.trigger)closeActive();
+  });
   document.addEventListener("click",event=>{
     if(active&&!active.popover.contains(event.target)&&!active.trigger.contains(event.target))closeActive();
   });
@@ -249,17 +314,19 @@
       if(record.type==="attributes"){
         if(record.target.matches?.("select"))refreshSelect(record.target);
         if(record.target.matches?.('input[type="date"]'))refreshDate(record.target);
+        if(record.target.matches?.('input[type="number"]'))refreshNumber(record.target);
       }
       if(record.target.closest?.("select"))refreshSelect(record.target.closest("select"));
     });
     enhancedSelects.forEach(select=>{if(!select.isConnected){select.__uiControl?.popover.remove();enhancedSelects.delete(select);}});
     enhancedDates.forEach(input=>{if(!input.isConnected){input.__uiControl?.popover.remove();enhancedDates.delete(input);}});
+    enhancedNumbers.forEach(input=>{if(!input.isConnected)enhancedNumbers.delete(input);});
   });
   function start(){
     scan();
-    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["disabled","readonly","hidden","value","min","max"]});
-    document.addEventListener("reset",()=>setTimeout(()=>{enhancedSelects.forEach(refreshSelect);enhancedDates.forEach(refreshDate);}));
-    window.SuperAppUIControls={refresh(){enhancedSelects.forEach(refreshSelect);enhancedDates.forEach(refreshDate);},scan,close:closeActive};
+    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["disabled","readonly","hidden","style","value","min","max"]});
+    document.addEventListener("reset",()=>setTimeout(()=>{enhancedSelects.forEach(refreshSelect);enhancedDates.forEach(refreshDate);enhancedNumbers.forEach(refreshNumber);}));
+    window.SuperAppUIControls={refresh(){enhancedSelects.forEach(refreshSelect);enhancedDates.forEach(refreshDate);enhancedNumbers.forEach(refreshNumber);},scan,close:closeActive};
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start();
 })();
