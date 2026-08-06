@@ -10,6 +10,7 @@
   const enhancedSelects=new Set();
   const enhancedDates=new Set();
   const enhancedNumbers=new Set();
+  const numberSelector='input[type="number"],input[data-money-masked]';
   const monthNames=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
   const weekNames=["dom","seg","ter","qua","qui","sex","sáb"];
 
@@ -249,16 +250,26 @@
     data.down.disabled=disabled;
     data.shell.classList.toggle("is-disabled",disabled);
   }
+  function numericInputValue(input){
+    let raw=String(input.value||"").trim().replace(/\s/g,"").replace(/[^\d,.\-]/g,"");
+    if(raw.includes(","))raw=raw.replace(/\./g,"").replace(",",".");
+    return Number.parseFloat(raw);
+  }
   function changeNumber(input,direction){
     const before=input.value;
-    try{
-      if(direction>0)input.stepUp();else input.stepDown();
-    }catch{
-      const current=Number.parseFloat(input.value);
+    let changedByNative=false;
+    if(input.type==="number"){
+      try{
+        if(direction>0)input.stepUp();else input.stepDown();
+        changedByNative=true;
+      }catch{}
+    }
+    if(!changedByNative){
+      const current=numericInputValue(input);
       const stepAttr=input.getAttribute("step");
       const step=stepAttr&&stepAttr!=="any"&&Number.isFinite(Number(stepAttr))?Number(stepAttr):1;
       let next=(Number.isFinite(current)?current:0)+(direction*step);
-      const min=Number.parseFloat(input.min),max=Number.parseFloat(input.max);
+      const min=Number.parseFloat(input.getAttribute("min")),max=Number.parseFloat(input.getAttribute("max"));
       if(Number.isFinite(min))next=Math.max(min,next);
       if(Number.isFinite(max))next=Math.min(max,next);
       input.value=String(Number(next.toFixed(10)));
@@ -266,11 +277,11 @@
     if(input.value!==before){
       input.dispatchEvent(new Event("input",{bubbles:true}));
       input.dispatchEvent(new Event("change",{bubbles:true}));
+      input.dispatchEvent(new CustomEvent("superapp:number-step",{bubbles:true,detail:{direction,value:input.value}}));
     }
-    input.focus({preventScroll:true});
   }
   function enhanceNumber(input){
-    if(input.dataset.uiNumberEnhanced||input.dataset.uiNative!==undefined||input.closest(".number-input,.timeline-year-control,[data-ui-number-native]"))return;
+    if(!input.matches(numberSelector)||input.dataset.uiNumberEnhanced||input.dataset.uiNative!==undefined||input.closest(".number-input,.timeline-year-control,[data-ui-number-native]"))return;
     input.dataset.uiNumberEnhanced="true";
     const shell=document.createElement("span");
     shell.className="ui-number-shell";
@@ -295,10 +306,10 @@
   function scan(root=document){
     if(!isGestao&&!appOwnsSelects)root.querySelectorAll?.("select").forEach(enhanceSelect);
     if(!appOwnsDates)root.querySelectorAll?.('input[type="date"]').forEach(enhanceDate);
-    root.querySelectorAll?.('input[type="number"]').forEach(enhanceNumber);
+    root.querySelectorAll?.(numberSelector).forEach(enhanceNumber);
     if(!isGestao&&!appOwnsSelects&&root.matches?.("select"))enhanceSelect(root);
     if(!appOwnsDates&&root.matches?.('input[type="date"]'))enhanceDate(root);
-    if(root.matches?.('input[type="number"]'))enhanceNumber(root);
+    if(root.matches?.(numberSelector))enhanceNumber(root);
   }
   document.addEventListener("superapp:control-open",event=>{
     if(active&&active.trigger!==event.detail?.trigger)closeActive();
@@ -314,7 +325,7 @@
       if(record.type==="attributes"){
         if(record.target.matches?.("select"))refreshSelect(record.target);
         if(record.target.matches?.('input[type="date"]'))refreshDate(record.target);
-        if(record.target.matches?.('input[type="number"]'))refreshNumber(record.target);
+        if(record.target.matches?.(numberSelector)){enhanceNumber(record.target);refreshNumber(record.target);}
       }
       if(record.target.closest?.("select"))refreshSelect(record.target.closest("select"));
     });
@@ -324,7 +335,7 @@
   });
   function start(){
     scan();
-    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["disabled","readonly","hidden","style","value","min","max"]});
+    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["disabled","readonly","hidden","style","value","min","max","type","inputmode","data-money-masked"]});
     document.addEventListener("reset",()=>setTimeout(()=>{enhancedSelects.forEach(refreshSelect);enhancedDates.forEach(refreshDate);enhancedNumbers.forEach(refreshNumber);}));
     window.SuperAppUIControls={refresh(){enhancedSelects.forEach(refreshSelect);enhancedDates.forEach(refreshDate);enhancedNumbers.forEach(refreshNumber);},scan,close:closeActive};
   }

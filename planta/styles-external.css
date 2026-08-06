@@ -363,18 +363,19 @@
 
   /* ── Ajuste manual de qty na tabela ── */
   .q-adj{display:inline-flex;align-items:center;gap:4px;margin-left:4px}
-  .q-adj button{width:22px;height:22px;border:1.5px solid var(--line);border-radius:var(--r-sm);
-    background:var(--bg);color:var(--ink);font-size:12px;line-height:1;cursor:pointer;padding:0;font-weight:700}
-  .q-adj button:hover{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
-  .q-adj button:active{transform:scale(.9)}
   .q-delta{font-size:11px;color:var(--ink-soft);min-width:26px;text-align:center;font-family:var(--mono);font-weight:700}
   .q-qty-final{font-weight:800;font-size:15px}
   .q-qty-input{width:48px;font-weight:800;font-size:14px;font-family:var(--mono);text-align:center;
     border:1.5px solid var(--line);border-radius:var(--r-sm);padding:3px 2px;background:var(--paper);color:var(--ink)}
   .q-qty-input:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus-ring)}
+  .q-adj .ui-number-shell{width:76px;flex:0 0 76px}
 
   .q-avulso-section{border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;
     background:var(--bg);flex-shrink:0}
+  .q-quick-add{position:relative;z-index:6;flex:0 0 auto;margin-top:1px}
+  .q-quick-add:empty{display:none}
+  .q-quick-add .ui-select-popover{top:auto;bottom:calc(100% + 6px);transform:translateY(5px) scale(.985);transform-origin:bottom left}
+  .q-quick-add .ui-select-popover.is-open{transform:translateY(0) scale(1)}
   .q-avulso-section .q-avulso-title{font-size:11px;font-weight:800;letter-spacing:.06em;
     text-transform:uppercase;color:var(--ink-soft);margin-bottom:9px}
   .q-avulso-row{display:flex;align-items:center;gap:7px;flex-wrap:nowrap}
@@ -635,6 +636,10 @@
   .q-table-wrap{overflow:auto;max-height:42vh;min-height:120px;border:1px solid var(--line);
     overscroll-behavior:contain;scrollbar-gutter:stable;
     border-radius:var(--r);margin:0}
+  @media(min-width:761px){
+    .modal.q-wide[data-modal="quantitativo"]{height:min(94vh,980px);max-height:94vh}
+    .modal.q-wide[data-modal="quantitativo"] .q-table-wrap{max-height:min(58vh,620px);min-height:260px}
+  }
   .q-table{width:100%;min-width:720px;border-collapse:collapse;font-size:13px}
   .q-table th:first-child,.q-table td:first-child{min-width:220px;max-width:360px;overflow-wrap:break-word;word-break:normal}
   .q-table th.num,.q-table td.num{white-space:nowrap}

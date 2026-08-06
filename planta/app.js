@@ -10022,7 +10022,9 @@ function abrirQuantitativo() {
   // Preserva a posição do scroll ao reabrir o modal (ex: depois de clicar em
   // +/− numa quantidade) — sem isso a tela voltava pro topo a cada clique.
   const _prevScrollModal = modalBody.scrollTop;
+  const _prevScrollMid = document.querySelector('.q-scroll-mid')?.scrollTop || 0;
   const _prevScrollTable = document.querySelector('.q-table-wrap')?.scrollTop || 0;
+  const _prevScrollTableX = document.querySelector('.q-table-wrap')?.scrollLeft || 0;
 
   const itens      = aplicarModoCustoQuantitativo(gerarItensOrcamento());
   // Aba "Painéis" só deve exibir itens que não são insumos — insumos ficam
@@ -10052,13 +10054,11 @@ function abrirQuantitativo() {
     // Todos os itens (automáticos e manuais) têm +/− e também um campo pra
     // digitar diretamente a quantidade final desejada.
     const adjBtns = `<span class="q-adj">
-        <button data-planta-q-adjust="${esc(it.nome)}" data-planta-q-delta="-1" title="−1">−</button>
         <input type="number" class="q-qty-input" min="0" step="1" value="${it.qtdFinal}"
           data-planta-q-set="${esc(it.nome)}" data-planta-q-base="${it.qtd}"
           data-planta-enter-commit="true"
           title="Digite a quantidade final desejada">
         ${deltaStr}
-        <button data-planta-q-adjust="${esc(it.nome)}" data-planta-q-delta="1" title="+1">+</button>
       </span>`;
     // Acréscimo manual de valor — disponível para QUALQUER perfil (Admin,
     // Gestor ou Vendedor), sempre >= 0 (só permite cobrar a mais neste
@@ -10162,13 +10162,11 @@ function abrirQuantitativo() {
     const insDeltaStr = ins.delta !== 0
       ? `<span class="q-delta">${ins.delta > 0 ? '+' : ''}${ins.delta}</span>` : '';
     const insAdjBtns = `<span class="q-adj">
-        <button data-planta-q-adjust="${esc(ins.nome)}" data-planta-q-delta="-1" title="−1">−</button>
         <input type="number" class="q-qty-input" min="0" step="1" value="${ins.qtdFinal}"
           data-planta-q-set="${esc(ins.nome)}" data-planta-q-base="${ins.qtd}"
           data-planta-enter-commit="true"
           title="Digite a quantidade final desejada">
         ${insDeltaStr}
-        <button data-planta-q-adjust="${esc(ins.nome)}" data-planta-q-delta="1" title="+1">+</button>
       </span>`;
     const insOrigemLabel = ins.origens.length
       ? `<div class="q-dims" data-planta-style="planta-inline-083">usado em: ${ins.origens.map(o=>esc(o)).join(', ')}</div>`
@@ -10241,7 +10239,6 @@ function abrirQuantitativo() {
           <p class="sub" data-planta-style="planta-inline-087">Insumos desmarcados não aparecem no PDF, mas continuam somando no valor total do orçamento.</p>
           ${totalBlock}
         ` : `<p data-planta-style="planta-inline-088">Nenhum insumo complementar cadastrado para os painéis desta planta.</p>`}
-        ${avulsoInsumoSection}
       ` : `
       ${rows ? `
         <div class="q-table-wrap">
@@ -10257,8 +10254,10 @@ function abrirQuantitativo() {
         </div>
         ${warn}${totalBlock}
       ` : `<p data-planta-style="planta-inline-088">Nenhum painel na planta ainda.</p>`}
-      ${avulsoSection}
       `}
+      </div>
+      <div class="q-quick-add">
+        ${qViewTab==='insumos' ? avulsoInsumoSection : avulsoSection}
       </div>
       <div class="modal-actions" data-planta-style="planta-inline-090">
         ${custoBtn}
@@ -10273,8 +10272,13 @@ function abrirQuantitativo() {
 
   // Restaura a posição do scroll capturada no início da função.
   modalBody.scrollTop = _prevScrollModal;
+  const _scrollMid = document.querySelector('.q-scroll-mid');
+  if (_scrollMid) _scrollMid.scrollTop = _prevScrollMid;
   const _tableWrap = document.querySelector('.q-table-wrap');
-  if (_tableWrap) _tableWrap.scrollTop = _prevScrollTable;
+  if (_tableWrap) {
+    _tableWrap.scrollTop = _prevScrollTable;
+    _tableWrap.scrollLeft = _prevScrollTableX;
+  }
 }
 
 // Ajusta qty de um item e remove item manual zerado
@@ -13626,6 +13630,16 @@ document.addEventListener('click', (event) => {
     }
     if (target?.matches?.('[data-planta-apply-discount]')) qAplicarDesconto();
   }, true);
+
+  document.addEventListener('superapp:number-step', (event) => {
+    const target = event.target;
+    if (!target?.matches?.('[data-planta-q-set]')) return;
+    qDefinirQtd(
+      target.getAttribute('data-planta-q-set') || '',
+      Number(target.getAttribute('data-planta-q-base') || 0),
+      target.value
+    );
+  });
 
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;
