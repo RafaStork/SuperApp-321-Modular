@@ -362,6 +362,8 @@ td.cell-colored > .fill{ display:flex; align-items:center; height:100%; min-heig
 .progress-bar{width:90px; height:8px; background:var(--bg-soft); border:1px solid var(--border-soft); border-radius:99px; overflow:hidden; box-shadow:inset 0 1px 2px rgba(20,24,30,.06);}
 [data-theme="dark"] .progress-bar{ box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
 .progress-bar > div{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-3)); transition:width .5s var(--ease-out); border-radius:99px; box-shadow:0 0 8px -1px var(--accent-soft);}
+.my-task-progress{display:grid;gap:7px;min-width:112px}.my-task-progress-input{display:flex;align-items:center;gap:5px}.my-task-progress-input .cell-number{min-width:68px}.my-task-progress-bar{width:100%}
+.dashboard-meta-readonly{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:6px;color:var(--text-faint);font-size:10px}.dashboard-meta-readonly strong{color:var(--text-muted);font-size:10.5px}.dashboard-meta-readonly.is-empty{justify-content:flex-start;font-style:italic}
 
 
 .msel-btn{ background:rgba(20,24,30,.02); border:1px solid var(--border-soft); cursor:pointer; padding:6px 8px; border-radius:var(--r-sm); min-width:130px; width:100%; display:flex; flex-wrap:wrap; gap:4px; text-align:left; font-family:var(--font); transition:background .15s var(--ease-out), border-color .15s var(--ease-out); }

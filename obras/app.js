@@ -245,12 +245,81 @@ function cardHtml(work){const priority=PRIORITY[work.priority]||PRIORITY.media,e
     const item=[...(group||$('checklist-list')).querySelectorAll('.checklist-item-row')].find(row=>String(row.dataset.id)===String(target.itemId));
     requestAnimationFrame(()=>requestAnimationFrame(()=>{if(!item)return;const scroller=$('work-fields'),itemRect=item.getBoundingClientRect(),scrollerRect=scroller.getBoundingClientRect(),targetTop=scroller.scrollTop+(itemRect.top-scrollerRect.top)-(scroller.clientHeight-itemRect.height)/2;scroller.scrollTo({top:Math.max(0,targetTop),behavior:'smooth'});item.classList.add('checklist-target-focus');setTimeout(()=>item.classList.remove('checklist-target-focus'),1500);const field=item.querySelector('.checklist-item-title');field?.focus({preventScroll:true});field?.select()}))
   }
+  let driveLinksDraft=[];
+  function normalizeDriveUrl(value){
+    try{
+      const url=new URL(String(value||'').trim());
+      if(url.protocol!=='https:'||!['drive.google.com','docs.google.com'].includes(url.hostname.toLowerCase()))return null;
+      url.hash='';
+      return url.href.slice(0,1000);
+    }catch{return null}
+  }
+  function driveFileId(value){
+    const url=normalizeDriveUrl(value);if(!url)return '';
+    const pathMatch=url.match(/\/d\/([A-Za-z0-9_-]{10,})/),queryMatch=new URL(url).searchParams.get('id');
+    return pathMatch?.[1]||(/^[A-Za-z0-9_-]{10,}$/.test(queryMatch||'')?queryMatch:'');
+  }
+  function renderDriveLinks(readOnly){
+    const list=$('drive-links-list');if(!list)return;list.replaceChildren();
+    if(!driveLinksDraft.length){const empty=document.createElement('p');empty.className='drive-link-empty';empty.textContent='Nenhum arquivo do Google Drive vinculado.';list.appendChild(empty);return}
+    driveLinksDraft.forEach((item,index)=>{
+      const card=document.createElement('article');card.className='drive-link-card';
+      const link=document.createElement('a');link.href=item.url;link.target='_blank';link.rel='noopener noreferrer';link.className='drive-link-preview';link.setAttribute('aria-label','Abrir '+(item.title||'arquivo do Google Drive'));
+      const fileId=driveFileId(item.url);
+      if(fileId){const img=document.createElement('img');img.src='https://drive.google.com/thumbnail?id='+encodeURIComponent(fileId)+'&sz=w480';img.alt='';img.loading='lazy';img.referrerPolicy='no-referrer';img.addEventListener('error',()=>{img.replaceWith(Object.assign(document.createElement('span'),{className:'drive-link-icon',textContent:item.type==='video'?'\u25b6':item.type==='pdf'?'PDF':'ARQ'}))});link.appendChild(img)}
+      else{const icon=document.createElement('span');icon.className='drive-link-icon';icon.textContent=item.type==='video'?'\u25b6':item.type==='pdf'?'PDF':item.type==='image'?'IMG':'ARQ';link.appendChild(icon)}
+      const meta=document.createElement('span');meta.className='drive-link-meta';const title=document.createElement('strong');title.textContent=item.title||'Arquivo do Google Drive';const type=document.createElement('small');type.textContent=({image:'Foto',video:'V\u00eddeo',pdf:'PDF',file:'Arquivo'})[item.type]||'Arquivo';meta.append(title,type);link.appendChild(meta);card.appendChild(link);
+      if(!readOnly){const remove=document.createElement('button');remove.type='button';remove.className='icon-btn drive-link-remove';remove.setAttribute('aria-label','Remover v\u00ednculo');remove.textContent='\u00d7';remove.addEventListener('click',()=>{driveLinksDraft.splice(index,1);renderDriveLinks(false)});card.appendChild(remove)}
+      list.appendChild(card);
+    });
+  }
+  function mountDriveLinks(work,readOnly){
+    driveLinksDraft=Array.isArray(work?.drive_links)?work.drive_links.map(item=>({url:normalizeDriveUrl(item?.url),title:String(item?.title||'').slice(0,140),type:['image','video','pdf','file'].includes(item?.type)?item.type:'file'})).filter(item=>item.url):[];
+    const grid=$('work-fields')?.querySelector('[data-modal-pane="geral"] .form-grid'),description=$('f-description')?.closest('.field');if(!grid)return;
+    const field=document.createElement('div');field.className='field full drive-links-field';field.innerHTML='<label>Arquivos do Google Drive</label><div class="drive-link-create"><input id="f-drive-url" type="url" inputmode="url" maxlength="1000" placeholder="Cole um link p\u00fablico do Google Drive"><input id="f-drive-title" maxlength="140" placeholder="Nome do arquivo"><select id="f-drive-type"><option value="image">Foto</option><option value="video">V\u00eddeo</option><option value="pdf">PDF</option><option value="file">Outro arquivo</option></select><button class="btn" id="drive-link-add" type="button">Adicionar</button></div><small class="field-hint">Somente links HTTPS do Google Drive. O arquivo permanece no Drive e deve possuir compartilhamento apropriado.</small><div class="drive-links-list" id="drive-links-list"></div>';
+    grid.insertBefore(field,description||null);
+    if(readOnly){field.querySelector('.drive-link-create').hidden=true}
+    else $('drive-link-add').addEventListener('click',()=>{
+      const url=normalizeDriveUrl($('f-drive-url').value),title=$('f-drive-title').value.trim(),type=$('f-drive-type').value;
+      if(!url)return toast('Use um link HTTPS v\u00e1lido do Google Drive.','error');
+      if(driveLinksDraft.length>=12)return toast('Limite de 12 arquivos por obra.','error');
+      if(driveLinksDraft.some(item=>item.url===url))return toast('Este arquivo j\u00e1 foi vinculado.','error');
+      driveLinksDraft.push({url,title:title||'Arquivo do Google Drive',type});$('f-drive-url').value='';$('f-drive-title').value='';renderDriveLinks(false);
+    });
+    renderDriveLinks(readOnly);
+  }
+  function collectDriveLinks(){return driveLinksDraft.map(item=>({url:item.url,title:item.title,type:item.type}))}
   function openModal(work,focusTarget){state.editing=work||null;const isEdit=Boolean(work);$('modal-title').textContent=isEdit?'Editar obra':'Nova obra';$('modal-eyebrow').textContent=isEdit?'ACOMPANHAMENTO':'CADASTRO';const readOnly=isEdit?!canEditWork():!canCreateWork();$('delete-btn').classList.toggle('hidden',!isEdit||!canDeleteWork());$('save-btn').classList.toggle('hidden',readOnly);$('cancel-btn').textContent=readOnly?'Fechar':'Cancelar';if(readOnly)$('modal-title').textContent='Detalhes da obra';const own=state.profile?.franchise_id||'',franchiseValue=work?.franchise_id||own||(state.franchises.length===1?state.franchises[0].id:''),groups=normalizeChecklistGroups(work,true),statusOptions=availableStatuses();
     $('work-fields').innerHTML='<div class="modal-tabs" role="tablist"><button class="active" type="button" role="tab" aria-selected="true" data-modal-tab="geral">Informações gerais</button><button type="button" role="tab" aria-selected="false" data-modal-tab="checklist">Checklists <span>'+groups.length+'</span></button></div><section class="modal-pane" data-modal-pane="geral"><div class="form-grid"><div class="field full"><label for="f-title">Nome da obra *</label><input id="f-title" name="title" maxlength="180" required value="'+esc(work?.title||'')+'"></div><div class="field"><label for="f-franchise">Franquia *</label><select id="f-franchise" name="franchise_id" required '+(state.profile?.franchise_id?'disabled':'')+'><option value="">Selecione</option>'+fieldOptions(state.franchises.map(f=>({id:f.id,label:f.display_name})),franchiseValue)+'</select></div><div class="field"><label for="f-status">Etapa</label><select id="f-status" name="status">'+fieldOptions(statusOptions,work?.status||'planejamento')+'</select></div><div class="field"><label for="f-priority">Prioridade</label><select id="f-priority" name="priority">'+fieldOptions([{id:'baixa',label:'Baixa'},{id:'media',label:'Média'},{id:'alta',label:'Alta'},{id:'urgente',label:'Urgente'}],work?.priority||'media')+'</select></div><div class="field"><label for="f-progress">Progresso (%)</label><input id="f-progress" name="progress" type="number" min="0" max="100" value="'+Number(work?.progress||0)+'"></div><div class="field"><label for="f-start">Início previsto</label>'+dateFieldHtml('f-start','start_date',work?.start_date||'','Início previsto')+'</div><div class="field"><label for="f-end">Conclusão prevista</label>'+dateFieldHtml('f-end','end_date',work?.end_date||'','Conclusão prevista')+'</div><div class="field full responsible-field"><div class="field-label-row"><label for="f-responsible">Responsável pela obra</label><button class="text-btn" id="manage-carpenters" type="button" aria-expanded="false">Gerenciar carpinteiros</button></div><select id="f-responsible" name="responsible_carpenter_id">'+responsibleOptions(franchiseValue,work?.responsible_carpenter_id,work?.responsible_name)+'</select><section class="carpenter-manager hidden" id="carpenter-manager"><div class="carpenter-create-row"><input id="new-carpenter-name" maxlength="120" placeholder="Nome do carpinteiro"><input id="new-carpenter-phone" maxlength="30" inputmode="tel" placeholder="Telefone opcional"><button class="btn" id="carpenter-create" type="button">Cadastrar</button></div><div class="carpenter-list" id="carpenter-list"></div></section></div><div class="field"><label for="f-state">Estado (UF)</label><select id="f-state" name="state"><option value="">Selecione a UF</option>'+stateOptions(work?.state||'')+'</select></div><div class="field"><label for="f-city">Cidade</label><select id="f-city" name="city" disabled><option value="">Selecione a cidade</option></select></div><div class="field full"><label for="f-address">Endereço da obra</label><input id="f-address" name="address" maxlength="240" value="'+esc(work?.address||'')+'"></div><div class="field full"><label for="f-map-link">Link do Google Maps ou Apple Maps</label><div class="field-row-action"><div class="field"><input id="f-map-link" type="url" inputmode="url" placeholder="Cole o link completo do mapa"></div><button class="btn" id="parse-map-link" type="button">Usar localização</button></div><small class="location-feedback" id="location-feedback">Também é possível informar as coordenadas manualmente abaixo.</small></div><div class="field"><label for="f-lat">Latitude</label><input id="f-lat" name="latitude" type="number" min="-90" max="90" step="any" value="'+esc(work?.latitude??'')+'"><small class="field-hint">Ex.: -27.596900</small></div><div class="field"><label for="f-lon">Longitude</label><input id="f-lon" name="longitude" type="number" min="-180" max="180" step="any" value="'+esc(work?.longitude??'')+'"><small class="field-hint">Ex.: -48.549500</small></div><div class="field full"><label for="f-description">Observações</label><textarea id="f-description" name="description" maxlength="3000">'+esc(work?.description||'')+'</textarea></div></div></section><section class="modal-pane hidden" data-modal-pane="checklist"><section class="checklist-editor"><div class="checklist-head"><div><strong>Checklists da obra</strong><small id="checklist-summary"></small></div><button class="btn" id="checklist-add-group" type="button">+ Novo checklist</button></div><p class="checklist-help">As datas das etapas e atividades são opcionais e ajudam na organização da obra.</p><div class="checklist-list" id="checklist-list"></div></section></section>';
+    mountDriveLinks(work,readOnly);
     if(state.profile?.franchise_id)$('f-franchise').value=state.profile.franchise_id;bindLocationFields(work?.city||'');bindCarpenterControls(work);renderChecklistEditor(groups);bindModalTabs();enhanceSelects($('work-fields'));bindDatePickers($('work-fields'));if(readOnly){document.querySelectorAll('#work-fields input,#work-fields select,#work-fields textarea').forEach(control=>control.disabled=true);document.querySelectorAll('#work-fields .date-trigger,#work-fields .text-btn,#work-fields [data-checklist-add-item],#work-fields [data-checklist-remove],#work-fields [data-checklist-delete-group],#work-fields #checklist-add-group').forEach(control=>control.hidden=true)}document.documentElement.classList.add('modal-open');document.body.classList.add('modal-open');$('modal-backdrop').classList.add('open');$('modal-backdrop').setAttribute('aria-hidden','false');setTimeout(()=>{bindChecklistTextareas($('work-fields'));if(focusTarget?.itemId)focusChecklistTarget(focusTarget);else $('f-title').focus()},30)
   }
   function closeModal(){closeFloatingMenus();document.querySelectorAll('.select-popover').forEach(panel=>{if(panel._select&&$('work-fields').contains(panel._select))panel.remove()});document.documentElement.classList.remove('modal-open');document.body.classList.remove('modal-open');$('modal-backdrop').classList.remove('open');$('modal-backdrop').setAttribute('aria-hidden','true');state.editing=null}
   function formRecord(){const form=new FormData($('work-form')),num=name=>{const value=form.get(name);return value===''?null:Number(value)},responsible=$('f-responsible'),responsibleValue=String(responsible?.value||''),responsibleOption=responsible?.options[responsible.selectedIndex];return{franchise_id:state.profile?.franchise_id||String(form.get('franchise_id')||''),title:String(form.get('title')||'').trim(),status:String(form.get('status')||'planejamento'),priority:String(form.get('priority')||'media'),progress:num('progress')??0,start_date:String(form.get('start_date')||'')||null,end_date:String(form.get('end_date')||'')||null,responsible_carpenter_id:responsibleValue&&responsibleValue!=='legacy'?responsibleValue:null,responsible_name:responsibleOption?.dataset?.name||null,city:String(form.get('city')||'').trim()||null,state:String(form.get('state')||'').trim().toUpperCase()||null,address:String(form.get('address')||'').trim()||null,latitude:num('latitude'),longitude:num('longitude'),description:String(form.get('description')||'').trim()||null}}  async function saveWork(event){event.preventDefault();if((state.editing&&!canEditWork())||(!state.editing&&!canCreateWork()))return toast('Você possui acesso somente para visualização.','error');const record=formRecord(),checklist=collectChecklist(),invalidGroupDate=checklist.find(group=>group.start_date&&group.end_date&&group.end_date<group.start_date),invalidDate=checklist.flatMap(group=>group.items).find(item=>item.start_date&&item.end_date&&item.end_date<item.start_date);if(invalidGroupDate)return toast('A conclusão de uma etapa não pode ser anterior ao início.','error');if(invalidDate)return toast('A conclusão de uma atividade não pode ser anterior ao início.','error');if(!record.franchise_id)return toast('Selecione a franquia da obra.','error');if(record.end_date&&record.start_date&&record.end_date<record.start_date)return toast('A conclusão não pode ser anterior ao início.','error');setBusy(true);try{let saved;if(state.editing)saved=await rpc('obras_update',{p_id:state.editing.id,p_version:state.editing.version,p_record:record});else saved=await rpc('obras_create',{p_record:record});saved=await rpc('obras_replace_checklist',{p_obra_id:saved.id,p_version:saved.version,p_items:checklist});const wasEditing=Boolean(state.editing),index=state.works.findIndex(w=>w.id===saved.id);if(index>=0)state.works[index]=saved;else state.works.push(saved);state.mapHasFit=false;closeModal();await loadWorks();toast(wasEditing?'Obra e checklist atualizados.':'Obra criada para a franquia.')}catch(error){toast(safeMessage(error,'Não foi possível salvar a obra.'),'error')}finally{setBusy(false)}}
+  async function saveWork(event){
+    event.preventDefault();
+    if((state.editing&&!canEditWork())||(!state.editing&&!canCreateWork()))return toast('Voc\u00ea possui acesso somente para visualiza\u00e7\u00e3o.','error');
+    const record=formRecord(),checklist=collectChecklist(),driveLinks=collectDriveLinks();
+    const invalidGroupDate=checklist.find(group=>group.start_date&&group.end_date&&group.end_date<group.start_date);
+    const invalidDate=checklist.flatMap(group=>group.items).find(item=>item.start_date&&item.end_date&&item.end_date<item.start_date);
+    if(invalidGroupDate)return toast('A conclus\u00e3o de uma etapa n\u00e3o pode ser anterior ao in\u00edcio.','error');
+    if(invalidDate)return toast('A conclus\u00e3o de uma atividade n\u00e3o pode ser anterior ao in\u00edcio.','error');
+    if(!record.franchise_id)return toast('Selecione a franquia da obra.','error');
+    if(record.end_date&&record.start_date&&record.end_date<record.start_date)return toast('A conclus\u00e3o n\u00e3o pode ser anterior ao in\u00edcio.','error');
+    setBusy(true);
+    try{
+      let saved;
+      if(state.editing)saved=await rpc('obras_update',{p_id:state.editing.id,p_version:state.editing.version,p_record:record});
+      else saved=await rpc('obras_create',{p_record:record});
+      saved=await rpc('obras_replace_checklist',{p_obra_id:saved.id,p_version:saved.version,p_items:checklist});
+      if(driveLinks.length||(state.editing?.drive_links||[]).length)saved=await rpc('obras_replace_drive_links',{p_obra_id:saved.id,p_version:saved.version,p_links:driveLinks});
+      const wasEditing=Boolean(state.editing),index=state.works.findIndex(work=>work.id===saved.id);
+      if(index>=0)state.works[index]=saved;else state.works.push(saved);
+      state.mapHasFit=false;closeModal();await loadWorks();
+      toast(wasEditing?'Obra, checklist e arquivos atualizados.':'Obra criada para a franquia.');
+    }catch(error){toast(safeMessage(error,'N\u00e3o foi poss\u00edvel salvar a obra.'),'error')}
+    finally{setBusy(false)}
+  }
   async function deleteWork(){if(!canDeleteWork())return toast('Você não possui permissão para excluir esta obra.','error');const work=state.editing;if(!work||!confirm('Excluir esta obra? Esta ação não pode ser desfeita.'))return;setBusy(true);try{await rpc('obras_delete',{p_id:work.id,p_version:work.version});state.works=state.works.filter(w=>w.id!==work.id);closeModal();render();toast('Obra excluída.')}catch(error){toast(safeMessage(error,'Não foi possível excluir a obra.'),'error')}finally{setBusy(false)}}
 
   /* Obras V22: confirmação interna, checklist com nome/descrição e cronograma refinado */
@@ -406,7 +475,7 @@ function cardHtml(work){const priority=PRIORITY[work.priority]||PRIORITY.media,e
     obrasPdfFontName='Montserrat';
     try{await registerObrasPdfFonts(doc)}catch(error){console.warn('[Obras PDF] Fonte local indisponível; usando fonte segura padrão.',error);obrasPdfFontName='helvetica'}
     const pageW=297,pageH=210,left=9,labelW=68,chartX=77,chartW=211;
-    const daysPerPage=28,rowH=8,rowsPerPage=17;
+    const daysPerPage=28,rowH=8,rowsPerPage=16;
     let firstPage=true;
 
     entries.forEach(entry=>{
@@ -425,7 +494,7 @@ function cardHtml(work){const priority=PRIORITY[work.priority]||PRIORITY.media,e
           if(!firstPage)doc.addPage('a4','landscape');
           firstPage=false;
           const pageRows=dated.slice(rowOffset,rowOffset+rowsPerPage);
-          const dayW=chartW/daysPerPage,top=32;
+          const dayW=chartW/daysPerPage,top=32,dayTop=top+8;
 
           doc.setFillColor(28,31,36);
           doc.rect(0,0,pageW,25,'F');
@@ -440,28 +509,44 @@ function cardHtml(work){const priority=PRIORITY[work.priority]||PRIORITY.media,e
           doc.text(dateLabel(segmentStart)+' - '+dateLabel(segmentEnd),pageW-9,16,{align:'right'});
 
           doc.setFillColor(238,240,242);
-          doc.rect(left,top,labelW,10,'F');
+          doc.rect(left,top,labelW,18,'F');
           doc.setTextColor(70,77,87);
           doc.setFontSize(7);
-          doc.text('OBRAS E ETAPAS',left+3,top+6);
+          doc.text('OBRAS E ETAPAS',left+3,top+11);
 
+          let monthIndex=0;
+          while(monthIndex<segmentDays){
+            const current=parseIsoDate(addIsoDays(segmentStart,monthIndex));
+            let monthEnd=monthIndex;
+            while(monthEnd+1<segmentDays){
+              const next=parseIsoDate(addIsoDays(segmentStart,monthEnd+1));
+              if(next.getMonth()!==current.getMonth()||next.getFullYear()!==current.getFullYear())break;
+              monthEnd++;
+            }
+            const x=chartX+monthIndex*dayW,width=(monthEnd-monthIndex+1)*dayW;
+            doc.setFillColor(229,232,236);doc.setDrawColor(210,214,220);doc.rect(x,top,width,8,'FD');
+            doc.setTextColor(62,68,77);doc.setFont(obrasPdfFontName,'bold');doc.setFontSize(6.2);
+            const label=current.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).toLocaleUpperCase('pt-BR');
+            doc.text(label,x+width/2,top+5.3,{align:'center',maxWidth:Math.max(2,width-1)});
+            monthIndex=monthEnd+1;
+          }
           for(let dayIndex=0;dayIndex<daysPerPage;dayIndex++){
             const x=chartX+dayIndex*dayW;
             const date=parseIsoDate(addIsoDays(segmentStart,dayIndex));
             const weekend=date.getDay()===0||date.getDay()===6;
             doc.setFillColor(weekend?245:250,247,249);
-            doc.rect(x,top,dayW,10,'F');
+            doc.rect(x,dayTop,dayW,10,'F');
             doc.setDrawColor(224,227,231);
-            doc.rect(x,top,dayW,10);
+            doc.rect(x,dayTop,dayW,10);
             if(dayIndex<segmentDays){
               doc.setTextColor(80,88,98);
               doc.setFontSize(6);
-              doc.text(String(date.getDate()),x+dayW/2,top+6,{align:'center'});
+              doc.text(String(date.getDate()),x+dayW/2,dayTop+6,{align:'center'});
             }
           }
 
           pageRows.forEach((row,index)=>{
-            const y=top+10+index*rowH;
+            const y=dayTop+10+index*rowH;
             const shade=row.type==='work'?[235,237,240]:row.type==='group'?[244,245,247]:[251,251,252];
             doc.setFillColor(...shade);
             doc.rect(left,y,labelW,rowH,'F');

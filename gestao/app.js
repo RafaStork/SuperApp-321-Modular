@@ -2786,6 +2786,16 @@ async function viewMinhasTarefas(){
       const pctCell = tr.querySelector('[data-cell="pct"]');
       const pctId = 'my_pct_'+r.id;
       pctCell.innerHTML = badgeCampoMT(r.id,'percentual_conclusao') + `<input type="number" class="cell-number csp-inline-006" id="${pctId}" value="${Math.round((r.percentual_conclusao||0)*100)}" min="0" max="100" step="5" />%`;
+      const pctAtual = Math.max(0, Math.min(100, Math.round((r.percentual_conclusao||0)*100)));
+      pctCell.innerHTML = badgeCampoMT(r.id,'percentual_conclusao') + `<div class="my-task-progress">
+        <div class="my-task-progress-input"><input type="number" class="cell-number csp-inline-006" id="${pctId}" value="${pctAtual}" min="0" max="100" step="5" /><span>%</span></div>
+        <div class="progress-bar my-task-progress-bar" aria-hidden="true"><div data-csp-style="width:${pctAtual}%"></div></div>
+      </div>`;
+      pctCell.querySelector('input').addEventListener('input', (e)=>{
+        const pct = Math.max(0, Math.min(100, Number(e.target.value)||0));
+        const bar = pctCell.querySelector('.my-task-progress-bar > div');
+        if (bar) bar.style.width = `${pct}%`;
+      });
       pctCell.querySelector('input').addEventListener('change', async (e)=>{
         const novoValor = parseFloat(e.target.value)/100;
         const ok = await saveField('projetos', r.id, 'percentual_conclusao', novoValor);
@@ -4716,10 +4726,18 @@ async function viewDashboard(){
     </div>`;
   }
 
-  function barraMeta(valorAtual, meta, periodo){
+  function barraMetaLegado(valorAtual, meta, periodo){
     if (meta == null || !meta) return '';
     const pct = Math.min(100, Math.round((valorAtual/meta)*100));
     return `<div class="progress-bar csp-inline-092"><div data-csp-style="width:${pct}%"></div></div><div class="csp-inline-093">${pct}% da meta (${Number(meta.toFixed ? meta.toFixed(1) : meta)})${periodo.tipo==='ano' ? ' — soma/média das metas mensais do ano' : ''}</div>`;
+  }
+
+  // Renderiza??o somente leitura: a edi??o continua exclusiva do modal Definir Metas.
+  function barraMeta(valorAtual, meta, periodo){
+    if (meta == null) return '<div class="dashboard-meta-readonly is-empty">Meta n\u00e3o definida</div>';
+    const valorMeta = Number(meta), pct = valorMeta > 0 ? Math.min(100, Math.max(0, Math.round((valorAtual/valorMeta)*100))) : 0;
+    const metaLabel = Number.isInteger(valorMeta) ? String(valorMeta) : valorMeta.toLocaleString('pt-BR',{maximumFractionDigits:1});
+    return `<div class="progress-bar csp-inline-092"><div data-csp-style="width:${pct}%"></div></div><div class="dashboard-meta-readonly"><strong>Meta: ${metaLabel}</strong><span>${pct}% atingido${periodo.tipo==='ano' ? ' \u00b7 soma/m\u00e9dia das metas mensais do ano' : ''}</span></div>`;
   }
 
   const permDash = permissoesAtuais('dashboard');

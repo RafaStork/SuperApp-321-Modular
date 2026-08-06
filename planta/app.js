@@ -5100,7 +5100,7 @@ function render(){
     const isSel=p.id===selId||selIds.has(p.id);
     const dimmed=andar2 && !isF2;
     const targetLayer=isF2?floor2Layer:floor1Layer;
-    const parts=pisoParts(p);const grp=el("g",{"data-id":p.id,style:dimmed?"cursor:default;pointer-events:none;filter:brightness(.55)":"cursor:pointer"});
+    const parts=pisoParts(p);const grp=el("g",{"data-id":p.id,style:dimmed?"cursor:default;pointer-events:none;filter:brightness(.42);opacity:.48":"cursor:pointer"});
 
 
     parts.rects.forEach(rc=>{const[sx,sy]=toScreen(rc.x,rc.y);
@@ -5184,7 +5184,7 @@ function render(){
     const isSel=inst.id===selId||selIds.has(inst.id);
     const dimmedWall=andar2; // paredes avulsas são sempre do 1º andar
     const parts=wallInstanceParts(inst);
-    const grp=el("g",{"data-wall-inst":inst.id,style:dimmedWall?"cursor:default;pointer-events:none;filter:brightness(.55)":"cursor:pointer"});
+    const grp=el("g",{"data-wall-inst":inst.id,style:dimmedWall?"cursor:default;pointer-events:none;filter:brightness(.42);opacity:.48":"cursor:pointer"});
     parts.polys.forEach(po=>{
       const pts=po.pts.map(([x,y])=>toScreen(x,y).join(",")).join(" ");
       grp.appendChild(el("polygon",{points:pts,fill:themedFill(po.fill),
@@ -5268,7 +5268,7 @@ function render(){
       svg.appendChild(el('circle',{cx:lax,cy:lay,r:3,
         fill:lblSel?'var(--accent)':'#7A828C',style:'pointer-events:none'}));
     }
-    const lg=el('g',{'data-label':l.id,style:andar2?'cursor:default;pointer-events:none;filter:brightness(.55)':'cursor:pointer'});
+    const lg=el('g',{'data-label':l.id,style:andar2?'cursor:default;pointer-events:none;filter:brightness(.42);opacity:.48':'cursor:pointer'});
     const maxLineLen=Math.max(...lines.map(ln=>ln.length));
     const tw=Math.max(maxLineLen*8+18,34);
     const th=lines.length*lineH+4;
@@ -7394,6 +7394,7 @@ function openTypeModal(id, forceMez, cloneFrom){
   const titleStr = id ? "Editar piso" : src ? `Duplicar: ${esc(src.name)}` : "Novo tipo de piso";
   
   modalBody.dataset.modal = ""; // marca qual modal está aberto (evita hijack pelo polling de preços)
+  modalBody.dataset.modal = "floor-editor";
   modalBody.innerHTML=`<h3>${titleStr}</h3>
 
     <!-- Exibir nas abas (sempre visível) -->
@@ -10025,8 +10026,6 @@ function abrirQuantitativo() {
   const _prevScrollMid = document.querySelector('.q-scroll-mid')?.scrollTop || 0;
   const _prevScrollTable = document.querySelector('.q-table-wrap')?.scrollTop || 0;
   const _prevScrollTableX = document.querySelector('.q-table-wrap')?.scrollLeft || 0;
-  const _prevWindowX = window.scrollX;
-  const _prevWindowY = window.scrollY;
 
   const itens      = aplicarModoCustoQuantitativo(gerarItensOrcamento());
   // Aba "Painéis" só deve exibir itens que não são insumos — insumos ficam
@@ -10281,13 +10280,8 @@ function abrirQuantitativo() {
       _tableWrap.scrollTop = _prevScrollTable;
       _tableWrap.scrollLeft = _prevScrollTableX;
     }
-    window.scrollTo(_prevWindowX, _prevWindowY);
   };
   restaurarScrollQuantitativo();
-  requestAnimationFrame(() => {
-    restaurarScrollQuantitativo();
-    requestAnimationFrame(restaurarScrollQuantitativo);
-  });
 }
 
 // Ajusta qty de um item e remove item manual zerado
@@ -13648,7 +13642,7 @@ document.addEventListener('click', (event) => {
     const nome = target.getAttribute('data-planta-q-set') || '';
     const base = Number(target.getAttribute('data-planta-q-base') || 0);
     const valor = target.value;
-    requestAnimationFrame(() => qDefinirQtd(nome, base, valor));
+    qDefinirQtd(nome, base, valor);
   });
 
   document.addEventListener('keydown', (event) => {

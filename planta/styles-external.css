@@ -959,3 +959,17 @@ main{position:relative}
 .side-footer .side-session #side-logout-planta{width:56px;min-width:56px;max-width:56px;justify-content:center!important;padding:7px 10px!important;box-sizing:border-box}
 .side-footer .side-session #side-logout-planta:hover{padding-left:16px!important;padding-right:4px!important}
 @media (max-width:560px) and (orientation:portrait){.mobile-3d-elevation{grid-template-rows:40px auto 40px}.mobile-3d-elevation button{width:40px;height:40px}.mobile-3d-controls{gap:8px}}
+/* Editor de piso: cabe?alho/rodap? fixos e popovers sem recorte. */
+.tm-section:has(.ui-select-popover.is-open),.tm-section:has(.ui-date-popover.is-open){overflow:visible;position:relative;z-index:24}
+.modal[data-modal="floor-editor"]>h3{position:sticky;top:-22px;z-index:28;margin:-22px -22px 18px;padding:18px 22px;background:var(--surface);border-bottom:1px solid var(--line)}
+.modal[data-modal="floor-editor"]>.modal-actions{position:sticky;bottom:-22px;z-index:28;margin:18px -22px -22px;padding:14px 22px;background:var(--surface);border-top:1px solid var(--line)}
+/* O editor de custos usa a largura dispon?vel e dispensa rolagem horizontal. */
+#gestorOverlay .modal{width:min(920px,calc(100vw - 32px));max-width:920px}
+#gestorOverlay .q-table{min-width:0;table-layout:fixed}
+#gestorOverlay .q-table th:first-child,#gestorOverlay .q-table td:first-child{width:46%;max-width:none}
+.modal[data-modal="quantitativo"],.modal[data-modal="quantitativo"] .q-scroll-mid,.modal[data-modal="quantitativo"] .q-table-wrap{overflow-anchor:none}
+@media(max-width:560px){
+  .modal[data-modal="floor-editor"]>h3{top:-14px;margin:-14px -14px 14px;padding:14px}
+  .modal[data-modal="floor-editor"]>.modal-actions{bottom:-14px;margin:14px -14px -14px;padding:12px 14px}
+  #gestorOverlay .modal{width:calc(100vw - 20px)}
+}
