@@ -19,14 +19,17 @@
   width:100%;min-width:0;max-width:100%;
 }
 .ui-number-shell[hidden]{display:none!important}
-.ui-number-shell>.ui-number-input{
+.ui-number-shell>input.ui-number-input{
   width:100%!important;min-width:0!important;max-width:100%;margin:0!important;
   border-right:0!important;border-radius:10px 0 0 10px!important;
   background:var(--ui-control-soft)!important;color:var(--ui-control-ink)!important;
   appearance:none!important;-webkit-appearance:none!important;-moz-appearance:textfield!important;
 }
-.ui-number-shell>.ui-number-input::-webkit-inner-spin-button,
-.ui-number-shell>.ui-number-input::-webkit-outer-spin-button{-webkit-appearance:none!important;appearance:none!important;margin:0!important}
+.ui-number-shell>input.ui-number-input::-webkit-inner-spin-button,
+.ui-number-shell>input.ui-number-input::-webkit-outer-spin-button{
+  display:none!important;width:0!important;height:0!important;margin:0!important;padding:0!important;
+  opacity:0!important;pointer-events:none!important;-webkit-appearance:none!important;appearance:none!important;
+}
 .ui-number-stepper{
   display:grid;grid-template-rows:1fr 1fr;min-width:28px;overflow:hidden;
   border:1px solid var(--ui-control-line);border-left:1px solid var(--ui-control-line);
@@ -162,10 +165,12 @@
   padding:7px;border:1px solid color-mix(in srgb,var(--ui-control-accent) 42%,var(--ui-control-line));
   border-radius:12px;background:var(--ui-control-bg);color:var(--ui-control-ink);box-shadow:var(--ui-control-shadow);
 }
-.select-popover button,.dd-panel-float .dd-opt{border-radius:8px;color:var(--ui-control-ink);font-weight:600}
+.select-popover button,.dd-panel-float .dd-opt{
+  border:1px solid transparent!important;border-radius:8px;color:var(--ui-control-ink);font-weight:600;
+}
 .select-popover button:hover,.dd-panel-float .dd-opt:hover{background:color-mix(in srgb,var(--ui-control-accent) 11%,var(--ui-control-bg))}
 .select-popover button.selected,.dd-panel-float .dd-opt.dd-opt-sel{
-  background:var(--ui-control-selected);border-color:var(--ui-control-accent);color:var(--ui-control-ink);font-weight:800;
+  background:transparent!important;border-color:var(--ui-control-accent)!important;color:var(--ui-control-ink);font-weight:800;
 }
 
 @media(prefers-reduced-motion:reduce){

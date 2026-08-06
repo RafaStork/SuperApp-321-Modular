@@ -203,8 +203,12 @@ tr:hover td{background:var(--zebra)}
 .bor{background:var(--or);color:#fff}.bor:hover{opacity:.9}
 .brd{background:var(--rbg);color:var(--red);border:1px solid #FCC}.brd:hover{background:#FCC}
 .bsm{padding:5px 10px;font-size:11px}
-.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center;justify-content:flex-end}
+.modal>.btns .brd{order:1;margin-right:auto}
+.modal>.btns .bs{order:2}
+.modal>.btns .bp,.modal>.btns .bor{order:3}
 
+.modal>.btns{position:sticky;bottom:-26px;margin:14px -26px -26px;padding:14px 26px;background:var(--wh);border-top:1px solid var(--bdr);z-index:3}
 /* ── BOXES ── */
 .box{padding:11px 15px;border-radius:7px;font-size:13px;margin-bottom:14px;display:flex;gap:10px;align-items:flex-start;line-height:1.5}
 .box-icon{font-size:16px;flex-shrink:0;margin-top:1px}
@@ -237,7 +241,7 @@ tr:hover td{background:var(--zebra)}
 .modal{background:var(--wh);border-radius:14px;padding:26px;width:min(740px,100%);max-height:90vh;overflow-y:auto;position:relative}
 .modal h2{font-size:17px;font-weight:700;margin-bottom:3px}
 .modal .msub{font-size:12px;color:var(--tm);margin-bottom:18px}
-.mc{position:absolute;top:14px;right:14px;background:var(--gc);border:none;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:15px;color:var(--tm);display:flex;align-items:center;justify-content:center}
+.mc{position:absolute;top:14px;right:14px;background:var(--gc);border:1px solid var(--bdr);width:28px;height:28px;border-radius:8px;cursor:pointer;font-size:15px;color:var(--tm);display:flex;align-items:center;justify-content:center}
 .mc:hover{background:var(--gp)}
 
 /* ── TOAST (substitui alert() nativo para avisos rápidos) ── */

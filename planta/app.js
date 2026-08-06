@@ -10025,6 +10025,8 @@ function abrirQuantitativo() {
   const _prevScrollMid = document.querySelector('.q-scroll-mid')?.scrollTop || 0;
   const _prevScrollTable = document.querySelector('.q-table-wrap')?.scrollTop || 0;
   const _prevScrollTableX = document.querySelector('.q-table-wrap')?.scrollLeft || 0;
+  const _prevWindowX = window.scrollX;
+  const _prevWindowY = window.scrollY;
 
   const itens      = aplicarModoCustoQuantitativo(gerarItensOrcamento());
   // Aba "Painéis" só deve exibir itens que não são insumos — insumos ficam
@@ -10049,8 +10051,7 @@ function abrirQuantitativo() {
     const stCell = it.temPreco
       ? `<b>R$ ${brlFmt(it.subtotal)}</b>`
       : `<span class="q-sem-preco">sem preço</span>`;
-    const deltaStr = it.delta !== 0
-      ? `<span class="q-delta">${it.delta > 0 ? '+' : ''}${it.delta}</span>` : '';
+    const deltaStr = `<span class="q-delta${it.delta === 0 ? ' is-empty' : ''}" aria-hidden="true">${it.delta !== 0 ? `${it.delta > 0 ? '+' : ''}${it.delta}` : '0'}</span>`;
     // Todos os itens (automáticos e manuais) têm +/− e também um campo pra
     // digitar diretamente a quantidade final desejada.
     const adjBtns = `<span class="q-adj">
@@ -10159,8 +10160,7 @@ function abrirQuantitativo() {
   const insumosRows = insumosAgg.map(ins => {
     const checked = insumoCompraIndustria(ins.nome);
     const nomeAttr = esc(ins.nome).replace(/"/g,'&quot;');
-    const insDeltaStr = ins.delta !== 0
-      ? `<span class="q-delta">${ins.delta > 0 ? '+' : ''}${ins.delta}</span>` : '';
+    const insDeltaStr = `<span class="q-delta${ins.delta === 0 ? ' is-empty' : ''}" aria-hidden="true">${ins.delta !== 0 ? `${ins.delta > 0 ? '+' : ''}${ins.delta}` : '0'}</span>`;
     const insAdjBtns = `<span class="q-adj">
         <input type="number" class="q-qty-input" min="0" step="1" value="${ins.qtdFinal}"
           data-planta-q-set="${esc(ins.nome)}" data-planta-q-base="${ins.qtd}"
@@ -10271,14 +10271,23 @@ function abrirQuantitativo() {
   document.getElementById("scrim").classList.add("show");
 
   // Restaura a posição do scroll capturada no início da função.
-  modalBody.scrollTop = _prevScrollModal;
-  const _scrollMid = document.querySelector('.q-scroll-mid');
-  if (_scrollMid) _scrollMid.scrollTop = _prevScrollMid;
-  const _tableWrap = document.querySelector('.q-table-wrap');
-  if (_tableWrap) {
-    _tableWrap.scrollTop = _prevScrollTable;
-    _tableWrap.scrollLeft = _prevScrollTableX;
-  }
+  // Repete a restauracao apos o layout para neutralizar o scroll nativo do clique.
+  const restaurarScrollQuantitativo = () => {
+    modalBody.scrollTop = _prevScrollModal;
+    const _scrollMid = document.querySelector('.q-scroll-mid');
+    if (_scrollMid) _scrollMid.scrollTop = _prevScrollMid;
+    const _tableWrap = document.querySelector('.q-table-wrap');
+    if (_tableWrap) {
+      _tableWrap.scrollTop = _prevScrollTable;
+      _tableWrap.scrollLeft = _prevScrollTableX;
+    }
+    window.scrollTo(_prevWindowX, _prevWindowY);
+  };
+  restaurarScrollQuantitativo();
+  requestAnimationFrame(() => {
+    restaurarScrollQuantitativo();
+    requestAnimationFrame(restaurarScrollQuantitativo);
+  });
 }
 
 // Ajusta qty de um item e remove item manual zerado
@@ -13616,6 +13625,7 @@ document.addEventListener('click', (event) => {
   document.addEventListener('blur', (event) => {
     const target = event.target;
     if (target?.matches?.('[data-planta-q-set]')) {
+      if (target.dataset.plantaStepCommit === 'true') return;
       qDefinirQtd(
         target.getAttribute('data-planta-q-set') || '',
         Number(target.getAttribute('data-planta-q-base') || 0),
@@ -13634,11 +13644,11 @@ document.addEventListener('click', (event) => {
   document.addEventListener('superapp:number-step', (event) => {
     const target = event.target;
     if (!target?.matches?.('[data-planta-q-set]')) return;
-    qDefinirQtd(
-      target.getAttribute('data-planta-q-set') || '',
-      Number(target.getAttribute('data-planta-q-base') || 0),
-      target.value
-    );
+    target.dataset.plantaStepCommit = 'true';
+    const nome = target.getAttribute('data-planta-q-set') || '';
+    const base = Number(target.getAttribute('data-planta-q-base') || 0);
+    const valor = target.value;
+    requestAnimationFrame(() => qDefinirQtd(nome, base, valor));
   });
 
   document.addEventListener('keydown', (event) => {

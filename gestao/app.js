@@ -4693,6 +4693,8 @@ async function viewDashboard(){
   }
 
   function metaEditorHtml(tipo, periodo){
+    // A edicao fica exclusivamente no modal aberto pelo botao Definir Metas.
+    return '';
     if (!podeDefinirMetas) return '';
     if (periodo.tipo === 'mes'){
       const atual = metaDe(tipo, periodo.valor);

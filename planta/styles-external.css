@@ -362,13 +362,14 @@
   .gc-btn-sim:hover{background:var(--bg);color:var(--ink-soft)}
 
   /* ── Ajuste manual de qty na tabela ── */
-  .q-adj{display:inline-flex;align-items:center;gap:4px;margin-left:4px}
-  .q-delta{font-size:11px;color:var(--ink-soft);min-width:26px;text-align:center;font-family:var(--mono);font-weight:700}
+  .q-adj{display:inline-grid;grid-template-columns:76px 30px;align-items:center;gap:4px;width:110px;margin-left:4px}
+  .q-delta{display:block;width:30px;font-size:11px;color:var(--ink-soft);text-align:center;font-family:var(--mono);font-weight:700}
+  .q-delta.is-empty{visibility:hidden}
   .q-qty-final{font-weight:800;font-size:15px}
   .q-qty-input{width:48px;font-weight:800;font-size:14px;font-family:var(--mono);text-align:center;
     border:1.5px solid var(--line);border-radius:var(--r-sm);padding:3px 2px;background:var(--paper);color:var(--ink)}
   .q-qty-input:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus-ring)}
-  .q-adj .ui-number-shell{width:76px;flex:0 0 76px}
+  .q-adj .ui-number-shell{width:76px;min-width:76px;max-width:76px}
 
   .q-avulso-section{border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;
     background:var(--bg);flex-shrink:0}

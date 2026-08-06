@@ -299,8 +299,8 @@
     enhancedNumbers.add(input);
     up.addEventListener("pointerdown",event=>event.preventDefault());
     down.addEventListener("pointerdown",event=>event.preventDefault());
-    up.addEventListener("click",()=>changeNumber(input,1));
-    down.addEventListener("click",()=>changeNumber(input,-1));
+    up.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();changeNumber(input,1);});
+    down.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();changeNumber(input,-1);});
     refreshNumber(input);
   }
   function scan(root=document){
