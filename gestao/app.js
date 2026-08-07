@@ -3461,7 +3461,7 @@ async function viewUsuarios(){
       <td><span class="role-stamp role-${escapeHtml(p.role)}">${escapeHtml(ROTULO_PAPEL[p.role]||p.role)}</span></td>
       <td>${p.ativo ? 'Ativo' : 'Inativo'}</td>
       <td class="row-actions">
-        ${(podeExcluirUsuario && p.id!==currentUser.id && p.ativo) ? `<button class="icon-btn" data-action="desativar">desativar</button>` : ''}
+        ${(podeExcluirUsuario && p.id!==currentUser.id && p.ativo) ? `<button type="button" class="icon-btn" data-action="desativar">desativar</button>` : ''}
       </td>
     </tr>
   `).join('');

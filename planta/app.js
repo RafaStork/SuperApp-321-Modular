@@ -6123,7 +6123,7 @@ function openWallTypeModal(id, cloneFrom){
         <select class="bom-prod">${wtProdOptions}</select>
         <select class="bom-cond">${wtBomCondOptions}</select>
         <input class="bom-qty" type="number" min="0.1" step="0.5" value="${row.qty||1}">
-        <button class="bom-del" data-i="${i}" title="Remover">✕</button>`;
+        <button type="button" class="bom-del" data-i="${i}" title="Remover">✕</button>`;
       div.querySelector('.bom-prod').value = row.produtoNome || '';
       div.querySelector('.bom-cond').value = row.condicao || 'padrao';
       div.querySelector('.bom-prod').onchange = e => { wtBomRows[i].produtoNome = e.target.value; };
@@ -7744,7 +7744,7 @@ function openTypeModal(id, forceMez, cloneFrom){
         <select class="bom-prod">${prodOptions}</select>
         <select class="bom-cond">${condOptions}</select>
         <input class="bom-qty" type="number" min="0.1" step="0.5" value="${row.qty||1}">
-        <button class="bom-del" data-i="${i}" title="Remover">✕</button>`;
+        <button type="button" class="bom-del" data-i="${i}" title="Remover">✕</button>`;
       div.querySelector('.bom-prod').value=row.produtoNome||'';
       div.querySelector('.bom-cond').value=row.condicao||'padrao';
       div.querySelector('.bom-prod').onchange=e=>{bomRows[i].produtoNome=e.target.value;};
@@ -8011,7 +8011,7 @@ function openStairModal(id, cloneFrom){
         <select class="bom-prod">${prodOptions}</select>
         <select class="bom-cond">${condOptions}</select>
         <input class="bom-qty" type="number" min="0.1" step="0.5" value="${row.qty||1}">
-        <button class="bom-del" data-i="${i}" title="Remover">✕</button>`;
+        <button type="button" class="bom-del" data-i="${i}" title="Remover">✕</button>`;
       div.querySelector('.bom-prod').value=row.produtoNome||'';
       div.querySelector('.bom-cond').value=row.condicao||'padrao';
       div.querySelector('.bom-prod').onchange=e=>{stairBomRows[i].produtoNome=e.target.value;};
@@ -8426,7 +8426,7 @@ async function abrirPlantasModelo(){
       </div>
       <button class="tbtn" data-use="${esc(pl.id)}">Usar</button>
       ${isAdmin()?`<button class="tbtn" data-overwrite="${esc(pl.id)}" data-nome="${esc(pl.nome)}" title="Sobrescrever com o projeto atual">💾 Sobrescrever</button>`:''}
-      ${isAdmin()?`<button class="tbtn del" data-remove="${esc(pl.id)}" title="Excluir">🗑</button>`:''}`;
+      ${isAdmin()?`<button type="button" class="tbtn del" data-remove="${esc(pl.id)}" title="Excluir">🗑</button>`:''}`;
     listEl.appendChild(item);
   });
 

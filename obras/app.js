@@ -320,7 +320,6 @@ function cardHtml(work){const priority=PRIORITY[work.priority]||PRIORITY.media,e
     }catch(error){toast(safeMessage(error,'N\u00e3o foi poss\u00edvel salvar a obra.'),'error')}
     finally{setBusy(false)}
   }
-  async function deleteWork(){if(!canDeleteWork())return toast('Você não possui permissão para excluir esta obra.','error');const work=state.editing;if(!work)return;if(!(await window.SuperAppConfirm.delete('Esta ação não pode ser desfeita.',{title:'Excluir esta obra?'})))return;setBusy(true);try{await rpc('obras_delete',{p_id:work.id,p_version:work.version});state.works=state.works.filter(w=>w.id!==work.id);closeModal();render();toast('Obra excluída.')}catch(error){toast(safeMessage(error,'Não foi possível excluir a obra.'),'error')}finally{setBusy(false)}}
 
   /* Obras V22: confirmação interna, checklist com nome/descrição e cronograma refinado */
   function checklistParts(item){
