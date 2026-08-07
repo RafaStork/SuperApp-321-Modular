@@ -963,7 +963,7 @@ main{position:relative}
 .tm-section:has(.ui-select-popover.is-open),.tm-section:has(.ui-date-popover.is-open){overflow:visible;position:relative;z-index:24}
 .modal[data-modal="floor-editor"]{width:min(860px,calc(100vw - 36px));max-width:860px!important;max-height:92dvh;overflow-x:hidden!important}
 .modal[data-modal="floor-editor"]>.superapp-modal-head,.modal[data-modal="floor-editor"]>h3{background:var(--surface)!important;box-shadow:0 8px 18px -17px rgba(0,0,0,.72);isolation:isolate}
-.modal[data-modal="floor-editor"]>.superapp-modal-head{top:-22px!important;z-index:45!important}
+.modal[data-modal="floor-editor"]>.superapp-modal-head{top:auto!important;z-index:45!important}
 .modal[data-modal="floor-editor"]>.modal-actions{position:sticky;bottom:-22px;z-index:28;margin:18px -22px -22px;padding:14px 22px;background:var(--surface);border-top:1px solid var(--line)}
 /* O editor de custos usa a largura dispon?vel e dispensa rolagem horizontal. */
 #gestorOverlay .modal{width:min(920px,calc(100vw - 32px));max-width:920px}
@@ -972,7 +972,7 @@ main{position:relative}
 .modal[data-modal="quantitativo"],.modal[data-modal="quantitativo"] .q-scroll-mid,.modal[data-modal="quantitativo"] .q-table-wrap{overflow-anchor:none}
 @media(max-width:560px){
   .modal[data-modal="floor-editor"]{width:calc(100vw - 20px);max-height:96dvh}
-  .modal[data-modal="floor-editor"]>.superapp-modal-head,.modal[data-modal="floor-editor"]>h3{top:-14px!important}
+  .modal[data-modal="floor-editor"]>.superapp-modal-head,.modal[data-modal="floor-editor"]>h3{top:auto!important}
   .modal[data-modal="floor-editor"]>.modal-actions{bottom:-14px;margin:14px -14px -14px;padding:12px 14px}
   #gestorOverlay .modal{width:calc(100vw - 20px)}
 }
