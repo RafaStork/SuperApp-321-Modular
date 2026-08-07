@@ -128,6 +128,7 @@ let qNovosInsumos = new Set(); // nomes de insumos adicionados manualmente que n
 let qDesconto = { tipo: 'percent', valor: 0 }; // desconto aplicado ao orçamento
 let qViewTab = 'paineis';      // 'paineis' | 'insumos' — sub-aba ativa no modal de Quantitativo
 let qCostView = false;         // custo gerencial: liberado somente após confirmação e autorização do RPC
+let qRenderFrame = 0;          // evita reconstruir o modal durante o clique e deslocar a rolagem
 // Acréscimo manual de valor por item (R$), disponível para QUALQUER perfil
 // (Admin, Gestor ou Vendedor) — soma-se ao preço de tabela do item.
 // Só pode ser >= 0: dá pra cobrar a mais por um painel específico neste
@@ -5100,7 +5101,7 @@ function render(){
     const isSel=p.id===selId||selIds.has(p.id);
     const dimmed=andar2 && !isF2;
     const targetLayer=isF2?floor2Layer:floor1Layer;
-    const parts=pisoParts(p);const grp=el("g",{"data-id":p.id,style:dimmed?"cursor:default;pointer-events:none;filter:brightness(.42);opacity:.48":"cursor:pointer"});
+    const parts=pisoParts(p);const grp=el("g",{"data-id":p.id,style:dimmed?"cursor:default;pointer-events:none;filter:brightness(.34) saturate(.58);opacity:.45":"cursor:pointer"});
 
 
     parts.rects.forEach(rc=>{const[sx,sy]=toScreen(rc.x,rc.y);
@@ -5184,7 +5185,7 @@ function render(){
     const isSel=inst.id===selId||selIds.has(inst.id);
     const dimmedWall=andar2; // paredes avulsas são sempre do 1º andar
     const parts=wallInstanceParts(inst);
-    const grp=el("g",{"data-wall-inst":inst.id,style:dimmedWall?"cursor:default;pointer-events:none;filter:brightness(.42);opacity:.48":"cursor:pointer"});
+    const grp=el("g",{"data-wall-inst":inst.id,style:dimmedWall?"cursor:default;pointer-events:none;filter:brightness(.34) saturate(.58);opacity:.45":"cursor:pointer"});
     parts.polys.forEach(po=>{
       const pts=po.pts.map(([x,y])=>toScreen(x,y).join(",")).join(" ");
       grp.appendChild(el("polygon",{points:pts,fill:themedFill(po.fill),
@@ -5268,7 +5269,7 @@ function render(){
       svg.appendChild(el('circle',{cx:lax,cy:lay,r:3,
         fill:lblSel?'var(--accent)':'#7A828C',style:'pointer-events:none'}));
     }
-    const lg=el('g',{'data-label':l.id,style:andar2?'cursor:default;pointer-events:none;filter:brightness(.42);opacity:.48':'cursor:pointer'});
+    const lg=el('g',{'data-label':l.id,style:andar2?'cursor:default;pointer-events:none;filter:brightness(.34) saturate(.58);opacity:.45':'cursor:pointer'});
     const maxLineLen=Math.max(...lines.map(ln=>ln.length));
     const tw=Math.max(maxLineLen*8+18,34);
     const th=lines.length*lineH+4;
@@ -6509,7 +6510,9 @@ svg.addEventListener("pointerdown",ev=>{
   if(tool==="placewall"&&armedWallType){placeWallAt(wx,wy);return;}
   const nameEl=ev.target.closest("[data-name]");
   if(tool==="select"&&nameEl){
-    const id=nameEl.getAttribute("data-name");const p=state.panels.find(p=>p.id===id);
+    const id=nameEl.getAttribute("data-name");
+    if(!itemEditableInActiveFloor(id)){selId=null;selIds=new Set();drag=null;renderInv();render();return;}
+    const p=state.panels.find(p=>p.id===id);
     selId=id; selIds=new Set([id]); p.name=p.name||{};
     dragInitialState = JSON.stringify({panels: state.panels, labels: state.labels, wallInstances: state.wallInstances, manualDims: state.manualDims});
     drag={kind:"name",id,dx:wx-(p.cx+(p.name.dx||0)),dy:wy-(p.cy+(p.name.dy||0)), hasMoved:false};
@@ -6517,6 +6520,11 @@ svg.addEventListener("pointerdown",ev=>{
   }
   const hit=ev.target.closest("[data-id]"), lbl=ev.target.closest("[data-label]"), wallHit=ev.target.closest("[data-wall-inst]"), dimHit=ev.target.closest("[data-dim]");
   const clickedId = hit?.getAttribute("data-id") || lbl?.getAttribute("data-label") || wallHit?.getAttribute("data-wall-inst") || dimHit?.getAttribute("data-dim");
+  if(tool==="select" && clickedId && !itemEditableInActiveFloor(clickedId)){
+    selId=null;selIds=new Set();drag=null;
+    renderInv();render();
+    return;
+  }
   
   // Ctrl/Shift+click: adicionar/remover da multi-seleção
   if(tool==="select" && clickedId && (ev.ctrlKey||ev.metaKey||ev.shiftKey)){
@@ -6625,6 +6633,7 @@ svg.addEventListener("pointermove",ev=>{
   if(!drag)return;
   
   if(drag.kind==="panel"){const p=state.panels.find(p=>p.id===drag.id);
+    if(!p || !itemEditableInActiveFloor(p.id)){drag=null;return;}
     if(state.floorMode==='andar2' && isFloor2Panel(p)){
       let[cx,cy]=snapAndar2Center(wx-drag.dx,wy-drag.dy,p.typeId,p.rot,p.id,p.patamarLen);
       if(floor2OverlapsAny(cx,cy,dims(p),p.id))return;
@@ -6644,6 +6653,7 @@ svg.addEventListener("pointermove",ev=>{
     
   if(drag.kind==="name"){
     const p=state.panels.find(p=>p.id===drag.id);
+    if(!p || !itemEditableInActiveFloor(p.id)){drag=null;return;}
     const d=dims(p);
     let ndx=snap((wx-drag.dx)-p.cx);
     let ndy=snap((wy-drag.dy)-p.cy);
@@ -6655,10 +6665,11 @@ svg.addEventListener("pointermove",ev=>{
     render();
     return;
   }
-  if(drag.kind==="label"){const l=state.labels.find(l=>l.id===drag.id);l.x=snap(wx-drag.dx);l.y=snap(wy-drag.dy);drag.hasMoved=true;render();return;}
+  if(drag.kind==="label"){const l=state.labels.find(l=>l.id===drag.id);if(!l||!itemEditableInActiveFloor(l.id)){drag=null;return;}l.x=snap(wx-drag.dx);l.y=snap(wy-drag.dy);drag.hasMoved=true;render();return;}
   if(drag.kind==="wallinst"){
     const wi=state.wallInstances.find(w=>w.id===drag.id);
     const ddx=wx-drag.startWX, ddy=wy-drag.startWY;
+    if(!wi || !itemEditableInActiveFloor(wi.id)){drag=null;return;}
     let ax=snap(drag.origAX+ddx), ay=snap(drag.origAY+ddy);
     [ax,ay]=snapWallToNeighbors(wi,ax,ay,wi.id);
     if(wallOverlapsAny({...wi,ax,ay},wi.id))return;
@@ -6669,6 +6680,7 @@ svg.addEventListener("pointermove",ev=>{
   if(drag.kind==="manualdim"){
     const d=state.manualDims.find(d=>d.id===drag.id);if(!d)return;
     const raw=d.axis==="x"?wy:wx;
+    if(!d || !itemEditableInActiveFloor(d.id)){drag=null;return;}
     d.linePos=getSnappedLinePos(d.axis,raw,d.id);
     drag.hasMoved=true; render();
   }
@@ -7114,13 +7126,30 @@ function setTool(){const shown=(tool==="place"||tool==="placewall")?"select":too
   if(tool!=="placewall")armedWallType=null;}
 document.querySelectorAll(".tool").forEach(b=>b.onclick=()=>{b.blur();tool=b.dataset.tool;if(tool!=="select"){selId=null;selIds=new Set();}dimDraftP1=null;dimDraftP2=null;dimMousePt=null;dimDraftAxis=null;setTool();renderInv();render();});
 
+function itemEditableInActiveFloor(id){
+  const isA2=state.floorMode==='andar2';
+  const panel=state.panels.find(item=>item.id===id);
+  if(panel)return isFloor2Panel(panel)===isA2;
+  const dimension=state.manualDims.find(item=>item.id===id);
+  if(dimension)return (dimension.andar||1)===(isA2?2:1);
+  if(state.labels.some(item=>item.id===id))return !isA2;
+  if(state.wallInstances.some(item=>item.id===id))return !isA2;
+  return false;
+}
+
 function rotateSel(){
+  if(selId && !itemEditableInActiveFloor(selId)){selId=null;selIds=new Set();renderInv();render();return;}
   const p=state.panels.find(p=>p.id===selId);
   if(p){saveState(); p.rot=(p.rot+90)%360; render(); return;}
   const wi=state.wallInstances.find(w=>w.id===selId);if(!wi)return;
   saveState(); wi.rot=((wi.rot||0)+90)%360; render();
 }
 function dupSel(){
+  if((selId && !itemEditableInActiveFloor(selId)) || [...selIds].some(id=>!itemEditableInActiveFloor(id))){
+    selId=null;selIds=new Set();renderInv();render();
+    toastError("O outro andar est\u00e1 bloqueado para edi\u00e7\u00e3o.");
+    return;
+  }
   // Multi-seleção: duplicar todos
   if(selIds.size > 1){
     saveState();
@@ -7150,8 +7179,8 @@ function dupSel(){
   state.wallInstances.push(n);selId=n.id;selIds=new Set([n.id]);renderTabs();renderInv();render();
 }
 function delSel(){
-  const toDelete=new Set(selIds);
-  if(selId) toDelete.add(selId);
+  const toDelete=new Set([...selIds].filter(itemEditableInActiveFloor));
+  if(selId && itemEditableInActiveFloor(selId)) toDelete.add(selId);
   if(!toDelete.size)return;
   saveState();
   state.panels=state.panels.filter(p=>!toDelete.has(p.id));
@@ -7183,6 +7212,7 @@ document.addEventListener("keydown",ev=>{
   if(isCtrl && (ev.key === "c" || ev.key === "C")){
     ev.preventDefault();
     if(selId) {
+      if(!itemEditableInActiveFloor(selId)){toastError("O outro andar est\u00e1 bloqueado para edi\u00e7\u00e3o.");return;}
       const p = state.panels.find(p=>p.id===selId);
       if(p) clipboard = {type: "panel", data: JSON.stringify(p)};
       else {
@@ -7200,8 +7230,16 @@ document.addEventListener("keydown",ev=>{
   if(isCtrl && (ev.key === "v" || ev.key === "V")){
     ev.preventDefault();
     if(clipboard) {
+      const clipboardObject = JSON.parse(clipboard.data);
+      const clipboardAllowed = clipboard.type === "panel"
+        ? isFloor2Panel(clipboardObject) === (state.floorMode === "andar2")
+        : state.floorMode !== "andar2";
+      if(!clipboardAllowed){
+        toastError("N\u00e3o \u00e9 poss\u00edvel colar elementos de outro andar.");
+        return;
+      }
       saveState();
-      const obj = JSON.parse(clipboard.data);
+      const obj = clipboardObject;
       obj.id = uid();
       if(clipboard.type === "panel") {
         obj.cx += SNAP*3;
@@ -10022,6 +10060,8 @@ function abrirQuantitativo() {
 
   // Preserva a posição do scroll ao reabrir o modal (ex: depois de clicar em
   // +/− numa quantidade) — sem isso a tela voltava pro topo a cada clique.
+  const _prevPageX = window.scrollX;
+  const _prevPageY = window.scrollY;
   const _prevScrollModal = modalBody.scrollTop;
   const _prevScrollMid = document.querySelector('.q-scroll-mid')?.scrollTop || 0;
   const _prevScrollTable = document.querySelector('.q-table-wrap')?.scrollTop || 0;
@@ -10236,7 +10276,7 @@ function abrirQuantitativo() {
             </table>
           </div>
           <p class="sub" data-planta-style="planta-inline-087">Insumos desmarcados não aparecem no PDF, mas continuam somando no valor total do orçamento.</p>
-          ${totalBlock}
+
         ` : `<p data-planta-style="planta-inline-088">Nenhum insumo complementar cadastrado para os painéis desta planta.</p>`}
       ` : `
       ${rows ? `
@@ -10251,10 +10291,11 @@ function abrirQuantitativo() {
             <tbody>${rows}</tbody>
           </table>
         </div>
-        ${warn}${totalBlock}
+        ${warn}
       ` : `<p data-planta-style="planta-inline-088">Nenhum painel na planta ainda.</p>`}
       `}
       </div>
+      <div class="q-totals-sticky">${totalBlock}</div>
       <div class="q-quick-add">
         ${qViewTab==='insumos' ? avulsoInsumoSection : avulsoSection}
       </div>
@@ -10272,6 +10313,8 @@ function abrirQuantitativo() {
   // Restaura a posição do scroll capturada no início da função.
   // Repete a restauracao apos o layout para neutralizar o scroll nativo do clique.
   const restaurarScrollQuantitativo = () => {
+    window.scrollTo(_prevPageX, _prevPageY);
+    document.activeElement?.focus?.({ preventScroll: true });
     modalBody.scrollTop = _prevScrollModal;
     const _scrollMid = document.querySelector('.q-scroll-mid');
     if (_scrollMid) _scrollMid.scrollTop = _prevScrollMid;
@@ -10293,14 +10336,22 @@ function qAjustarQtd(nome, delta) {
     qNovosInsumos.delete(nome);
     delete qAjustes[nome];
   }
-  abrirQuantitativo();
+  qAgendarRender();
 }
 
 // Define a quantidade final de um item digitando um número específico
 // (em vez de só poder ir de 1 em 1 nos botões +/−). baseQtd é a quantidade
 // automática (item.qtd, antes de qualquer ajuste manual) — o delta salvo em
 // qAjustes é sempre relativo a ela, então recalculamos: delta = novoValor − baseQtd.
-function qDefinirQtd(nome, baseQtd, valorStr) {
+function qAgendarRender() {
+  if (qRenderFrame) cancelAnimationFrame(qRenderFrame);
+  qRenderFrame = requestAnimationFrame(() => {
+    qRenderFrame = 0;
+    abrirQuantitativo();
+  });
+}
+
+function qDefinirQtd(nome, baseQtd, valorStr, deferRender = false) {
   let v = parseInt(String(valorStr).replace(',', '.'), 10);
   if (!isFinite(v) || v < 0) v = 0;
   const delta = v - (baseQtd || 0);
@@ -10311,7 +10362,7 @@ function qDefinirQtd(nome, baseQtd, valorStr) {
     qNovosInsumos.delete(nome);
     delete qAjustes[nome];
   }
-  abrirQuantitativo();
+  if (deferRender) qAgendarRender(); else abrirQuantitativo();
 }
 
 // Acrescenta valor (R$) ao preço de um item específico, neste orçamento.
@@ -13642,7 +13693,7 @@ document.addEventListener('click', (event) => {
     const nome = target.getAttribute('data-planta-q-set') || '';
     const base = Number(target.getAttribute('data-planta-q-base') || 0);
     const valor = target.value;
-    qDefinirQtd(nome, base, valor);
+    qDefinirQtd(nome, base, valor, true);
   });
 
   document.addEventListener('keydown', (event) => {

@@ -303,7 +303,116 @@
     down.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();changeNumber(input,-1);});
     refreshNumber(input);
   }
+  const modalFrameSelector=[
+    '[data-app-code="gestao"] .modal-backdrop > .modal',
+    '[data-app-code="gestao"] #confirm-backdrop > .confirm-box',
+    '[data-app-code="planta"] .scrim > .modal',
+    '[data-app-code="planta"] #gestorOverlay > .modal',
+    '[data-app-code="planta"] #confirmOverlay > .modal',
+    '[data-app-code="financeiro"] .mb > .modal',
+    '[data-app-code="financeiro"] #confirmBackdrop > .confirm-box',
+    '[data-app-code="obras"] .modal-backdrop > .modal',
+    '[data-app-code="simulacao"] #modal > .modalbox'
+  ].join(',');
+
+  function decorateModalFrame(frame){
+    if(!frame||frame.dataset.superappModalDecorated==="true")return;
+    frame.dataset.superappModalDecorated="true";
+    frame.classList.add("superapp-modal-frame");
+    if(document.documentElement.dataset.appCode==="obras")return;
+
+    let head=frame.querySelector(':scope > .superapp-modal-head');
+    const nativeHead=frame.querySelector(':scope > header,:scope > .modal-fixed-head,:scope > .pm-header,:scope > .pdf-modal-header');
+    if(nativeHead)nativeHead.classList.add("superapp-modal-head-native");
+    if(!head&&nativeHead)head=nativeHead;
+    if(head){
+      if(!head.classList.contains("superapp-modal-head-native"))head.classList.add("superapp-modal-head");
+    }else{
+      const children=[...frame.children];
+      const title=children.find(node=>node.matches?.('h2,h3,.welcome-lead'));
+      if(title){
+        const nodes=[];
+        const eyebrow=title.previousElementSibling?.matches?.('.eyebrow')?title.previousElementSibling:null;
+        const close=children.find(node=>node.matches?.('.modal-close-top,.mc'));
+        const subtitle=title.nextElementSibling?.matches?.('.sub,.msub')?title.nextElementSibling:null;
+        [eyebrow,close,title,subtitle].forEach(node=>{if(node&&!nodes.includes(node))nodes.push(node);});
+        nodes.sort((a,b)=>(a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING)?-1:1);
+        head=document.createElement("header");
+        head.className="superapp-modal-head";
+        frame.insertBefore(head,nodes[0]||frame.firstChild);
+        nodes.forEach(node=>head.append(node));
+      }
+    }
+
+    const footers=[...frame.querySelectorAll(':scope > .modal-actions,:scope > .btns,:scope > .actions:last-child,:scope > footer,:scope > form > .modal-actions:last-child,:scope > form > .btns:last-child')];
+    footers.forEach(footer=>footer.classList.add("superapp-modal-foot"));
+  }
+
+  function decorateModals(root=document){
+    root.querySelectorAll?.(modalFrameSelector).forEach(decorateModalFrame);
+    if(root.matches?.(modalFrameSelector))decorateModalFrame(root);
+    const owner=root.closest?.(modalFrameSelector);
+    if(owner){
+      owner.dataset.superappModalDecorated="false";
+      decorateModalFrame(owner);
+    }
+  }
+
+  function closeTopFloating(){
+    const code=document.documentElement.dataset.appCode||"";
+    if(code==="gestao"){
+      const lightbox=document.querySelector('#lightbox-backdrop.active');
+      if(lightbox){lightbox.click();return true;}
+      const confirmation=document.querySelector('#confirm-backdrop.active');
+      if(confirmation){
+        confirmation.querySelector('#confirm-cancelar')?.click();
+        return true;
+      }
+      if(document.querySelector('.modal-backdrop.active')){
+        window.closeModal?.();
+        return true;
+      }
+    }
+    if(code==="planta"){
+      const preview=document.querySelector('#previewScrim.show');
+      if(preview){preview.querySelector('[data-planta-close-preview]')?.click();return true;}
+      const confirm=document.querySelector('#confirmOverlay.show');
+      if(confirm){
+        const cancel=confirm.querySelector('#cf_cancelar,#mq_cancelar,[data-planta-close-confirm]');
+        if(cancel)cancel.click();else confirm.classList.remove("show");
+        return true;
+      }
+      const manager=document.querySelector('#gestorOverlay.show');
+      if(manager){
+        const cancel=manager.querySelector('#gci_nao,#gc_nao,[data-planta-action="close-gestor"]');
+        if(cancel)cancel.click();else manager.classList.remove("show");
+        return true;
+      }
+      if(document.querySelector('#scrim.show')){window.closeModal?.();return true;}
+    }
+    if(code==="financeiro"){
+      const confirmation=document.querySelector('#confirmBackdrop.open');
+      if(confirmation){
+        confirmation.querySelector('#confirmCancelBtn')?.click();
+        return true;
+      }
+      const modals=[...document.querySelectorAll('.mb.open')];
+      const top=modals.at(-1);
+      if(top){top.querySelector('.mc,[data-fin-close-modal]')?.click();if(top.classList.contains("open"))window.closeModal?.(top.id);return true;}
+    }
+    if(code==="obras"){
+      const modals=[...document.querySelectorAll('.modal-backdrop.open')];
+      const top=modals.at(-1);
+      if(top){top.querySelector('[aria-label="Fechar"],#modal-close,#cancel-btn')?.click();return true;}
+    }
+    if(code==="simulacao"){
+      const modal=document.getElementById("modal");
+      if(modal?.classList.contains("open")){modal.classList.remove("open");return true;}
+    }
+    return false;
+  }
   function scan(root=document){
+    decorateModals(root);
     if(!isGestao&&!appOwnsSelects)root.querySelectorAll?.("select").forEach(enhanceSelect);
     if(!appOwnsDates)root.querySelectorAll?.('input[type="date"]').forEach(enhanceDate);
     root.querySelectorAll?.(numberSelector).forEach(enhanceNumber);
@@ -317,8 +426,16 @@
   document.addEventListener("click",event=>{
     if(active&&!active.popover.contains(event.target)&&!active.trigger.contains(event.target))closeActive();
   });
-  document.addEventListener("keydown",event=>{if(event.key==="Escape")closeActive();});
+  document.addEventListener("keydown",event=>{
+    if(event.key!=="Escape")return;
+    if(active){
+      event.preventDefault();
+      closeActive();
+      return;
+    }
+    if(closeTopFloating())event.preventDefault();
 
+  });
   const observer=new MutationObserver(records=>{
     records.forEach(record=>{
       record.addedNodes.forEach(node=>{if(node.nodeType===1)scan(node);});

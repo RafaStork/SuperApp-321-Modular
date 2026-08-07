@@ -973,3 +973,22 @@ main{position:relative}
   .modal[data-modal="floor-editor"]>.modal-actions{bottom:-14px;margin:14px -14px -14px;padding:12px 14px}
   #gestorOverlay .modal{width:calc(100vw - 20px)}
 }
+
+/* Quantitativo: a tabela rola de forma independente e os totais permanecem visiveis. */
+.modal[data-modal="quantitativo"] .q-modal{height:100%;overflow:hidden}
+.modal[data-modal="quantitativo"] .q-scroll-mid{overflow:hidden}
+.modal[data-modal="quantitativo"] .q-table-wrap{flex:1 1 auto;max-height:none;min-height:140px}
+.q-totals-sticky{flex:0 0 auto;display:grid;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface);box-shadow:0 -7px 22px rgba(20,24,30,.06)}
+.q-totals-sticky:empty{display:none}
+.q-totals-sticky .q-total-block,.q-totals-sticky .q-desconto-block,.q-totals-sticky .q-final-block,.q-totals-sticky .q-cost-total-block{margin:0;border-radius:0}
+
+/* Confirmacoes gerenciais: duas acoes simetricas, sem alterar a hierarquia de seguranca. */
+#gestorOverlay .gc-confirm{width:min(430px,100%);margin-inline:auto}
+.gc-confirm .gc-btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gc-confirm .gc-btn-nao,.gc-confirm .gc-btn-sim{width:100%;min-width:0;min-height:46px;padding:11px 12px;font-size:13px;line-height:1.25;display:flex;align-items:center;justify-content:center}
+
+@media(max-width:560px){
+  .modal[data-modal="quantitativo"] .q-table-wrap{min-height:118px}
+  .q-totals-sticky{max-height:34vh;overflow:auto}
+  .gc-confirm .gc-btns{grid-template-columns:1fr}
+}

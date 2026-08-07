@@ -1545,10 +1545,12 @@ function renderCell(table, row, field){
   if (field.edit==='percent'){
     const pct = Math.round((row[field.key]||0)*100);
     const barId = id+'_bar';
-    const out = `<div class="csp-inline-005">
-      <input type="number" class="cell-number csp-inline-006" id="${id}" value="${pct}" min="0" max="100" step="5" />
-      <span class="csp-inline-007">%</span>
-      <div class="progress-bar csp-inline-008"><div id="${barId}" data-csp-style="width:${pct}%"></div></div>
+    const out = `<div class="project-progress">
+      <div class="project-progress-input">
+        <input type="number" class="cell-number csp-inline-006" id="${id}" value="${pct}" min="0" max="100" step="5" />
+        <span class="csp-inline-007">%</span>
+      </div>
+      <div class="progress-bar project-progress-bar" aria-hidden="true"><div id="${barId}" data-csp-style="width:${pct}%"></div></div>
     </div>`;
     queueMicrotask(()=>{
       const inp = document.getElementById(id);
@@ -2785,7 +2787,6 @@ async function viewMinhasTarefas(){
         : celulaColorida('var(--text-faint)', 'Sem definir'));
       const pctCell = tr.querySelector('[data-cell="pct"]');
       const pctId = 'my_pct_'+r.id;
-      pctCell.innerHTML = badgeCampoMT(r.id,'percentual_conclusao') + `<input type="number" class="cell-number csp-inline-006" id="${pctId}" value="${Math.round((r.percentual_conclusao||0)*100)}" min="0" max="100" step="5" />%`;
       const pctAtual = Math.max(0, Math.min(100, Math.round((r.percentual_conclusao||0)*100)));
       pctCell.innerHTML = badgeCampoMT(r.id,'percentual_conclusao') + `<div class="my-task-progress">
         <div class="my-task-progress-input"><input type="number" class="cell-number csp-inline-006" id="${pctId}" value="${pctAtual}" min="0" max="100" step="5" /><span>%</span></div>

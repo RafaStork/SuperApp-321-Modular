@@ -106,8 +106,8 @@
   border-color:color-mix(in srgb,var(--ui-control-accent) 28%,transparent);
 }
 .ui-select-option[aria-selected="true"]{
-  background:var(--ui-control-selected);border-color:var(--ui-control-accent);
-  color:var(--ui-control-ink);font-weight:800;
+  background:linear-gradient(135deg,var(--ui-control-accent),color-mix(in srgb,var(--ui-control-accent) 72%,#f9b215))!important;border-color:var(--ui-control-accent)!important;
+  color:#fff!important;font-weight:800;
 }
 .ui-select-option:disabled{opacity:.45;cursor:not-allowed}
 .ui-date-button{padding-right:10px}
@@ -170,7 +170,7 @@
 }
 .select-popover button:hover,.dd-panel-float .dd-opt:hover{background:color-mix(in srgb,var(--ui-control-accent) 11%,var(--ui-control-bg))}
 .select-popover button.selected,.dd-panel-float .dd-opt.dd-opt-sel{
-  background:transparent!important;border-color:var(--ui-control-accent)!important;color:var(--ui-control-ink);font-weight:800;
+  background:linear-gradient(135deg,var(--ui-control-accent),color-mix(in srgb,var(--ui-control-accent) 72%,#f9b215))!important;border-color:var(--ui-control-accent)!important;color:#fff!important;font-weight:800;
 }
 
 @media(prefers-reduced-motion:reduce){
@@ -178,3 +178,35 @@
 }
 
 [data-theme="dark"] .ui-select-popover,[data-theme="dark"] .ui-date-popover,[data-theme="dark"] .select-popover,[data-theme="dark"] .dd-panel-float,[data-theme="dark"] .ui-number-stepper{color-scheme:dark}
+
+/* Modais compartilhados: moldura, cabecalho e rodape no padrao do app Obras. */
+[data-app-code="gestao"] .modal-backdrop,
+[data-app-code="gestao"] .confirm-backdrop,
+[data-app-code="planta"] .scrim,
+[data-app-code="planta"] #gestorOverlay,
+[data-app-code="planta"] #confirmOverlay,
+[data-app-code="financeiro"] .mb,
+[data-app-code="financeiro"] .confirm-backdrop,
+[data-app-code="obras"] .modal-backdrop,
+[data-app-code="simulacao"] #modal{backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+
+.superapp-modal-frame{--superapp-modal-pad-x:26px;--superapp-modal-pad-y:22px;border:1px solid var(--ui-control-line)!important;border-radius:15px!important;background:var(--ui-control-bg)!important;box-shadow:0 25px 75px rgba(0,0,0,.34)!important}
+[data-app-code="gestao"] .superapp-modal-frame{--superapp-modal-pad-x:28px;--superapp-modal-pad-y:26px}
+[data-app-code="planta"] .superapp-modal-frame,[data-app-code="simulacao"] .superapp-modal-frame{--superapp-modal-pad-x:22px;--superapp-modal-pad-y:22px}
+
+.superapp-modal-head{position:sticky;top:calc(var(--superapp-modal-pad-y) * -1);z-index:40;margin:calc(var(--superapp-modal-pad-y) * -1) calc(var(--superapp-modal-pad-x) * -1) 18px;padding:18px var(--superapp-modal-pad-x) 14px;background:var(--ui-control-bg);border-bottom:1px solid var(--ui-control-line);border-radius:15px 15px 0 0}
+.superapp-modal-head>h2,.superapp-modal-head>h3{margin:0!important;padding-right:38px}
+.superapp-modal-head>.sub,.superapp-modal-head>.msub{margin:5px 38px 0 0!important;color:var(--ui-control-muted)}
+.superapp-modal-head>.modal-close-top,.superapp-modal-head>.mc{top:13px!important;right:var(--superapp-modal-pad-x)!important}
+.superapp-modal-foot{position:sticky!important;bottom:calc(var(--superapp-modal-pad-y) * -1)!important;z-index:40;margin:18px calc(var(--superapp-modal-pad-x) * -1) calc(var(--superapp-modal-pad-y) * -1)!important;padding:14px var(--superapp-modal-pad-x)!important;background:var(--ui-control-bg)!important;border-top:1px solid var(--ui-control-line)!important;border-radius:0 0 15px 15px}
+
+[data-app-code="planta"] .q-header,[data-app-code="planta"] .pm-header,[data-app-code="planta"] .pdf-modal-header,
+[data-app-code="obras"] .modal>header{background:var(--ui-control-bg)}
+[data-app-code="planta"] .q-modal>.modal-actions,[data-app-code="planta"] .pm-footer,[data-app-code="planta"] .pdf-modal-footer,
+[data-app-code="obras"] .modal-actions,[data-app-code="obras"] .timeline-pdf-actions{background:var(--ui-control-bg)}
+
+@media(max-width:560px){
+  .superapp-modal-frame{--superapp-modal-pad-x:14px;--superapp-modal-pad-y:14px}
+  .superapp-modal-head{padding-top:14px;padding-bottom:12px}
+  .superapp-modal-foot{padding-bottom:calc(12px + env(safe-area-inset-bottom))!important}
+}
