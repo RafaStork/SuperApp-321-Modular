@@ -1,0 +1,23 @@
+(function(){
+  'use strict';
+  let elements=null;
+  let active=null;
+  let previousFocus=null;
+  function node(tag,className,text){const element=document.createElement(tag);if(className)element.className=className;if(text!==undefined)element.textContent=String(text);return element;}
+  function ensure(){
+    if(elements)return elements;
+    const overlay=node('div','superapp-confirm-overlay');overlay.setAttribute('aria-hidden','true');
+    const dialog=node('section','superapp-confirm-dialog');dialog.setAttribute('role','alertdialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','superapp-confirm-title');dialog.setAttribute('aria-describedby','superapp-confirm-message');
+    const head=node('header','superapp-confirm-head');const heading=node('div','superapp-confirm-heading');const eyebrow=node('p','superapp-confirm-eyebrow','AÇÃO DESTRUTIVA');const title=node('h2','superapp-confirm-title','Excluir este item?');title.id='superapp-confirm-title';heading.append(eyebrow,title);head.append(heading);
+    const body=node('div','superapp-confirm-body');const message=node('p','superapp-confirm-message');message.id='superapp-confirm-message';const typeWrap=node('div','superapp-confirm-type');typeWrap.hidden=true;const typeLabel=document.createElement('label');typeLabel.htmlFor='superapp-confirm-input';const input=document.createElement('input');input.id='superapp-confirm-input';input.autocomplete='off';input.spellcheck=false;typeWrap.append(typeLabel,input);body.append(message,typeWrap);
+    const foot=node('footer','superapp-confirm-foot');const cancel=node('button','superapp-confirm-button','Cancelar');cancel.type='button';const confirm=node('button','superapp-confirm-button confirm','Excluir');confirm.type='button';foot.append(cancel,confirm);dialog.append(head,body,foot);overlay.append(dialog);document.body.append(overlay);
+    elements={overlay,dialog,eyebrow,title,message,typeWrap,typeLabel,input,foot,cancel,confirm};
+    cancel.addEventListener('click',()=>finish(false));confirm.addEventListener('click',()=>{if(!confirm.disabled)finish(true)});input.addEventListener('input',()=>{if(!active)return;confirm.disabled=input.value.trim().toLocaleUpperCase('pt-BR')!==String(active.requireText||'').toLocaleUpperCase('pt-BR')});
+    document.addEventListener('keydown',event=>{if(!active)return;if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();finish(false);return}if(event.key!=='Tab')return;const focusable=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled])')].filter(item=>!item.hidden&&item.offsetParent!==null);if(!focusable.length)return;const first=focusable[0],last=focusable[focusable.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}},true);
+    return elements;
+  }
+  function finish(value){if(!active)return;const current=active;active=null;const ui=ensure();ui.overlay.classList.remove('open');ui.overlay.setAttribute('aria-hidden','true');document.body.classList.remove('superapp-confirm-locked');setTimeout(()=>{previousFocus?.focus?.();previousFocus=null;current.resolve(value)},10)}
+  function open(options={}){const ui=ensure();if(active){const previous=active;active=null;previous.resolve(false)}previousFocus=document.activeElement;const destructive=options.destructive!==false;const onlyOk=options.onlyOk===true;ui.eyebrow.textContent=options.eyebrow||(destructive?'AÇÃO DESTRUTIVA':'CONFIRMAÇÃO');ui.title.textContent=options.title||(destructive?'Excluir este item?':'Confirmar ação');ui.message.textContent=options.message||'';ui.cancel.textContent=options.cancelLabel||'Cancelar';ui.confirm.textContent=options.confirmLabel||(onlyOk?'OK':destructive?'Excluir':'Continuar');ui.confirm.classList.toggle('primary',!destructive);ui.cancel.hidden=onlyOk;ui.foot.classList.toggle('only-ok',onlyOk);const requireText=options.requireText?String(options.requireText):null;ui.typeWrap.hidden=!requireText;ui.input.value='';ui.typeLabel.textContent=requireText?`Para confirmar, digite “${requireText}” abaixo:`:'';ui.confirm.disabled=!!requireText;ui.overlay.classList.add('open');ui.overlay.setAttribute('aria-hidden','false');document.body.classList.add('superapp-confirm-locked');return new Promise(resolve=>{active={resolve,requireText};requestAnimationFrame(()=>{(requireText?ui.input:onlyOk?ui.confirm:ui.cancel).focus()})})}
+  window.SuperAppConfirm=Object.freeze({open,delete(message,options={}){return open({...options,message,destructive:true})}});
+  window.superAppConfirmDelete=(message,options)=>window.SuperAppConfirm.delete(message,options);
+})();

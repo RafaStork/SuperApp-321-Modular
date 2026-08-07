@@ -24,6 +24,7 @@
 <script src="../shared/ui-controls.js?v=20260807-controls-10" defer></script>
 
 
+  <link rel="stylesheet" href="../shared/delete-confirm.css?v=20260807-1">
 </head>
 <body>
 
@@ -80,17 +81,7 @@
 <div class="lightbox-backdrop" id="lightbox-backdrop">
   <img id="lightbox-img" src="" alt="Imagem ampliada" />
 </div>
-<div class="confirm-backdrop" id="confirm-backdrop">
-  <div class="confirm-box" id="confirm-box">
-    <h3>Confirmar a??o</h3>
-    <div id="confirm-mensagem"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" id="confirm-cancelar">Cancelar</button>
-      <button class="btn btn-primary" id="confirm-ok-btn" style="width:auto;background:var(--accent);border-color:var(--accent);">Confirmar</button>
-    </div>
-  </div>
-</div>
-
+<script src="../shared/delete-confirm.js?v=20260807-1"></script>
 <script src="./app.js?v=20260807-progress-7"></script>
 </body>
 </html>

@@ -174,24 +174,7 @@ function ativarRedimensionamentoColunas(table, scope){
 // Confirmação dentro do app (substitui o confirm() nativo do navegador).
 // Uso: if (!(await confirmarAcao('Excluir este item?'))) return;
 function confirmarAcao(mensagem, textoBotao='Excluir'){
-  return new Promise(resolve=>{
-    const backdrop = document.getElementById('confirm-backdrop');
-    document.getElementById('confirm-mensagem').textContent = mensagem;
-    const btnOk = document.getElementById('confirm-ok-btn');
-    const btnCancelar = document.getElementById('confirm-cancelar');
-    btnOk.textContent = textoBotao;
-    backdrop.classList.add('active');
-    function limpar(v){
-      backdrop.classList.remove('active');
-      btnOk.removeEventListener('click', onOk);
-      btnCancelar.removeEventListener('click', onCancel);
-      resolve(v);
-    }
-    function onOk(){ limpar(true); }
-    function onCancel(){ limpar(false); }
-    btnOk.addEventListener('click', onOk);
-    btnCancelar.addEventListener('click', onCancel);
-  });
+  return window.SuperAppConfirm.delete(mensagem, { title:'Excluir este item?', confirmLabel:textoBotao });
 }
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }

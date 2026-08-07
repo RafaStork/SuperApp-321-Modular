@@ -6159,8 +6159,8 @@ function openWallTypeModal(id, cloneFrom){
 
   // No wt_door checkbox anymore - doors managed dynamically
   document.getElementById("wt_cancel").onclick=closeModal;
-  if(id)document.getElementById("wt_del").onclick=()=>{
-    if(usedCountWall(id)&&!confirm("Há paredes desse tipo na planta. Excluir o tipo e remover as paredes?"))return;
+  if(id)document.getElementById("wt_del").onclick=async()=>{
+    if(!(await window.SuperAppConfirm.delete(usedCountWall(id)?"Há paredes desse tipo na planta. O tipo e todas as paredes vinculadas serão removidos.":"Este tipo de parede será removido.",{title:"Excluir tipo de parede?"})))return;
     state.wallInstances=state.wallInstances.filter(wi=>wi.wallTypeId!==id);
     state.wallTypes=state.wallTypes.filter(wt=>wt.id!==id);
     closeModal();renderInv();render();
@@ -7327,23 +7327,14 @@ function promptModelQuality3D(){
 // Aceita opts: { titulo, textoConfirmar, textoCancelar, perigo }
 function confirmDialog(mensagem, opts){
   opts = opts || {};
-  const overlay = document.getElementById('confirmOverlay');
-  const body    = document.getElementById('confirmModalBody');
-  return new Promise(resolve => {
-    body.innerHTML = `
-      <h3 data-planta-style="planta-inline-040">${esc(opts.titulo || 'Confirmar ação')}</h3>
-      <p>${esc(mensagem)}</p>
-      <div class="modal-actions" data-planta-style="planta-inline-045">
-        <button class="tbtn" id="cf_cancelar">${esc(opts.textoCancelar || 'Cancelar')}</button>
-        <button class="tbtn ${opts.perigo ? 'del' : 'primary'}" id="cf_confirmar">${esc(opts.textoConfirmar || 'Continuar')}</button>
-      </div>`;
-    const fechar = (resultado) => { overlay.classList.remove('show'); resolve(resultado); };
-    document.getElementById('cf_cancelar').onclick  = () => fechar(false);
-    document.getElementById('cf_confirmar').onclick = () => fechar(true);
-    overlay.classList.add('show');
+  return window.SuperAppConfirm.open({
+    title: opts.titulo || (opts.perigo ? 'Excluir este item?' : 'Confirmar ação'),
+    message: mensagem,
+    confirmLabel: opts.textoConfirmar || (opts.perigo ? 'Excluir' : 'Continuar'),
+    cancelLabel: opts.textoCancelar || 'Cancelar',
+    destructive: !!opts.perigo
   });
 }
-
 // Verificação de privilégio Admin (perfil retornado pelo backend)
 function isAdmin(){return pricingData?.perfil==="Admin";}
 
@@ -7799,8 +7790,8 @@ function openTypeModal(id, forceMez, cloneFrom){
   
   document.getElementById("f_cancel").onclick=closeModal;
   document.getElementById("f_save").onclick=()=>saveType({l:curDWallL,r:curDWallR});
-  if(id)document.getElementById("f_del").onclick=()=>{
-    if(usedCount(id)&&!confirm("Há pisos desse tipo na planta. Excluir o tipo e remover os pisos?"))return;
+  if(id)document.getElementById("f_del").onclick=async()=>{
+    if(!(await window.SuperAppConfirm.delete(usedCount(id)?"Há pisos desse tipo na planta. O tipo e todos os pisos vinculados serão removidos.":"Este tipo de piso será removido.",{title:"Excluir tipo de piso?"})))return;
     state.panels=state.panels.filter(p=>p.typeId!==id);state.types=state.types.filter(t=>t.id!==id);
     closeModal();renderInv();render();};
   // Wire the lateral window checkbox toggle
@@ -8061,8 +8052,8 @@ function openStairModal(id, cloneFrom){
 
   document.getElementById("fs_cancel").onclick=closeModal;
   document.getElementById("fs_save").onclick=()=>saveStairType(curStairRot);
-  if(id) document.getElementById("fs_del").onclick=()=>{
-    if(usedCount(id)&&!confirm("Há escadas desse tipo na planta. Excluir o tipo e remover as escadas?"))return;
+  if(id) document.getElementById("fs_del").onclick=async()=>{
+    if(!(await window.SuperAppConfirm.delete(usedCount(id)?"Há escadas desse tipo na planta. O tipo e todas as escadas vinculadas serão removidos.":"Este tipo de escada será removido.",{title:"Excluir tipo de escada?"})))return;
     state.panels=state.panels.filter(p=>p.typeId!==id);state.types=state.types.filter(t=>t.id!==id);
     closeModal();renderInv();render();
   };

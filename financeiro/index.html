@@ -19,6 +19,7 @@
 <script src="../shared/ui-controls.js?v=20260807-controls-10" defer></script>
 
 
+  <link rel="stylesheet" href="../shared/delete-confirm.css?v=20260807-1">
 </head>
 <body>
 <div id="appRoot" class="fin-csp-002">
@@ -698,24 +699,9 @@
 <!-- ── TOAST ── -->
 <div id="toast"></div>
 
-<!-- ── CONFIRMAÇÃO (substitui confirm() nativo do navegador) ── -->
-<div class="confirm-backdrop" id="confirmBackdrop">
-  <div class="confirm-box">
-    <h3 id="confirmTitle">⚠️ Confirmar ação</h3>
-    <div id="confirmMsg"></div>
-    <div class="confirm-type-wrap fin-csp-002" id="confirmTypeWrap">
-      <label id="confirmTypeLabel"></label>
-      <input id="confirmTypeInput" autocomplete="off" placeholder="Digite aqui...">
-    </div>
-    <div class="btns">
-      <button class="btn bs" id="confirmCancelBtn">Cancelar</button>
-      <button class="btn brd" id="confirmOkBtn">Confirmar</button>
-    </div>
-  </div>
-</div>
-
 </div> <!-- /appRoot -->
 
+<script src="../shared/delete-confirm.js?v=20260807-1"></script>
 <script src="./app-support.js"></script>
 
 <script src="./app.js?v=20260805-finance-ui-fix-3"></script>
