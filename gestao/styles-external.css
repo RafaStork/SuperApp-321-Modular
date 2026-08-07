@@ -362,10 +362,10 @@ td.cell-colored > .fill{ display:flex; align-items:center; height:100%; min-heig
 .progress-bar{width:90px; height:8px; background:var(--bg-soft); border:1px solid var(--border-soft); border-radius:99px; overflow:hidden; box-shadow:inset 0 1px 2px rgba(20,24,30,.06);}
 [data-theme="dark"] .progress-bar{ box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
 .progress-bar > div{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-3)); transition:width .5s var(--ease-out); border-radius:99px; box-shadow:0 0 8px -1px var(--accent-soft); transform-origin:left center;}
-.progress-bar > div.progress-bar-enter{position:relative;animation:progressBarReveal .76s cubic-bezier(.2,.78,.28,1) both;will-change:clip-path,filter}
-.progress-bar > div.progress-bar-enter::after{content:"";position:absolute;inset:0;width:38%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent);transform:translateX(-140%);animation:progressBarShine .72s .12s cubic-bezier(.2,.7,.3,1) both}
-@keyframes progressBarReveal{0%{clip-path:inset(0 100% 0 0);filter:brightness(1.08)}100%{clip-path:inset(0 0 0 0);filter:brightness(1)}}
-@keyframes progressBarShine{to{transform:translateX(330%)}}
+.progress-bar > div.progress-bar-enter{position:relative;animation:progressBarReveal 1.05s cubic-bezier(.16,.82,.24,1) both;will-change:transform,filter;transform-origin:left center}
+.progress-bar > div.progress-bar-enter::after{content:"";position:absolute;inset:-1px 0;width:46%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);transform:translateX(-150%);animation:progressBarShine 1s .2s cubic-bezier(.18,.75,.28,1) both}
+@keyframes progressBarReveal{0%{transform:scaleX(0);filter:brightness(1.18) saturate(1.15)}72%{transform:scaleX(1);filter:brightness(1.1) saturate(1.08)}100%{transform:scaleX(1);filter:brightness(1) saturate(1)}}
+@keyframes progressBarShine{0%{transform:translateX(-150%);opacity:0}18%{opacity:1}100%{transform:translateX(300%);opacity:0}}
 .my-task-progress,.project-progress{display:grid;gap:7px;min-width:112px}.my-task-progress-input,.project-progress-input{display:flex;align-items:center;gap:5px}
 .my-task-progress-input .cell-number,.project-progress-input .cell-number{min-width:68px}.my-task-progress-bar,.project-progress-bar{width:100%}
 @media(prefers-reduced-motion:reduce){.progress-bar>div,.progress-bar>div::after{animation:none!important}}
@@ -786,3 +786,12 @@ svg text{ font-family:var(--font); }
 .csp-inline-098{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
 .csp-inline-099{width:auto;min-width:0;}
 .csp-inline-100{grid-template-columns:repeat(auto-fit,minmax(320px,1fr));}
+
+/* Modais: a moldura nunca rola; somente o corpo central pode rolar. */
+.modal-backdrop{align-items:center;overflow:hidden;padding:16px}
+.modal.modal-wide{position:relative;overflow:hidden!important}
+.modal.modal-wide>.modal-fixed-head.superapp-modal-head-native{position:relative!important;top:auto!important;z-index:4!important;margin:0!important;padding:24px 30px 18px!important;background:var(--surface)!important;box-shadow:0 8px 20px -20px rgba(0,0,0,.75)}
+.modal.modal-wide>.modal-scroll-body{min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.modal.modal-wide>.modal-fixed-foot.superapp-modal-foot{position:relative!important;bottom:auto!important;z-index:4!important;margin:0!important;padding:14px 30px!important;background:var(--surface)!important;border-radius:0 0 var(--r-lg) var(--r-lg)!important}
+.modal.modal-wide>.modal-fixed-foot .btn{margin-inline:0!important}
+@media(max-width:560px){.modal-backdrop{padding:10px}.modal.modal-wide{width:calc(100vw - 20px);height:calc(100dvh - 20px);max-height:calc(100dvh - 20px)}.modal.modal-wide>.modal-fixed-head.superapp-modal-head-native{padding:18px 16px 14px!important}.modal.modal-wide>.modal-scroll-body{padding:14px 16px}.modal.modal-wide>.modal-fixed-foot.superapp-modal-foot{padding:12px 16px calc(12px + env(safe-area-inset-bottom))!important}}

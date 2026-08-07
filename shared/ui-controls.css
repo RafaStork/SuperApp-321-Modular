@@ -191,8 +191,11 @@
 [data-app-code="simulacao"] #modal{backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
 
 .superapp-modal-frame{--superapp-modal-pad-x:26px;--superapp-modal-pad-y:22px;border:1px solid var(--ui-control-line)!important;border-radius:15px!important;background:var(--ui-control-bg)!important;box-shadow:0 25px 75px rgba(0,0,0,.34)!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-width:none!important}
-.superapp-modal-frame{scrollbar-width:none!important}
 .superapp-modal-frame::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+.superapp-modal-frame.superapp-modal-structured{display:flex!important;flex-direction:column!important;overflow:hidden!important}
+.superapp-modal-body{flex:1 1 auto;min-height:0;min-width:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.superapp-modal-structured>.superapp-modal-head,.superapp-modal-structured>.superapp-modal-head-native{position:relative!important;top:auto!important;flex:0 0 auto!important}
+.superapp-modal-structured>.superapp-modal-foot{position:relative!important;bottom:auto!important;flex:0 0 auto!important}
 [data-app-code="gestao"] .superapp-modal-frame{--superapp-modal-pad-x:28px;--superapp-modal-pad-y:26px}
 [data-app-code="planta"] .superapp-modal-frame,[data-app-code="simulacao"] .superapp-modal-frame{--superapp-modal-pad-x:22px;--superapp-modal-pad-y:22px}
 

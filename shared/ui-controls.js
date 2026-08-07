@@ -363,6 +363,24 @@
 
     const footers=[...frame.querySelectorAll(':scope > .modal-actions,:scope > .modal-fixed-foot,:scope > .btns,:scope > .actions:last-child,:scope > footer,:scope > form > .modal-actions:last-child,:scope > form > .modal-fixed-foot:last-child,:scope > form > .btns:last-child')];
     footers.forEach(footer=>footer.classList.add("superapp-modal-foot"));
+
+    const directFooter=footers.find(footer=>footer.parentElement===frame);
+    const existingBody=frame.querySelector(':scope > .superapp-modal-body,:scope > .modal-scroll-body,:scope > .modal-body');
+    frame.classList.toggle('superapp-modal-structured',Boolean(existingBody));
+    if(head?.parentElement===frame&&directFooter&&!existingBody){
+      const bodyNodes=[...frame.childNodes].filter(node=>{
+        if(node===head||node===directFooter)return false;
+        if(node.nodeType===Node.ELEMENT_NODE&&node.matches?.('.modal-close-top,.mc'))return false;
+        return node.nodeType!==Node.TEXT_NODE||Boolean(node.textContent?.trim());
+      });
+      if(bodyNodes.length){
+        const body=document.createElement('div');
+        body.className='superapp-modal-body';
+        frame.classList.add('superapp-modal-structured');
+        frame.insertBefore(body,directFooter);
+        bodyNodes.forEach(node=>body.append(node));
+      }
+    }
     frame.querySelectorAll('button').forEach(decorateModalButton);
     head?.querySelectorAll('button').forEach(decorateModalButton);
   }
