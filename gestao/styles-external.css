@@ -362,11 +362,13 @@ td.cell-colored > .fill{ display:flex; align-items:center; height:100%; min-heig
 .progress-bar{width:90px; height:8px; background:var(--bg-soft); border:1px solid var(--border-soft); border-radius:99px; overflow:hidden; box-shadow:inset 0 1px 2px rgba(20,24,30,.06);}
 [data-theme="dark"] .progress-bar{ box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
 .progress-bar > div{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-3)); transition:width .5s var(--ease-out); border-radius:99px; box-shadow:0 0 8px -1px var(--accent-soft); transform-origin:left center;}
-.progress-bar > div.progress-bar-enter{animation:progressBarReveal .62s var(--ease-out) both}
-@keyframes progressBarReveal{from{transform:scaleX(0);opacity:.52}to{transform:scaleX(1);opacity:1}}
+.progress-bar > div.progress-bar-enter{position:relative;animation:progressBarReveal .76s cubic-bezier(.2,.78,.28,1) both;will-change:clip-path,filter}
+.progress-bar > div.progress-bar-enter::after{content:"";position:absolute;inset:0;width:38%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.48),transparent);transform:translateX(-140%);animation:progressBarShine .72s .12s cubic-bezier(.2,.7,.3,1) both}
+@keyframes progressBarReveal{0%{clip-path:inset(0 100% 0 0);filter:brightness(1.08)}100%{clip-path:inset(0 0 0 0);filter:brightness(1)}}
+@keyframes progressBarShine{to{transform:translateX(330%)}}
 .my-task-progress,.project-progress{display:grid;gap:7px;min-width:112px}.my-task-progress-input,.project-progress-input{display:flex;align-items:center;gap:5px}
 .my-task-progress-input .cell-number,.project-progress-input .cell-number{min-width:68px}.my-task-progress-bar,.project-progress-bar{width:100%}
-@media(prefers-reduced-motion:reduce){.progress-bar>div{animation:none}}
+@media(prefers-reduced-motion:reduce){.progress-bar>div,.progress-bar>div::after{animation:none!important}}
 .dashboard-meta-readonly{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-top:6px;color:var(--text-faint);font-size:10px}.dashboard-meta-readonly strong{color:var(--text-muted);font-size:10.5px}.dashboard-meta-readonly.is-empty{justify-content:flex-start;font-style:italic}
 
 

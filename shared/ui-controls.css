@@ -190,15 +190,17 @@
 [data-app-code="obras"] .modal-backdrop,
 [data-app-code="simulacao"] #modal{backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
 
-.superapp-modal-frame{--superapp-modal-pad-x:26px;--superapp-modal-pad-y:22px;border:1px solid var(--ui-control-line)!important;border-radius:15px!important;background:var(--ui-control-bg)!important;box-shadow:0 25px 75px rgba(0,0,0,.34)!important}
+.superapp-modal-frame{--superapp-modal-pad-x:26px;--superapp-modal-pad-y:22px;border:1px solid var(--ui-control-line)!important;border-radius:15px!important;background:var(--ui-control-bg)!important;box-shadow:0 25px 75px rgba(0,0,0,.34)!important;overflow-x:hidden!important;overscroll-behavior:contain;scrollbar-width:none!important}
+.superapp-modal-frame{scrollbar-width:none!important}
+.superapp-modal-frame::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
 [data-app-code="gestao"] .superapp-modal-frame{--superapp-modal-pad-x:28px;--superapp-modal-pad-y:26px}
 [data-app-code="planta"] .superapp-modal-frame,[data-app-code="simulacao"] .superapp-modal-frame{--superapp-modal-pad-x:22px;--superapp-modal-pad-y:22px}
 
-.superapp-modal-head{position:sticky;top:calc(var(--superapp-modal-pad-y) * -1);z-index:40;margin:calc(var(--superapp-modal-pad-y) * -1) calc(var(--superapp-modal-pad-x) * -1) 18px;padding:18px var(--superapp-modal-pad-x) 14px;background:var(--ui-control-bg);border-bottom:1px solid var(--ui-control-line);border-radius:15px 15px 0 0}
+.superapp-modal-head{position:sticky;top:calc(var(--superapp-modal-pad-y) * -1);z-index:40;flex:0 0 auto;margin:calc(var(--superapp-modal-pad-y) * -1) calc(var(--superapp-modal-pad-x) * -1) 18px;padding:18px var(--superapp-modal-pad-x) 14px;background:var(--ui-control-bg)!important;border-bottom:1px solid var(--ui-control-line);border-radius:15px 15px 0 0;isolation:isolate}
 .superapp-modal-head>h2,.superapp-modal-head>h3{margin:0!important;padding-right:38px}
 .superapp-modal-head>.sub,.superapp-modal-head>.msub{margin:5px 38px 0 0!important;color:var(--ui-control-muted)}
 .superapp-modal-head>.modal-close-top,.superapp-modal-head>.mc{top:13px!important;right:var(--superapp-modal-pad-x)!important}
-.superapp-modal-foot{position:sticky!important;bottom:calc(var(--superapp-modal-pad-y) * -1)!important;z-index:40;margin:18px calc(var(--superapp-modal-pad-x) * -1) calc(var(--superapp-modal-pad-y) * -1)!important;padding:14px var(--superapp-modal-pad-x)!important;background:var(--ui-control-bg)!important;border-top:1px solid var(--ui-control-line)!important;border-radius:0 0 15px 15px}
+.superapp-modal-foot{position:sticky!important;bottom:calc(var(--superapp-modal-pad-y) * -1)!important;z-index:40;flex:0 0 auto;margin:18px calc(var(--superapp-modal-pad-x) * -1) calc(var(--superapp-modal-pad-y) * -1)!important;padding:14px var(--superapp-modal-pad-x)!important;background:var(--ui-control-bg)!important;border-top:1px solid var(--ui-control-line)!important;border-radius:0 0 15px 15px}
 
 [data-app-code="planta"] .q-header,[data-app-code="planta"] .pm-header,[data-app-code="planta"] .pdf-modal-header,
 [data-app-code="obras"] .modal>header{background:var(--ui-control-bg)}
@@ -223,7 +225,7 @@
 
 /* Formato unico de modal, baseado na referencia Var 3. */
 .superapp-modal-frame{color:var(--ui-control-ink)!important;font-family:var(--font,'Montserrat',sans-serif)!important}
-.superapp-modal-head-native{position:sticky!important;top:0!important;z-index:40!important;background:var(--ui-control-bg)!important;border-bottom:1px solid var(--ui-control-line)!important;color:var(--ui-control-ink)!important}
+.superapp-modal-head-native{position:sticky!important;top:0!important;z-index:40!important;flex:0 0 auto!important;background:var(--ui-control-bg)!important;border-bottom:1px solid var(--ui-control-line)!important;color:var(--ui-control-ink)!important;isolation:isolate}
 .superapp-modal-head>h2,.superapp-modal-head>h3,.superapp-modal-head-native h2,.superapp-modal-head-native h3{color:var(--ui-control-ink)!important;font-family:var(--font,'Montserrat',sans-serif)!important;font-weight:800!important;letter-spacing:-.01em!important}
 .superapp-modal-head .eyebrow,.superapp-modal-head-native small{color:#f1783a!important;font-size:9px!important;font-weight:800!important;letter-spacing:.12em!important;text-transform:uppercase!important}
 .superapp-modal-button{min-height:38px!important;padding:9px 15px!important;border-radius:9px!important;font:700 12.5px/1.2 var(--font,'Montserrat',sans-serif)!important;transition:background-color .16s ease,border-color .16s ease,color .16s ease,transform .14s ease,box-shadow .16s ease!important}

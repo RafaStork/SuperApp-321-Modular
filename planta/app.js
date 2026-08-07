@@ -10155,9 +10155,11 @@ function abrirQuantitativo() {
           <option value="percent" ${qDesconto.tipo==='percent'?'selected':''}>%</option>
           <option value="reais"   ${qDesconto.tipo==='reais'  ?'selected':''}>R$</option>
         </select>
-        <input type="number" id="q_desc_val" min="0" step="0.01"
-          value="${qDesconto.valor > 0 ? qDesconto.valor : ''}"
-          placeholder="0"
+        <input type="text" id="q_desc_val" min="0" step="${qDesconto.tipo === 'reais' ? '0.01' : '1'}"
+          value="${esc(qFormatarDescontoValor(qDesconto.valor, qDesconto.tipo))}"
+          placeholder="${qDesconto.tipo === 'reais' ? 'R$ 0,00' : '0%'}"
+          inputmode="decimal"
+          data-money-masked="discount"
           data-planta-apply-discount="true"
           data-planta-enter-commit="true">
       </div>
@@ -10426,13 +10428,42 @@ function qAjustarPreco(nome, valorStr) {
 
 // Lê os controles de desconto do modal e actualiza qDesconto,
 // depois re-abre o modal para reflectir o novo valor final.
+function qParseDescontoValor(valor) {
+  let texto = String(valor ?? '').trim().replace(/\s/g, '').replace(/[^\d,.\-]/g, '');
+  if (texto.includes(',')) texto = texto.replace(/\./g, '').replace(',', '.');
+  const numero = Number.parseFloat(texto);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function qFormatarDescontoValor(valor, tipo = qDesconto.tipo) {
+  const numero = Math.max(0, Number(valor) || 0);
+  if (!numero) return '';
+  if (tipo === 'reais') {
+    return `R$ ${numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `${numero.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
+}
+
+function qFormatarCampoDesconto(input = document.getElementById('q_desc_val')) {
+  if (!input) return;
+  input.value = qFormatarDescontoValor(qDesconto.valor, qDesconto.tipo);
+  input.placeholder = qDesconto.tipo === 'reais' ? 'R$ 0,00' : '0%';
+  input.setAttribute('step', qDesconto.tipo === 'reais' ? '0.01' : '1');
+  if (qDesconto.tipo === 'percent') input.setAttribute('max', '100');
+  else input.removeAttribute('max');
+}
+
 function qAplicarDesconto() {
   const tipoEl = document.getElementById('q_desc_tipo');
   const valEl  = document.getElementById('q_desc_val');
   if (!tipoEl || !valEl) return;
   qDesconto.tipo  = tipoEl.value;
-  qDesconto.valor = Math.max(0, parseFloat(valEl.value) || 0);
+  const valor = qParseDescontoValor(valEl.value);
+  qDesconto.valor = qDesconto.tipo === 'percent'
+    ? Math.min(100, Math.max(0, valor))
+    : Math.max(0, valor);
   qAtualizarQuantitativoNoLugar('');
+  if (document.activeElement !== valEl) qFormatarCampoDesconto(valEl);
 }
 
 // Adiciona produto com mesclagem inteligente:
@@ -13703,6 +13734,16 @@ document.addEventListener('click', (event) => {
     }
   });
 
+  document.addEventListener('focusin', (event) => {
+    const target = event.target;
+    if (target?.id !== 'q_desc_val') return;
+    const valor = Math.max(0, Number(qDesconto.valor) || 0);
+    target.value = valor > 0
+      ? valor.toLocaleString('pt-BR', { useGrouping: false, maximumFractionDigits: 2 })
+      : '';
+    queueMicrotask(() => target.select());
+  });
+
   document.addEventListener('change', (event) => {
     const target = event.target;
     if (target?.matches?.('[data-planta-toggle-industria]')) {
@@ -13735,6 +13776,11 @@ document.addEventListener('click', (event) => {
 
   document.addEventListener('superapp:number-step', (event) => {
     const target = event.target;
+    if (target?.id === 'q_desc_val') {
+      qAplicarDesconto();
+      qFormatarCampoDesconto(target);
+      return;
+    }
     if (!target?.matches?.('[data-planta-q-set]')) return;
     target.dataset.plantaStepCommit = 'true';
     const nome = target.getAttribute('data-planta-q-set') || '';

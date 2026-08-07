@@ -961,7 +961,9 @@ main{position:relative}
 @media (max-width:560px) and (orientation:portrait){.mobile-3d-elevation{grid-template-rows:40px auto 40px}.mobile-3d-elevation button{width:40px;height:40px}.mobile-3d-controls{gap:8px}}
 /* Editor de piso: cabe?alho/rodap? fixos e popovers sem recorte. */
 .tm-section:has(.ui-select-popover.is-open),.tm-section:has(.ui-date-popover.is-open){overflow:visible;position:relative;z-index:24}
-.modal[data-modal="floor-editor"]>h3{position:sticky;top:-22px;z-index:28;margin:-22px -22px 18px;padding:18px 22px;background:var(--surface);border-bottom:1px solid var(--line)}
+.modal[data-modal="floor-editor"]{width:min(860px,calc(100vw - 36px));max-width:860px!important;max-height:92dvh;overflow-x:hidden!important}
+.modal[data-modal="floor-editor"]>.superapp-modal-head,.modal[data-modal="floor-editor"]>h3{background:var(--surface)!important;box-shadow:0 8px 18px -17px rgba(0,0,0,.72);isolation:isolate}
+.modal[data-modal="floor-editor"]>.superapp-modal-head{top:-22px!important;z-index:45!important}
 .modal[data-modal="floor-editor"]>.modal-actions{position:sticky;bottom:-22px;z-index:28;margin:18px -22px -22px;padding:14px 22px;background:var(--surface);border-top:1px solid var(--line)}
 /* O editor de custos usa a largura dispon?vel e dispensa rolagem horizontal. */
 #gestorOverlay .modal{width:min(920px,calc(100vw - 32px));max-width:920px}
@@ -969,7 +971,8 @@ main{position:relative}
 #gestorOverlay .q-table th:first-child,#gestorOverlay .q-table td:first-child{width:46%;max-width:none}
 .modal[data-modal="quantitativo"],.modal[data-modal="quantitativo"] .q-scroll-mid,.modal[data-modal="quantitativo"] .q-table-wrap{overflow-anchor:none}
 @media(max-width:560px){
-  .modal[data-modal="floor-editor"]>h3{top:-14px;margin:-14px -14px 14px;padding:14px}
+  .modal[data-modal="floor-editor"]{width:calc(100vw - 20px);max-height:96dvh}
+  .modal[data-modal="floor-editor"]>.superapp-modal-head,.modal[data-modal="floor-editor"]>h3{top:-14px!important}
   .modal[data-modal="floor-editor"]>.modal-actions{bottom:-14px;margin:14px -14px -14px;padding:12px 14px}
   #gestorOverlay .modal{width:calc(100vw - 20px)}
 }
@@ -978,7 +981,7 @@ main{position:relative}
 .modal[data-modal="quantitativo"] .q-modal{height:100%;overflow:hidden}
 .modal[data-modal="quantitativo"] .q-scroll-mid{overflow:hidden}
 .modal[data-modal="quantitativo"] .q-table-wrap{flex:1 1 auto;max-height:none;min-height:140px}
-.q-totals-sticky{flex:0 0 auto;display:grid;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface);box-shadow:0 -7px 22px rgba(20,24,30,.06)}
+.q-totals-sticky{flex:0 0 auto;display:grid;border:1px solid var(--line);border-radius:var(--r);overflow:visible;background:var(--surface);box-shadow:0 -7px 22px rgba(20,24,30,.06)}
 .q-totals-sticky:empty{display:none}
 .q-totals-sticky .q-total-block,.q-totals-sticky .q-desconto-block,.q-totals-sticky .q-final-block,.q-totals-sticky .q-cost-total-block{margin:0;border-radius:0}
 
@@ -1010,17 +1013,22 @@ main{position:relative}
 .modal[data-modal="quantitativo"] .q-table td{padding:7px 9px}
 .modal[data-modal="quantitativo"] .q-table .q-type-name{font-size:12px}
 .modal[data-modal="quantitativo"] .q-table td.num{font-size:11.5px}
-.q-totals-sticky{position:relative;z-index:18;grid-template-columns:minmax(150px,.8fr) minmax(260px,1.25fr) minmax(170px,.85fr);overflow:visible}
-.q-totals-sticky .q-total-block,.q-totals-sticky .q-desconto-block,.q-totals-sticky .q-final-block{min-width:0;padding:8px 11px;border-top:0;border-radius:0}
-.q-totals-sticky .q-cost-total-block{grid-column:1/-1;min-width:0;padding:9px 12px}
+.q-totals-sticky{position:relative;z-index:10;grid-template-columns:minmax(150px,.8fr) minmax(330px,1.45fr) minmax(170px,.85fr);overflow:visible}
+.q-totals-sticky .q-total-block,.q-totals-sticky .q-desconto-block,.q-totals-sticky .q-final-block{min-width:0;padding:8px 11px;border-top:0}
+.q-totals-sticky .q-total-block{border-radius:var(--r) 0 0 var(--r)!important}
+.q-totals-sticky .q-final-block{border-radius:0 var(--r) var(--r) 0!important}
+.q-totals-sticky .q-cost-total-block{grid-column:1/-1;min-width:0;padding:9px 12px;border-radius:var(--r)!important}
 .q-totals-sticky .q-desconto-block{flex-wrap:nowrap;border-left:1px solid var(--line);border-right:1px solid var(--line);gap:7px}
 .q-totals-sticky .q-total-val{font-size:17px}
 .q-totals-sticky .q-final-val{font-size:18px}
-.q-totals-sticky .q-desc-inputs{flex:0 1 145px;overflow:visible}
-.q-totals-sticky .q-desc-inputs .ui-control-shell{min-width:66px;overflow:visible;z-index:25}
+.q-totals-sticky .q-desc-inputs{flex:1 1 225px;min-width:225px;overflow:visible}
+.q-totals-sticky .q-desc-inputs>.ui-control-shell{flex:0 0 72px;min-width:72px;overflow:visible;z-index:25}
+.q-totals-sticky .q-desc-inputs>.ui-number-shell{flex:1 1 150px;min-width:150px;max-width:none}
+.q-totals-sticky .q-desc-inputs>.ui-number-shell input{text-align:right;font-size:12px!important}
 .q-totals-sticky .q-desc-inputs .ui-select-button{min-height:34px;padding:6px 9px;font-size:11.5px}
 .q-totals-sticky .q-desc-inputs .ui-select-popover{top:auto;bottom:calc(100% + 6px);width:92px;min-width:92px;max-height:150px;transform-origin:bottom left}
 .q-totals-sticky .q-desc-inputs .ui-select-popover:not(.is-open){transform:translateY(5px) scale(.985)}
+.modal[data-modal="quantitativo"] .q-quick-add{z-index:40}
 .modal[data-modal="quantitativo"] .q-avulso-section{padding:7px 10px}
 .modal[data-modal="quantitativo"] .q-avulso-title{margin-bottom:5px;font-size:10px}
 .modal[data-modal="quantitativo"] .q-avulso-row .ui-select-button{min-height:34px;padding-block:6px;font-size:11.5px}
@@ -1031,6 +1039,9 @@ main{position:relative}
   .modal[data-modal="quantitativo"]{height:96dvh!important}
   .modal[data-modal="quantitativo"] .q-table-wrap{min-height:180px}
   .q-totals-sticky{grid-template-columns:1fr;max-height:none;overflow:visible}
+  .q-totals-sticky .q-total-block{border-radius:var(--r) var(--r) 0 0!important}
   .q-totals-sticky .q-desconto-block{border-left:0;border-right:0;border-top:1px solid var(--line)}
-  .q-totals-sticky .q-final-block{border-top:1px solid var(--line)}
+  .q-totals-sticky .q-final-block{border-top:1px solid var(--line);border-radius:0 0 var(--r) var(--r)!important}
+  .q-totals-sticky .q-desc-inputs{min-width:0}
+  .q-totals-sticky .q-desc-inputs>.ui-number-shell{min-width:128px}
 }
