@@ -314,6 +314,23 @@
     '[data-app-code="obras"] .modal-backdrop > .modal',
     '[data-app-code="simulacao"] #modal > .modalbox'
   ].join(',');
+  function normalizeModalText(value){
+    return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+  }
+  function decorateModalButton(button){
+    if(!button||button.dataset.superappModalButton==='true')return;
+    const label=normalizeModalText(button.textContent||button.getAttribute('aria-label'));
+    const closeIcon=button.matches('.mc,.modal-close-top,.icon-btn[aria-label="Fechar"],#modal-close,[data-planta-close-preview]') || label==='\u00d7' || label==='x' || label==='\u2715';
+    let variant='';
+    if(closeIcon)variant='close';
+    else if(/^(excluir|apagar|remover)/.test(label))variant='danger';
+    else if(/^(salvar|confirmar|concluir|gerar|baixar|pre-visualizar|sim\b|ok\b)/.test(label))variant='primary';
+    else if(/^(cancelar|fechar|nao\b|voltar)/.test(label))variant='secondary';
+    if(!variant)return;
+    button.dataset.superappModalButton='true';
+    button.classList.add('superapp-modal-button',`superapp-modal-button-${variant}`);
+  }
+
 
   function decorateModalFrame(frame){
     if(!frame||frame.dataset.superappModalDecorated==="true")return;
@@ -322,7 +339,7 @@
     if(document.documentElement.dataset.appCode==="obras")return;
 
     let head=frame.querySelector(':scope > .superapp-modal-head');
-    const nativeHead=frame.querySelector(':scope > header,:scope > .modal-fixed-head,:scope > .pm-header,:scope > .pdf-modal-header');
+    const nativeHead=frame.querySelector(':scope > header,:scope > .modal-fixed-head,:scope > .pm-header,:scope > .pdf-modal-header,:scope > .q-modal > .q-header');
     if(nativeHead)nativeHead.classList.add("superapp-modal-head-native");
     if(!head&&nativeHead)head=nativeHead;
     if(head){
@@ -344,8 +361,10 @@
       }
     }
 
-    const footers=[...frame.querySelectorAll(':scope > .modal-actions,:scope > .btns,:scope > .actions:last-child,:scope > footer,:scope > form > .modal-actions:last-child,:scope > form > .btns:last-child')];
+    const footers=[...frame.querySelectorAll(':scope > .modal-actions,:scope > .modal-fixed-foot,:scope > .btns,:scope > .actions:last-child,:scope > footer,:scope > form > .modal-actions:last-child,:scope > form > .modal-fixed-foot:last-child,:scope > form > .btns:last-child')];
     footers.forEach(footer=>footer.classList.add("superapp-modal-foot"));
+    frame.querySelectorAll('button').forEach(decorateModalButton);
+    head?.querySelectorAll('button').forEach(decorateModalButton);
   }
 
   function decorateModals(root=document){

@@ -1536,6 +1536,13 @@ function buildCalendarField(valorISO, onChange){
   return html;
 }
 
+const progressBarsAnimated = new Set();
+function progressBarEntryClass(key){
+  if(progressBarsAnimated.has(key)) return '';
+  progressBarsAnimated.add(key);
+  return ' progress-bar-enter';
+}
+
 function renderCell(table, row, field){
   const id = 'f_'+field.key+'_'+row.id;
   const w = field.w ? `style="min-width:${field.w}px"` : '';
@@ -1545,12 +1552,13 @@ function renderCell(table, row, field){
   if (field.edit==='percent'){
     const pct = Math.round((row[field.key]||0)*100);
     const barId = id+'_bar';
+    const enterClass = progressBarEntryClass(barId);
     const out = `<div class="project-progress">
       <div class="project-progress-input">
         <input type="number" class="cell-number csp-inline-006" id="${id}" value="${pct}" min="0" max="100" step="5" />
         <span class="csp-inline-007">%</span>
       </div>
-      <div class="progress-bar project-progress-bar" aria-hidden="true"><div id="${barId}" data-csp-style="width:${pct}%"></div></div>
+      <div class="progress-bar project-progress-bar" aria-hidden="true"><div class="${enterClass.trim()}" id="${barId}" data-csp-style="width:${pct}%"></div></div>
     </div>`;
     queueMicrotask(()=>{
       const inp = document.getElementById(id);
@@ -2788,9 +2796,10 @@ async function viewMinhasTarefas(){
       const pctCell = tr.querySelector('[data-cell="pct"]');
       const pctId = 'my_pct_'+r.id;
       const pctAtual = Math.max(0, Math.min(100, Math.round((r.percentual_conclusao||0)*100)));
+      const pctEnterClass = progressBarEntryClass(pctId+'_bar');
       pctCell.innerHTML = badgeCampoMT(r.id,'percentual_conclusao') + `<div class="my-task-progress">
         <div class="my-task-progress-input"><input type="number" class="cell-number csp-inline-006" id="${pctId}" value="${pctAtual}" min="0" max="100" step="5" /><span>%</span></div>
-        <div class="progress-bar my-task-progress-bar" aria-hidden="true"><div data-csp-style="width:${pctAtual}%"></div></div>
+        <div class="progress-bar my-task-progress-bar" aria-hidden="true"><div class="${pctEnterClass.trim()}" data-csp-style="width:${pctAtual}%"></div></div>
       </div>`;
       pctCell.querySelector('input').addEventListener('input', (e)=>{
         const pct = Math.max(0, Math.min(100, Number(e.target.value)||0));

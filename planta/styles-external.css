@@ -992,3 +992,45 @@ main{position:relative}
   .q-totals-sticky{max-height:34vh;overflow:auto}
   .gc-confirm .gc-btns{grid-template-columns:1fr}
 }
+
+/* Segundo andar: o primeiro permanece apenas como referencia visual. */
+.floor-reference-dimmed{opacity:.55!important;filter:brightness(.42) saturate(.45) contrast(.94)!important;pointer-events:none!important;transition:opacity .18s ease,filter .18s ease}
+
+/* Quantitativo compacto: mais area para tabela e popover de desconto sem recorte. */
+.modal[data-modal="quantitativo"]{height:min(96dvh,1040px)!important;max-height:96dvh!important}
+.modal[data-modal="quantitativo"] .q-modal{gap:6px}
+.modal[data-modal="quantitativo"] .q-header{gap:6px;margin-bottom:5px;padding-bottom:7px}
+.modal[data-modal="quantitativo"] .q-header h3{font-size:16px;margin-bottom:3px}
+.modal[data-modal="quantitativo"] .q-session{padding:7px 10px;min-height:34px}
+.modal[data-modal="quantitativo"] .q-summary{gap:11px;padding:6px 10px;font-size:11.5px}
+.modal[data-modal="quantitativo"] .q-viewtab{padding:5px 10px;font-size:11.5px}
+.modal[data-modal="quantitativo"] .q-table-wrap{min-height:clamp(260px,43vh,610px)}
+.modal[data-modal="quantitativo"] .q-table{font-size:12px}
+.modal[data-modal="quantitativo"] .q-table thead th{padding:7px 9px;font-size:9.5px}
+.modal[data-modal="quantitativo"] .q-table td{padding:7px 9px}
+.modal[data-modal="quantitativo"] .q-table .q-type-name{font-size:12px}
+.modal[data-modal="quantitativo"] .q-table td.num{font-size:11.5px}
+.q-totals-sticky{position:relative;z-index:18;grid-template-columns:minmax(150px,.8fr) minmax(260px,1.25fr) minmax(170px,.85fr);overflow:visible}
+.q-totals-sticky .q-total-block,.q-totals-sticky .q-desconto-block,.q-totals-sticky .q-final-block{min-width:0;padding:8px 11px;border-top:0;border-radius:0}
+.q-totals-sticky .q-cost-total-block{grid-column:1/-1;min-width:0;padding:9px 12px}
+.q-totals-sticky .q-desconto-block{flex-wrap:nowrap;border-left:1px solid var(--line);border-right:1px solid var(--line);gap:7px}
+.q-totals-sticky .q-total-val{font-size:17px}
+.q-totals-sticky .q-final-val{font-size:18px}
+.q-totals-sticky .q-desc-inputs{flex:0 1 145px;overflow:visible}
+.q-totals-sticky .q-desc-inputs .ui-control-shell{min-width:66px;overflow:visible;z-index:25}
+.q-totals-sticky .q-desc-inputs .ui-select-button{min-height:34px;padding:6px 9px;font-size:11.5px}
+.q-totals-sticky .q-desc-inputs .ui-select-popover{top:auto;bottom:calc(100% + 6px);width:92px;min-width:92px;max-height:150px;transform-origin:bottom left}
+.q-totals-sticky .q-desc-inputs .ui-select-popover:not(.is-open){transform:translateY(5px) scale(.985)}
+.modal[data-modal="quantitativo"] .q-avulso-section{padding:7px 10px}
+.modal[data-modal="quantitativo"] .q-avulso-title{margin-bottom:5px;font-size:10px}
+.modal[data-modal="quantitativo"] .q-avulso-row .ui-select-button{min-height:34px;padding-block:6px;font-size:11.5px}
+.modal[data-modal="quantitativo"] .q-avulso-row input[type=number]{min-height:34px}
+.modal[data-modal="quantitativo"] .q-modal>.modal-actions{margin-top:2px;padding-top:8px;min-height:45px}
+
+@media(max-width:760px){
+  .modal[data-modal="quantitativo"]{height:96dvh!important}
+  .modal[data-modal="quantitativo"] .q-table-wrap{min-height:180px}
+  .q-totals-sticky{grid-template-columns:1fr;max-height:none;overflow:visible}
+  .q-totals-sticky .q-desconto-block{border-left:0;border-right:0;border-top:1px solid var(--line)}
+  .q-totals-sticky .q-final-block{border-top:1px solid var(--line)}
+}

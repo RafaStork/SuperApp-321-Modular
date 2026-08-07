@@ -210,3 +210,31 @@
   .superapp-modal-head{padding-top:14px;padding-bottom:12px}
   .superapp-modal-foot{padding-bottom:calc(12px + env(safe-area-inset-bottom))!important}
 }
+
+/* Referencia visual Prob 7: selecao laranja suave com borda #f1783a. */
+.ui-select-option[aria-selected="true"],.select-popover button.selected,.dd-panel-float .dd-opt.dd-opt-sel{
+  background:#fff1e9!important;border:1px solid #f1783a!important;color:#7a3518!important;font-weight:800!important;
+  box-shadow:inset 0 0 0 1px rgba(241,120,58,.18)!important;
+}
+[data-theme="dark"] .ui-select-option[aria-selected="true"],[data-theme="dark"] .select-popover button.selected,[data-theme="dark"] .dd-panel-float .dd-opt.dd-opt-sel{
+  background:#42312c!important;border-color:#f1783a!important;color:#edeff2!important;
+  box-shadow:inset 0 0 0 1px rgba(241,120,58,.2)!important;
+}
+
+/* Formato unico de modal, baseado na referencia Var 3. */
+.superapp-modal-frame{color:var(--ui-control-ink)!important;font-family:var(--font,'Montserrat',sans-serif)!important}
+.superapp-modal-head-native{position:sticky!important;top:0!important;z-index:40!important;background:var(--ui-control-bg)!important;border-bottom:1px solid var(--ui-control-line)!important;color:var(--ui-control-ink)!important}
+.superapp-modal-head>h2,.superapp-modal-head>h3,.superapp-modal-head-native h2,.superapp-modal-head-native h3{color:var(--ui-control-ink)!important;font-family:var(--font,'Montserrat',sans-serif)!important;font-weight:800!important;letter-spacing:-.01em!important}
+.superapp-modal-head .eyebrow,.superapp-modal-head-native small{color:#f1783a!important;font-size:9px!important;font-weight:800!important;letter-spacing:.12em!important;text-transform:uppercase!important}
+.superapp-modal-button{min-height:38px!important;padding:9px 15px!important;border-radius:9px!important;font:700 12.5px/1.2 var(--font,'Montserrat',sans-serif)!important;transition:background-color .16s ease,border-color .16s ease,color .16s ease,transform .14s ease,box-shadow .16s ease!important}
+.superapp-modal-button:hover{transform:translateY(-1px)!important}
+.superapp-modal-button-secondary{background:var(--ui-control-bg)!important;border:1px solid var(--ui-control-line)!important;color:var(--ui-control-muted)!important;box-shadow:none!important}
+.superapp-modal-button-secondary:hover{border-color:var(--ui-control-muted)!important;color:var(--ui-control-ink)!important}
+.superapp-modal-button-primary{background:linear-gradient(135deg,#f1783a,#f9b215)!important;border:1px solid #f1783a!important;color:#fff!important;box-shadow:0 5px 14px rgba(241,120,58,.2)!important}
+.superapp-modal-button-danger{background:#e25347!important;border:1px solid #e25347!important;color:#fff!important;box-shadow:none!important}
+.superapp-modal-button-close{width:36px!important;min-width:36px!important;height:36px!important;min-height:36px!important;padding:0!important;display:grid!important;place-items:center!important;border:1px solid var(--ui-control-line)!important;border-radius:9px!important;background:var(--ui-control-soft)!important;color:var(--ui-control-ink)!important;font-size:20px!important;line-height:1!important;box-shadow:none!important}
+.superapp-modal-button-close:hover{border-color:#f1783a!important;color:#f1783a!important;background:var(--ui-control-bg)!important}
+
+@media(max-width:560px){
+  .superapp-modal-button{min-height:42px!important}
+}

@@ -128,7 +128,6 @@ let qNovosInsumos = new Set(); // nomes de insumos adicionados manualmente que n
 let qDesconto = { tipo: 'percent', valor: 0 }; // desconto aplicado ao orçamento
 let qViewTab = 'paineis';      // 'paineis' | 'insumos' — sub-aba ativa no modal de Quantitativo
 let qCostView = false;         // custo gerencial: liberado somente após confirmação e autorização do RPC
-let qRenderFrame = 0;          // evita reconstruir o modal durante o clique e deslocar a rolagem
 // Acréscimo manual de valor por item (R$), disponível para QUALQUER perfil
 // (Admin, Gestor ou Vendedor) — soma-se ao preço de tabela do item.
 // Só pode ser >= 0: dá pra cobrar a mais por um painel específico neste
@@ -5101,7 +5100,7 @@ function render(){
     const isSel=p.id===selId||selIds.has(p.id);
     const dimmed=andar2 && !isF2;
     const targetLayer=isF2?floor2Layer:floor1Layer;
-    const parts=pisoParts(p);const grp=el("g",{"data-id":p.id,style:dimmed?"cursor:default;pointer-events:none;filter:brightness(.34) saturate(.58);opacity:.45":"cursor:pointer"});
+    const parts=pisoParts(p);const grp=el("g",{"data-id":p.id,class:dimmed?"floor-reference-dimmed":"",style:dimmed?"cursor:default;pointer-events:none":"cursor:pointer"});
 
 
     parts.rects.forEach(rc=>{const[sx,sy]=toScreen(rc.x,rc.y);
@@ -5174,7 +5173,7 @@ function render(){
       });
     }
     if(parts.name.show&&parts.name.text){const[nx,ny]=toScreen(parts.name.x,parts.name.y);
-      const ng=el("g",{"data-name":p.id,style:dimmed?"cursor:default;pointer-events:none":"cursor:move"});
+      const ng=el("g",{"data-name":p.id,class:dimmed?"floor-reference-dimmed":"",style:dimmed?"cursor:default;pointer-events:none":"cursor:move"});
       const tw=Math.max(parts.name.text.length*7.5+16,30);
       ng.appendChild(el("rect",{x:nx-tw/2,y:ny-9,width:tw,height:18,fill:"transparent"}));
       const t=el("text",{x:nx,y:ny+4,class:"name-lbl","font-size":13});
@@ -5185,7 +5184,7 @@ function render(){
     const isSel=inst.id===selId||selIds.has(inst.id);
     const dimmedWall=andar2; // paredes avulsas são sempre do 1º andar
     const parts=wallInstanceParts(inst);
-    const grp=el("g",{"data-wall-inst":inst.id,style:dimmedWall?"cursor:default;pointer-events:none;filter:brightness(.34) saturate(.58);opacity:.45":"cursor:pointer"});
+    const grp=el("g",{"data-wall-inst":inst.id,class:dimmedWall?"floor-reference-dimmed":"",style:dimmedWall?"cursor:default;pointer-events:none":"cursor:pointer"});
     parts.polys.forEach(po=>{
       const pts=po.pts.map(([x,y])=>toScreen(x,y).join(",")).join(" ");
       grp.appendChild(el("polygon",{points:pts,fill:themedFill(po.fill),
@@ -5269,7 +5268,7 @@ function render(){
       svg.appendChild(el('circle',{cx:lax,cy:lay,r:3,
         fill:lblSel?'var(--accent)':'#7A828C',style:'pointer-events:none'}));
     }
-    const lg=el('g',{'data-label':l.id,style:andar2?'cursor:default;pointer-events:none;filter:brightness(.34) saturate(.58);opacity:.45':'cursor:pointer'});
+    const lg=el('g',{'data-label':l.id,class:andar2?'floor-reference-dimmed':'',style:andar2?'cursor:default;pointer-events:none':'cursor:pointer'});
     const maxLineLen=Math.max(...lines.map(ln=>ln.length));
     const tw=Math.max(maxLineLen*8+18,34);
     const th=lines.length*lineH+4;
@@ -10117,15 +10116,16 @@ function abrirQuantitativo() {
     // mesmo que usado em vários painéis); mostra em quais painéis é usado.
     const insumoLabel = it.isInsumo
       ? `<div class="q-dims" data-planta-style="planta-inline-083">usado em: ${(it.origens||[]).map(o=>esc(o)).join(', ')}</div>` : '';
+    const nomeAttr = esc(it.nome).replace(/"/g,'&quot;');
     const rowClasses = [
       it.temPreco ? '' : 'q-no-preco-row',
       it.isInsumo ? 'q-insumo-row' : '',
     ].filter(Boolean).join(' ');
-    return `<tr class="${rowClasses}">
+    return `<tr class="${rowClasses}" data-q-item-name="${nomeAttr}">
       <td><div class="q-type-name" data-planta-insumo-style="${it.isInsumo ? 'yes' : 'no'}">${it.isInsumo ? '↳ ' : ''}${esc(it.nome)}</div>${novoLabel}${insumoLabel}</td>
       <td class="num">${adjBtns}</td>
-      <td class="num">${prCell}${precoAdj}</td>
-      <td class="num">${stCell}</td>
+      <td class="num q-unit-cell"><span class="q-price-display">${prCell}</span>${precoAdj}</td>
+      <td class="num q-subtotal-cell">${stCell}</td>
     </tr>`;
   }).join('');
 
@@ -10210,7 +10210,7 @@ function abrirQuantitativo() {
     const insOrigemLabel = ins.origens.length
       ? `<div class="q-dims" data-planta-style="planta-inline-083">usado em: ${ins.origens.map(o=>esc(o)).join(', ')}</div>`
       : `<div class="q-dims" data-planta-style="planta-inline-082">adicionado manualmente</div>`;
-    return `<tr>
+    return `<tr data-q-item-name="${nomeAttr}">
       <td class="num" data-planta-style="planta-inline-085">
         <input type="checkbox" ${checked?'checked':''} title="Compra com Indústria — aparece no PDF"
           data-planta-toggle-industria="${nomeAttr}">
@@ -10325,6 +10325,60 @@ function abrirQuantitativo() {
     }
   };
   restaurarScrollQuantitativo();
+  requestAnimationFrame(() => {
+    restaurarScrollQuantitativo();
+    requestAnimationFrame(restaurarScrollQuantitativo);
+  });
+}
+
+function qAtualizarQuantitativoNoLugar(nome) {
+  const modalAberto = document.getElementById('scrim')?.classList.contains('show') && modalBody.dataset.modal === 'quantitativo';
+  if (!modalAberto) return;
+
+  const moeda = valor => Number(valor || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const todos = aplicarModoCustoQuantitativo(gerarItensOrcamento());
+  const exibidos = qViewTab === 'insumos'
+    ? aplicarModoCustoQuantitativo(gerarInsumosAgregados())
+    : todos.filter(item => !item.isInsumo);
+  const item = exibidos.find(itemAtual => itemAtual.nome === nome);
+  const row = [...modalBody.querySelectorAll('[data-q-item-name]')].find(el => el.dataset.qItemName === nome);
+
+  if (row && !item) row.remove();
+  if (row && item) {
+    const qtyInput = row.querySelector('[data-planta-q-set]');
+    if (qtyInput && document.activeElement !== qtyInput) qtyInput.value = String(item.qtdFinal);
+    if (qtyInput) qtyInput.dataset.plantaQBase = String(item.qtd || 0);
+    const delta = row.querySelector('.q-delta');
+    if (delta) {
+      delta.textContent = item.delta !== 0 ? `${item.delta > 0 ? '+' : ''}${item.delta}` : '0';
+      delta.classList.toggle('is-empty', item.delta === 0);
+    }
+
+    const unitCell = row.querySelector('.q-unit-cell') || row.cells[qViewTab === 'insumos' ? 3 : 2];
+    const priceDisplay = row.querySelector('.q-price-display');
+    const priceHtml = item.temPreco ? `R$ ${moeda(item.precoFinal)}` : '<span class="q-sem-preco">\u2014</span>';
+    if (priceDisplay) priceDisplay.innerHTML = item.temPreco ? `<span class="q-preco-cell">${priceHtml}</span>` : priceHtml;
+    else if (unitCell) unitCell.innerHTML = priceHtml;
+
+    const subtotalCell = row.querySelector('.q-subtotal-cell') || row.cells[qViewTab === 'insumos' ? 4 : 3];
+    if (subtotalCell) subtotalCell.innerHTML = item.temPreco
+      ? `<b>R$ ${moeda(item.subtotal)}</b>`
+      : `<span class="q-sem-preco">${qCostView ? 'sem custo' : 'sem pre\u00e7o'}</span>`;
+  }
+
+  const valorTotal = todos.reduce((soma, itemAtual) => soma + (itemAtual.subtotal || 0), 0);
+  const desconto = qCostView ? 0 : (qDesconto.tipo === 'percent'
+    ? valorTotal * (qDesconto.valor / 100)
+    : Math.min(qDesconto.valor, valorTotal));
+  const valorFinal = Math.max(0, valorTotal - desconto);
+  const subtotalEl = modalBody.querySelector('.q-total-val');
+  const descontoEl = modalBody.querySelector('.q-desc-val');
+  const finalEl = modalBody.querySelector('.q-final-val');
+  const custoEl = modalBody.querySelector('.q-cost-total-block strong');
+  if (subtotalEl) subtotalEl.textContent = `R$ ${moeda(valorTotal)}`;
+  if (descontoEl) descontoEl.textContent = desconto > 0 ? `\u2212 R$ ${moeda(desconto)}` : '\u2014';
+  if (finalEl) finalEl.textContent = `R$ ${moeda(valorFinal)}`;
+  if (custoEl) custoEl.textContent = `R$ ${moeda(valorTotal)}`;
 }
 
 // Ajusta qty de um item e remove item manual zerado
@@ -10336,22 +10390,15 @@ function qAjustarQtd(nome, delta) {
     qNovosInsumos.delete(nome);
     delete qAjustes[nome];
   }
-  qAgendarRender();
+  qAtualizarQuantitativoNoLugar(nome);
 }
 
 // Define a quantidade final de um item digitando um número específico
 // (em vez de só poder ir de 1 em 1 nos botões +/−). baseQtd é a quantidade
 // automática (item.qtd, antes de qualquer ajuste manual) — o delta salvo em
 // qAjustes é sempre relativo a ela, então recalculamos: delta = novoValor − baseQtd.
-function qAgendarRender() {
-  if (qRenderFrame) cancelAnimationFrame(qRenderFrame);
-  qRenderFrame = requestAnimationFrame(() => {
-    qRenderFrame = 0;
-    abrirQuantitativo();
-  });
-}
 
-function qDefinirQtd(nome, baseQtd, valorStr, deferRender = false) {
+function qDefinirQtd(nome, baseQtd, valorStr) {
   let v = parseInt(String(valorStr).replace(',', '.'), 10);
   if (!isFinite(v) || v < 0) v = 0;
   const delta = v - (baseQtd || 0);
@@ -10362,7 +10409,7 @@ function qDefinirQtd(nome, baseQtd, valorStr, deferRender = false) {
     qNovosInsumos.delete(nome);
     delete qAjustes[nome];
   }
-  if (deferRender) qAgendarRender(); else abrirQuantitativo();
+  qAtualizarQuantitativoNoLugar(nome);
 }
 
 // Acrescenta valor (R$) ao preço de um item específico, neste orçamento.
@@ -10374,7 +10421,7 @@ function qAjustarPreco(nome, valorStr) {
   if (!isFinite(v) || v < 0) v = 0;
   v = Math.round(v * 100) / 100;
   if (v > 0) qPrecoAjustes[nome] = v; else delete qPrecoAjustes[nome];
-  abrirQuantitativo();
+  qAtualizarQuantitativoNoLugar(nome);
 }
 
 // Lê os controles de desconto do modal e actualiza qDesconto,
@@ -10385,7 +10432,7 @@ function qAplicarDesconto() {
   if (!tipoEl || !valEl) return;
   qDesconto.tipo  = tipoEl.value;
   qDesconto.valor = Math.max(0, parseFloat(valEl.value) || 0);
-  abrirQuantitativo();
+  qAtualizarQuantitativoNoLugar('');
 }
 
 // Adiciona produto com mesclagem inteligente:

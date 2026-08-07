@@ -361,7 +361,8 @@ td.cell-colored > .fill{ display:flex; align-items:center; height:100%; min-heig
 
 .progress-bar{width:90px; height:8px; background:var(--bg-soft); border:1px solid var(--border-soft); border-radius:99px; overflow:hidden; box-shadow:inset 0 1px 2px rgba(20,24,30,.06);}
 [data-theme="dark"] .progress-bar{ box-shadow:inset 0 1px 2px rgba(0,0,0,.3); }
-.progress-bar > div{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-3)); transition:width .5s var(--ease-out); border-radius:99px; box-shadow:0 0 8px -1px var(--accent-soft); transform-origin:left center; animation:progressBarReveal .62s var(--ease-out) both;}
+.progress-bar > div{height:100%; background:linear-gradient(90deg, var(--accent), var(--accent-3)); transition:width .5s var(--ease-out); border-radius:99px; box-shadow:0 0 8px -1px var(--accent-soft); transform-origin:left center;}
+.progress-bar > div.progress-bar-enter{animation:progressBarReveal .62s var(--ease-out) both}
 @keyframes progressBarReveal{from{transform:scaleX(0);opacity:.52}to{transform:scaleX(1);opacity:1}}
 .my-task-progress,.project-progress{display:grid;gap:7px;min-width:112px}.my-task-progress-input,.project-progress-input{display:flex;align-items:center;gap:5px}
 .my-task-progress-input .cell-number,.project-progress-input .cell-number{min-width:68px}.my-task-progress-bar,.project-progress-bar{width:100%}
