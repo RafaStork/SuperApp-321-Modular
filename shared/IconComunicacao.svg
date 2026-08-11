@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">Ícone Painel de Comunicação</title>
+  <desc id="desc">Balão de comunicação com ondas de alcance no padrão visual da 321 Modular.</desc>
+  <rect width="1254" height="1254" fill="#1f331b"/>
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity=".26">
+    <circle cx="627" cy="627" r="366"/>
+    <path d="M282 338V282H338M916 282H972V338M282 916V972H338M916 972H972V916"/>
+  </g>
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity=".22" stroke-dasharray="14 14">
+    <path d="M308 466H946M308 630H946M308 794H946M430 322V932M627 322V932M824 322V932"/>
+  </g>
+  <path d="M340 438h496c35 0 64 29 64 64v250c0 35-29 64-64 64H594L454 928l24-112H340c-35 0-64-29-64-64V502c0-35 29-64 64-64Z" fill="#a7c798"/>
+  <path d="M900 526c70 41 112 101 112 172s-42 131-112 172" fill="none" stroke="#ed6b1d" stroke-width="34" stroke-linecap="round"/>
+  <path d="M900 606c35 22 54 53 54 92s-19 70-54 92" fill="none" stroke="#f9b215" stroke-width="34" stroke-linecap="round"/>
+  <g>
+    <circle cx="426" cy="628" r="34" fill="#ed6b1d"/>
+    <circle cx="590" cy="628" r="34" fill="#f9b215"/>
+    <circle cx="754" cy="628" r="34" fill="#2d5da9"/>
+  </g>
+</svg>

@@ -19,6 +19,7 @@ const routes = [
   '/playbook/index.html',
   '/simulacao/index.html',
   '/obras/index.html',
+  '/comunicacao/index.html',
   'https://checklist.321modular.com.br/',
   '/shared/runtime-config.js',
 ];
