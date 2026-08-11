@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="description" content="Comunicados, reuniões e treinamentos da 321 Modular.">
+  <meta name="description" content="Avisos, eventos e treinamentos da 321 Modular.">
   <meta name="color-scheme" content="light dark">
   <title>321 Modular | Painel de Comunicação</title>
   <link rel="icon" type="image/svg+xml" href="../shared/IconComunicacao.svg">
@@ -11,107 +11,85 @@
   <script src="../shared/theme-bootstrap.js"></script>
   <script src="../shared/runtime-config.js"></script>
   <script src="./supabase.min.js?v=2.110.8"></script>
-  <script src="../shared/auth.js?v=20260731-comunicacao-1"></script>
+  <script src="../shared/auth.js?v=20260731-comunicacao-2"></script>
   <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
   <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
   <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260805-5">
   <link rel="stylesheet" href="../shared/ui-controls.css?v=20260807-controls-10">
   <link rel="stylesheet" href="../shared/delete-confirm.css?v=20260811-1">
-  <link rel="stylesheet" href="./styles.css?v=20260817-1">
+  <link rel="stylesheet" href="./styles.css?v=20260818-1">
   <script src="../shared/ui-controls.js?v=20260807-controls-10" defer></script>
   <script src="../shared/delete-confirm.js?v=20260811-1" defer></script>
-  <script src="./app.js?v=20260817-1" defer></script>
+  <script src="./app.js?v=20260818-1" defer></script>
 </head>
 <body>
-  <div class="aside-backdrop" id="asideBackdrop"></div>
-  <div class="app-shell" id="appShell" aria-busy="true">
-    <aside class="side" id="side">
-      <div class="brand">
-        <div class="brand-mark"><img class="brand-logo-ref superapp-brand-logo" src="../shared/Logo321Modular.svg" alt="321 Modular"></div>
-        <div class="brand-name"><strong>Painel de</strong><strong>Comunicação</strong></div>
+  <div id="app-shell" aria-busy="true">
+    <div class="aside-backdrop" id="aside-backdrop"></div>
+    <aside id="aside">
+      <div class="side-brand">
+        <img class="brand-logo superapp-brand-logo" src="../shared/Logo321Modular.svg" alt="321 Modular">
+        <div class="brand-name">Painel de<br>Comunicação</div>
       </div>
       <div class="nav-scroll">
-        <nav class="nav" aria-label="Navegação principal">
-          <button class="nav-item active" type="button" aria-current="page">Comunicados</button>
+        <nav class="tabs" id="nav-tabs" aria-label="Navegação principal">
+          <button class="tab-btn active" type="button" data-view="feed" aria-current="page">Comunicados</button>
+          <button class="tab-btn" type="button" data-view="calendar">Calendário</button>
         </nav>
       </div>
       <div class="side-footer">
-        <button class="theme-toggle" id="themeBtn" type="button" title="Alternar tema claro e escuro" aria-label="Alternar tema"><span class="knob"></span></button>
+        <button class="theme-toggle" id="theme-toggle" type="button" title="Alternar tema" aria-label="Alternar tema"><span class="knob"></span></button>
         <div class="side-session">
-          <span class="side-session-copy"><strong class="side-session-name" id="sideUserName">—</strong><small class="side-session-role" id="sideUserRole">—</small></span>
-          <button class="btn side-logout" id="logoutBtn" type="button">Sair</button>
+          <span class="side-session-copy"><strong id="side-user-name">—</strong><small id="side-user-role">—</small></span>
+          <button class="tab-btn" id="logout-btn" type="button">Sair</button>
         </div>
       </div>
     </aside>
 
-    <main class="main">
+    <main>
       <header class="topbar">
         <div class="topbar-copy">
-          <button class="icon-btn mobile-menu" id="menuBtn" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
-          <div><h1>Painel de Comunicação</h1><p>Comunicados, reuniões e treinamentos em um só lugar.</p></div>
+          <button class="icon-btn mobile-menu" id="menu-btn" type="button" aria-label="Abrir menu" aria-expanded="false">☰</button>
+          <div><h1 id="view-title">Painel de Comunicação</h1><p id="view-subtitle">Avisos, eventos e treinamentos em um só lugar.</p></div>
         </div>
         <div class="topbar-actions">
-          <button class="btn" id="refreshBtn" type="button">↻ Atualizar</button>
-          <button class="btn primary" id="newBtn" type="button" hidden>+ Novo comunicado</button>
+          <button class="btn" id="refresh-btn" type="button">↻ Atualizar</button>
+          <button class="btn primary" id="new-content-btn" type="button" hidden>+ Aviso ou treinamento</button>
+          <button class="btn primary" id="new-event-btn" type="button" hidden>+ Novo evento</button>
         </div>
       </header>
-
-      <section class="filters" aria-label="Filtrar comunicados">
-        <button class="filter-chip active" type="button" data-filter="todos" aria-pressed="true">Todos <span id="countTodos">0</span></button>
-        <button class="filter-chip" type="button" data-filter="aviso" aria-pressed="false">Avisos <span id="countAviso">0</span></button>
-        <button class="filter-chip" type="button" data-filter="reuniao" aria-pressed="false">Reuniões <span id="countReuniao">0</span></button>
-        <button class="filter-chip" type="button" data-filter="treinamento" aria-pressed="false">Treinamentos <span id="countTreinamento">0</span></button>
-      </section>
-
-      <div class="content-grid">
-        <section class="feed-panel" aria-labelledby="feedTitle">
-          <div class="section-heading"><div><span class="eyebrow">Mural interno</span><h2 id="feedTitle">Últimas publicações</h2></div><span class="result-count" id="resultCount">0 registros</span></div>
-          <div class="feed" id="feed" aria-live="polite"></div>
-        </section>
-
-        <aside class="right-column">
-          <section class="panel calendar-panel" aria-labelledby="calendarTitle">
-            <div class="calendar-head">
-              <button class="icon-btn" id="prevMonthBtn" type="button" aria-label="Mês anterior">‹</button>
-              <h2 id="calendarTitle">Calendário</h2>
-              <button class="icon-btn" id="nextMonthBtn" type="button" aria-label="Próximo mês">›</button>
-            </div>
-            <div class="calendar-weekdays" aria-hidden="true"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
-            <div class="calendar-grid" id="calendarGrid"></div>
-            <div class="calendar-legend"><span><i class="dot reuniao"></i>Reunião</span><span><i class="dot treinamento"></i>Treinamento</span></div>
-          </section>
-
-          <section class="panel upcoming-panel" aria-labelledby="upcomingTitle">
-            <div class="section-heading compact"><div><span class="eyebrow">Agenda</span><h2 id="upcomingTitle">Próximos eventos</h2></div></div>
-            <div class="upcoming-list" id="upcomingList"></div>
-          </section>
-        </aside>
-      </div>
+      <section id="view-root" aria-live="polite"></section>
     </main>
   </div>
 
-  <div class="modal-overlay" id="editorModal" aria-hidden="true">
-    <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <header class="modal-head"><div><span class="eyebrow">Painel de comunicação</span><h2 id="modalTitle">Novo comunicado</h2></div><button class="icon-btn modal-close" id="modalCloseBtn" type="button" aria-label="Fechar">×</button></header>
-      <form id="editorForm" novalidate>
+  <div class="modal-overlay" id="editor-modal" aria-hidden="true">
+    <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="editor-title">
+      <header class="modal-head"><div><span class="eyebrow">Painel de comunicação</span><h2 id="editor-title">Nova publicação</h2></div><button class="icon-btn modal-close" id="editor-close" type="button" aria-label="Fechar">×</button></header>
+      <form id="editor-form" novalidate>
         <div class="modal-body">
-          <input id="recordId" type="hidden">
-          <input id="recordVersion" type="hidden">
+          <input id="record-id" type="hidden"><input id="record-version" type="hidden"><input id="editor-mode" type="hidden">
           <div class="form-grid">
-            <label class="field field-wide"><span>Título <b>*</b></span><input id="titleInput" type="text" maxlength="180" required autocomplete="off" placeholder="Título do comunicado"></label>
-            <label class="field"><span>Tipo <b>*</b></span><select id="typeInput" required><option value="aviso">Aviso</option><option value="reuniao">Reunião</option><option value="treinamento">Treinamento</option></select></label>
-            <label class="field" id="dateField"><span>Data e hora <b>*</b></span><input id="dateInput" type="datetime-local"></label>
-            <label class="field field-wide"><span>Conteúdo <b>*</b></span><textarea id="contentInput" rows="7" maxlength="5000" required placeholder="Escreva a comunicação de forma clara e objetiva."></textarea><small><span id="contentCount">0</span>/5000 caracteres</small></label>
-            <label class="field field-wide"><span>Link relacionado</span><input id="linkInput" type="url" maxlength="1000" inputmode="url" placeholder="https://..."><small>Somente links HTTPS ou HTTP.</small></label>
-            <fieldset class="audience field-wide"><legend>Público</legend><p>Sem seleção, o comunicado será visível para todos os cargos com acesso ao app.</p><div class="audience-grid" id="audienceGrid"></div></fieldset>
+            <label class="field field-wide"><span>Título <b>*</b></span><input id="title-input" type="text" maxlength="180" required autocomplete="off" placeholder="Título claro e objetivo"></label>
+            <label class="field" id="type-field"><span>Tipo <b>*</b></span><select id="type-input" required><option value="aviso">Aviso</option><option value="treinamento">Treinamento</option></select></label>
+            <label class="field" id="date-field"><span>Data e hora <b>*</b></span><input id="date-input" type="datetime-local"></label>
+            <label class="field field-wide"><span>Descrição <b>*</b></span><textarea id="content-input" rows="6" maxlength="5000" required placeholder="Descreva as informações necessárias."></textarea><small><span id="content-count">0</span>/5000 caracteres</small></label>
+            <label class="field field-wide"><span>Link relacionado</span><input id="link-input" type="url" maxlength="1000" inputmode="url" placeholder="https://..."><small>Somente links HTTP ou HTTPS.</small></label>
+            <fieldset class="selection-box field-wide" id="role-audience"><legend>Cargos que receberão</legend><p>Sem seleção, a publicação será visível para todos os cargos com acesso ao app.</p><div class="selection-grid" id="audience-grid"></div></fieldset>
+            <fieldset class="selection-box field-wide" id="user-audience" hidden><legend>Participantes do evento <b>*</b></legend><label class="search-users"><span class="sr-only">Buscar participante</span><input id="user-search" type="search" autocomplete="off" placeholder="Buscar por nome, cargo ou franquia..."></label><div class="selection-grid users" id="users-grid"></div><p class="selection-summary" id="users-summary">Nenhum participante selecionado.</p></fieldset>
           </div>
-          <p class="form-error" id="formError" role="alert" hidden></p>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
         </div>
-        <footer class="modal-foot"><button class="btn" id="cancelBtn" type="button">Cancelar</button><button class="btn primary" id="saveBtn" type="submit">Salvar comunicado</button></footer>
+        <footer class="modal-foot"><button class="btn" id="cancel-btn" type="button">Cancelar</button><button class="btn primary" id="save-btn" type="submit">Salvar</button></footer>
       </form>
     </section>
   </div>
 
+  <div class="modal-overlay" id="day-modal" aria-hidden="true">
+    <section class="modal-dialog day-dialog" role="dialog" aria-modal="true" aria-labelledby="day-title">
+      <header class="modal-head"><div><span class="eyebrow">Agenda</span><h2 id="day-title">Eventos do dia</h2></div><button class="icon-btn modal-close" id="day-close" type="button" aria-label="Fechar">×</button></header>
+      <div class="modal-body day-list" id="day-list"></div>
+      <footer class="modal-foot"><button class="btn" id="day-done" type="button">Fechar</button></footer>
+    </section>
+  </div>
   <div class="toast" id="toast" aria-live="polite"></div>
 </body>
 </html>
