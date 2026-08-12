@@ -12,7 +12,7 @@
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
 <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260806-modal-1">
+<link rel="stylesheet" href="./styles-external.css?v=20260812-dre-1">
 <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
 <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260805-5">
 <link rel="stylesheet" href="../shared/ui-controls.css?v=20260807-controls-10">
@@ -271,13 +271,20 @@
 
   <!-- Por obra -->
   <div class="tab-content" id="dreContent_obra">
-    <div class="ph fin-csp-019">
-      <div class="ph-left"><p>Selecione uma obra — concluída ou em andamento — para ver seu resultado individual</p></div>
-      <div class="fin-csp-020">
-        <select id="dreObraSel" data-fin-change-call="renderDREObra" class="fin-csp-021"></select>
-        <select id="dreObraPer" data-fin-change-call="renderDREObra" class="fin-csp-005">
-          <option value="all">Acumulado (todo o período)</option>
-        </select>
+    <div class="dre-obras-toolbar">
+      <div class="dre-mode-switch" role="group" aria-label="Modo do DRE por obra">
+        <button type="button" class="dre-mode-btn active" id="dreModoIndividual" data-fin-call="setDreObraModo" data-mode="individual">Obra individual</button>
+        <button type="button" class="dre-mode-btn" id="dreModoConclusao" data-fin-call="setDreObraModo" data-mode="conclusao">Concluídas no mês</button>
+      </div>
+      <div class="dre-obras-controls" id="dreObraIndividualControls">
+        <label class="dre-search-field"><span>Pesquisar obra</span><input id="dreObraSearch" type="search" placeholder="Cliente, modelo ou cidade…" autocomplete="off" data-fin-input-call="filterDREObras"></label>
+        <label class="dre-select-field"><span>Obra</span><select id="dreObraSel" data-fin-change-call="renderDREObra" class="fin-csp-021"></select></label>
+        <label class="dre-select-field"><span>Período</span><select id="dreObraPer" data-fin-change-call="renderDREObra" class="fin-csp-005"><option value="all">Acumulado (todo o período)</option></select></label>
+      </div>
+      <div class="dre-obras-controls fin-is-hidden" id="dreObraConclusaoControls">
+        <label class="dre-select-field"><span>Ano de conclusão</span><select id="dreConclusaoAno" data-fin-change-call="renderDREObra"></select></label>
+        <label class="dre-select-field"><span>Mês de conclusão</span><select id="dreConclusaoMes" data-fin-change-call="renderDREObra"><option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select></label>
+        <button type="button" class="btn bp dre-slides-open" data-fin-call="openDreSlides">Apresentar em tela cheia</button>
       </div>
     </div>
     <div id="dreObraBox"></div>
@@ -369,6 +376,7 @@
         </div>
         <div class="fg"><label>Cidade / Região</label><input id="oCidade" placeholder="Onde será instalado"></div>
         <div class="fg"><label>Previsão de entrega</label><input id="oDtE" type="hidden"><button type="button" class="cell-date placeholder" data-target="oDtE">Selecionar…</button></div>
+        <div class="fg"><label>Data real de conclusão</label><input id="oDtR" type="hidden"><button type="button" class="cell-date placeholder" data-target="oDtR">Selecionar…</button></div>
       </div>
     </div>
 
@@ -513,7 +521,7 @@
               <option value="Kit Fábrica">Kit Fábrica</option>
               <option value="Telhas">Telhas</option>
               <option value="Frete">Frete</option>
-              <option value="Munck">Munck (caminhão)</option>
+              <option value="Munck (caminhão)">Munck (caminhão)</option>
               <option value="Alicerce / Blocos">Alicerce / Blocos</option>
               <option value="Mão de obra montagem">Mão de obra — Montagem</option>
               <option value="Material elétrico">Material elétrico</option>
@@ -619,7 +627,7 @@
             <option value="Kit Fábrica">Kit Fábrica</option>
             <option value="Telhas">Telhas</option>
             <option value="Frete">Frete</option>
-            <option value="Munck">Munck (caminhão)</option>
+            <option value="Munck (caminhão)">Munck (caminhão)</option>
             <option value="Alicerce / Blocos">Alicerce / Blocos</option>
             <option value="Mão de obra montagem">Mão de obra — Montagem</option>
             <option value="Material elétrico">Material elétrico</option>
@@ -696,6 +704,24 @@
   </div>
 </div>
 
+<!-- ── APRESENTAÇÃO DRE POR OBRA ── -->
+<div class="mb" id="mDreSlides">
+  <div class="modal dre-slide-modal" id="dreSlideStage">
+    <div class="dre-slide-header">
+      <div><span class="dre-slide-kicker">DRE POR OBRA</span><h2 id="dreSlideTitle">Resultados do período</h2></div>
+      <div class="dre-slide-actions">
+        <button type="button" class="btn bs bsm" data-fin-call="toggleDreSlidesFullscreen">Tela cheia</button>
+        <button type="button" class="mc dre-slide-close" data-fin-call="closeDreSlides" aria-label="Fechar">✕</button>
+      </div>
+    </div>
+    <div class="dre-slide-content" id="dreSlideContent"></div>
+    <div class="dre-slide-footer">
+      <button type="button" class="btn bs" data-fin-call="prevDreSlide">‹ Anterior</button>
+      <span id="dreSlideCounter">1 de 1</span>
+      <button type="button" class="btn bp" data-fin-call="nextDreSlide">Próxima ›</button>
+    </div>
+  </div>
+</div>
 <!-- ── TOAST ── -->
 <div id="toast"></div>
 
@@ -704,7 +730,7 @@
 <script src="../shared/delete-confirm.js?v=20260807-delete-2"></script>
 <script src="./app-support.js?v=20260807-delete-2"></script>
 
-<script src="./app.js?v=20260807-delete-2"></script>
+<script src="./app.js?v=20260812-dre-1"></script>
 </body>
 </html>
 

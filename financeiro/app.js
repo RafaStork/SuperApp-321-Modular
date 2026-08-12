@@ -477,11 +477,15 @@ function calcObra(o) {
   return { venda, custos, comissao, resultado, margem };
 }
 
+function normalizeObraCat(cat) {
+  return cat === 'Munck' ? 'Munck (caminhão)' : cat;
+}
 function isObraCat(cat) {
   return ['Kit Fábrica','Telhas','Frete','Munck (caminhão)','Alicerce / Blocos',
     'Mão de obra montagem','Material elétrico','Pintura','Alimentação / Estadia',
-    'Outros custos de obra','Royalties','Comissão'].includes(cat);
+    'Outros custos de obra','Royalties','Comissão'].includes(normalizeObraCat(cat));
 }
+function getObraConclusionDate(o){ return o?.dtR || o?.dtE || ''; }
 
 // Mantém um único lançamento de "Comissão" em A Pagar sempre vinculado a esta
 // obra e sincronizado com o valor de venda atual. Retorna uma linha de resumo
@@ -544,7 +548,7 @@ function sincronizarVencidos(){
 
 function getMeses() {
   const ms = new Set();
-  DB.obras.forEach(o=>{ if(o.dtC) ms.add(o.dtC.slice(0,7)); });
+  DB.obras.forEach(o=>{ if(o.dtC) ms.add(o.dtC.slice(0,7)); const dtFim=getObraConclusionDate(o); if(dtFim) ms.add(dtFim.slice(0,7)); });
   DB.receber.forEach(r=>{ if(r.venc) ms.add(r.venc.slice(0,7)); });
   DB.pagar.forEach(p=>{ if(p.venc) ms.add(p.venc.slice(0,7)); });
   return [...ms].sort();
@@ -674,7 +678,7 @@ function renderDash(){
 
   const obrasEntregues = mes==='all'
     ? DB.obras.filter(o=>o.status==='Entregue')
-    : DB.obras.filter(o=>o.status==='Entregue'&&o.dtE&&o.dtE.startsWith(mes));
+    : DB.obras.filter(o=>o.status==='Entregue'&&getObraConclusionDate(o).startsWith(mes));
 
   const totRec = DB.receber.filter(r=>r.status!=='Recebido').reduce((s,r)=>s+(n(r.prev)-n(r.rec)),0);
   const emAtraso = DB.receber.filter(r=>r.status==='Em atraso').reduce((s,r)=>s+(n(r.prev)-n(r.rec)),0);
@@ -885,7 +889,7 @@ function openObraModal(id){
 }
 
 function clearObraForm(){
-  ['oCliente','oCidade','oFPag','oObs','oEnt','oDtEnt','oParc','oNParc','oDtParc1','oPerm','oPermDesc','oSaldo','oDtE','oVenda','oEntChequeBanco','oSaldoChequeBanco'].forEach(f=>{
+  ['oCliente','oCidade','oFPag','oObs','oEnt','oDtEnt','oParc','oNParc','oDtParc1','oPerm','oPermDesc','oSaldo','oDtE','oDtR','oVenda','oEntChequeBanco','oSaldoChequeBanco'].forEach(f=>{
     const el=document.getElementById(f); if(el) el.value='';
   });
   document.getElementById('oStatus').value='Em negociação';
@@ -927,6 +931,7 @@ function fillObraForm(id){
   document.getElementById('oStatus').value=o.status||'Em negociação';
   document.getElementById('oCidade').value=o.cidade||'';
   document.getElementById('oDtE').value=o.dtE||'';
+  document.getElementById('oDtR').value=o.dtR||'';
   document.getElementById('oVenda').value=o.venda||'';
   document.getElementById('oFPag').value=o.fPag||'';
   document.getElementById('oObs').value=o.obs||'';
@@ -964,6 +969,7 @@ async function saveObra(){
     modelo:document.getElementById('oModelo').value,
     dtC:document.getElementById('oDtC').value,
     dtE:document.getElementById('oDtE').value,
+    dtR:document.getElementById('oDtR').value,
     status:document.getElementById('oStatus').value,
     cidade:document.getElementById('oCidade').value,
     venda, fPag:document.getElementById('oFPag').value,
@@ -1811,7 +1817,7 @@ function renderPag(){
 }
 
 function onPagCatChange(){
-  const cat=document.getElementById('pCat').value;
+  const cat=normalizeObraCat(document.getElementById('pCat').value);
   const isObra=isObraCat(cat);
   document.getElementById('pObraDiv').style.display=isObra?'block':'none';
   const isNew=!document.getElementById('pId').value;
@@ -1902,7 +1908,7 @@ function editPag(id){
   document.getElementById('mPagTitle').textContent='Editar lançamento';
   document.getElementById('pId').value=id;
   document.getElementById('btnDelPag').style.display='inline-flex';
-  document.getElementById('pCat').value=p.cat;
+  document.getElementById('pCat').value=normalizeObraCat(p.cat);
   document.getElementById('pDesc').value=p.desc||'';
   document.getElementById('pObra').value=p.obraId||'';
   document.getElementById('pVenc').value=p.venc||'';
@@ -1923,7 +1929,7 @@ function editPag(id){
 async function savePag(){
   const valor=n(document.getElementById('pValor').value);
   if(!valor){ toast('Informe o valor.', true); return; }
-  const cat=document.getElementById('pCat').value;
+  const cat=normalizeObraCat(document.getElementById('pCat').value);
   const isObra=isObraCat(cat);
   const obraId=isObra?document.getElementById('pObra').value:'';
   if(isObra&&!obraId){ toast('Selecione a obra para este custo.', true); return; }
@@ -2011,7 +2017,7 @@ function renderDRE(){
 
   // Custos diretos por categoria (lançados em A Pagar, vinculados a obras)
   const custosMap={};
-  DB.pagar.filter(p=>p.obraId&&isObraCat(p.cat)&&(mes==='all'||DB.obras.find(o=>o.id===p.obraId&&o.status==='Entregue'&&(mes==='all'||o.dtE?.startsWith(mes)))))
+  DB.pagar.filter(p=>p.obraId&&isObraCat(p.cat)&&(mes==='all'||DB.obras.find(o=>o.id===p.obraId&&o.status==='Entregue'&&(mes==='all'||getObraConclusionDate(o).startsWith(mes)))))
     .forEach(p=>{ custosMap[p.cat]=(custosMap[p.cat]||0)+n(p.valor); });
 
   const totalCPV=Object.values(custosMap).reduce((s,v)=>s+v,0);
@@ -2101,6 +2107,10 @@ function switchDreTab(tab){
 
 // Navega da tela de Obras direto para o resultado individual daquela obra
 function verResultadoObra(id){
+  dreObraModo='individual';
+  dreObraBusca='';
+  const busca=document.getElementById('dreObraSearch');
+  if(busca) busca.value='';
   show('dre', navLinks[4]);
   switchDreTab('obra');
   document.getElementById('dreObraSel').value = id;
@@ -2115,11 +2125,47 @@ function getMesesObra(obraId){
   return [...ms].sort();
 }
 
+let dreObraModo='individual';
+let dreObraBusca='';
+let dreSlides=[];
+let dreSlideIndex=0;
+
+function normalizarBusca(v){
+  return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+function getDreObrasFiltradas(){
+  const termo=normalizarBusca(dreObraBusca);
+  return [...DB.obras]
+    .filter(o=>!termo||normalizarBusca(`${o.cliente} ${o.modelo} ${o.cidade} ${o.status}`).includes(termo))
+    .sort((a,b)=>(b.dtC||'').localeCompare(a.dtC||''));
+}
+function setDreObraModo(){
+  dreObraModo=this?.dataset?.mode==='conclusao'?'conclusao':'individual';
+  renderDREObra();
+}
+function filterDREObras(){
+  dreObraBusca=document.getElementById('dreObraSearch')?.value||'';
+  renderDREObra();
+}
+function syncDreObraModeUI(){
+  const individual=dreObraModo==='individual';
+  document.getElementById('dreModoIndividual')?.classList.toggle('active',individual);
+  document.getElementById('dreModoConclusao')?.classList.toggle('active',!individual);
+  document.getElementById('dreObraIndividualControls')?.classList.toggle('fin-is-hidden',!individual);
+  document.getElementById('dreObraConclusaoControls')?.classList.toggle('fin-is-hidden',individual);
+}
 function renderDREObra(){
+  syncDreObraModeUI();
+  if(dreObraModo==='conclusao') renderDREObrasConcluidas();
+  else renderDREObraIndividual();
+}
+
+function renderDREObraIndividual(){
   const sel = document.getElementById('dreObraSel');
   const curObra = sel.value;
   sel.innerHTML = '';
-  [...DB.obras].sort((a,b)=>(b.dtC||'')>(a.dtC||'')?1:-1).forEach(o=>{
+  const listaObras=getDreObrasFiltradas();
+  listaObras.forEach(o=>{
     const opt=document.createElement('option');
     opt.value=o.id;
     opt.textContent=`${o.cliente} — ${o.modelo} (${o.status})`;
@@ -2127,8 +2173,8 @@ function renderDREObra(){
     sel.appendChild(opt);
   });
   const box = document.getElementById('dreObraBox');
-  if(!DB.obras.length){
-    sel.innerHTML='<option value="">Nenhuma obra cadastrada</option>';
+  if(!listaObras.length){
+    sel.innerHTML=`<option value="">${DB.obras.length?'Nenhuma obra encontrada':'Nenhuma obra cadastrada'}</option>`;
     document.getElementById('dreObraPer').innerHTML='<option value="all">Acumulado (todo o período)</option>';
     if(sel.__syncSelBtn) sel.__syncSelBtn();
     const dreObraPerEl=document.getElementById('dreObraPer');
@@ -2136,7 +2182,7 @@ function renderDREObra(){
     box.innerHTML='<div class="empty"><div class="ei">🏗️</div><h3>Nenhuma obra cadastrada</h3><p>Cadastre uma obra para ver seu resultado individual</p></div>';
     return;
   }
-  if(!sel.value) sel.value = DB.obras[0].id;
+  if(!sel.value) sel.value = listaObras[0].id;
   if(sel.__syncSelBtn) sel.__syncSelBtn();
   const obraId = sel.value;
   const o = DB.obras.find(x=>x.id===obraId);
@@ -2180,7 +2226,7 @@ function renderDREObra(){
       <div class="od-header">
         <div class="od-title">
           <h2>${escapeHtml(o.cliente)} — ${escapeHtml(o.modelo)}</h2>
-          <p>${sbadge(o.status)} &nbsp; ${o.cidade?escapeHtml(o.cidade)+' · ':''}${o.dtC?'Contrato em '+fmtDate(o.dtC):''}${o.dtE?' · Entregue em '+fmtDate(o.dtE):''}</p>
+          <p>${sbadge(o.status)} &nbsp; ${o.cidade?escapeHtml(o.cidade)+' · ':''}${o.dtC?'Contrato em '+fmtDate(o.dtC):''}${getObraConclusionDate(o)?' · Concluída em '+fmtDate(getObraConclusionDate(o)):''}</p>
         </div>
         <button class="btn bs bsm" data-fin-dynamic-call="editObra" data-fin-dynamic-id="${escapeAttr(o.id)}">Editar obra</button>
       </div>
@@ -2223,6 +2269,75 @@ function renderDREObra(){
 }
 
 // ═══════════════════════════════════════════════════
+function populateDreConclusaoPeriod(){
+  const anoSel=document.getElementById('dreConclusaoAno');
+  const mesSel=document.getElementById('dreConclusaoMes');
+  if(!anoSel||!mesSel) return '';
+  const hoje=new Date();
+  const anos=new Set([String(hoje.getFullYear())]);
+  DB.obras.forEach(o=>{ const dt=getObraConclusionDate(o); if(dt) anos.add(dt.slice(0,4)); });
+  const atual=anoSel.value;
+  anoSel.innerHTML=[...anos].sort((a,b)=>b.localeCompare(a)).map(a=>`<option value="${a}">${a}</option>`).join('');
+  if(atual&&anos.has(atual)) anoSel.value=atual;
+  if(!mesSel.dataset.periodReady){ mesSel.value=String(hoje.getMonth()+1).padStart(2,'0'); mesSel.dataset.periodReady='1'; }
+  anoSel.__syncSelBtn?.(); mesSel.__syncSelBtn?.();
+  return `${anoSel.value}-${mesSel.value}`;
+}
+function getObrasConcluidasNoPeriodo(periodo){
+  return DB.obras.filter(o=>o.status==='Entregue'&&getObraConclusionDate(o).startsWith(periodo))
+    .sort((a,b)=>getObraConclusionDate(a).localeCompare(getObraConclusionDate(b))||String(a.cliente||'').localeCompare(String(b.cliente||''),'pt-BR'));
+}
+function getDreObraCompleto(o){
+  const c=calcObra(o);
+  const recebimentos=DB.receber.filter(r=>r.obraId===o.id);
+  const recebido=recebimentos.reduce((s,r)=>s+n(r.rec),0);
+  const previsto=recebimentos.reduce((s,r)=>s+n(r.prev),0);
+  const custosMap={};
+  DB.pagar.filter(p=>p.obraId===o.id&&isObraCat(p.cat)).forEach(p=>{ const cat=normalizeObraCat(p.cat); custosMap[cat]=(custosMap[cat]||0)+n(p.valor); });
+  return {o,c,recebido,previsto,saldo:previsto-recebido,custosMap};
+}
+function dreResultadoCardHtml(o,compacto=false){
+  const d=getDreObraCompleto(o);
+  const pct=v=>d.c.venda>0?PCT(v/d.c.venda*100):'—';
+  const custos=Object.entries(d.custosMap).filter(([,v])=>v>0).map(([cat,v])=>`<tr><td>${escapeHtml(cat)}</td><td class="dv">${BRL(v)}</td><td class="dp">${pct(v)}</td></tr>`).join('');
+  return `<article class="dre-completed-card${compacto?' dre-slide-card':''}"><header class="dre-completed-head"><div><span class="dre-completed-date">Concluída em ${fmtDate(getObraConclusionDate(o))}</span><h3>${escapeHtml(o.cliente)} — ${escapeHtml(o.modelo)}</h3><p>${escapeHtml(o.cidade||'Cidade não informada')}</p></div><span class="badge b-green">Entregue</span></header><div class="od-kpis"><div class="od-kpi"><div class="lbl">Venda contratada</div><div class="val">${BRL(d.c.venda)}</div></div><div class="od-kpi"><div class="lbl">Recebido</div><div class="val">${BRL(d.recebido)}</div></div><div class="od-kpi"><div class="lbl">Custos totais</div><div class="val">${BRL(d.c.custos)}</div></div><div class="od-kpi"><div class="lbl">Resultado final</div><div class="val ${d.c.resultado>=0?'pos':'neg'}">${BRL(d.c.resultado)}</div></div></div><div class="card dre-completed-table"><table class="dre"><tr class="dsec"><td colspan="3">COMPOSIÇÃO DO RESULTADO</td></tr><tr><td><strong>Venda contratada</strong></td><td class="dv">${BRL(d.c.venda)}</td><td class="dp">100%</td></tr>${custos||'<tr><td colspan="3">Nenhum custo vinculado lançado.</td></tr>'}<tr class="dtot"><td><strong>TOTAL DE CUSTOS</strong></td><td class="dv">${BRL(d.c.custos)}</td><td class="dp">${pct(d.c.custos)}</td></tr><tr class="dres"><td><strong>RESULTADO FINAL</strong></td><td class="dv">${BRL(d.c.resultado)}</td><td class="dp">${pct(d.c.resultado)}</td></tr></table></div></article>`;
+}
+function renderDREObrasConcluidas(){
+  const periodo=populateDreConclusaoPeriod();
+  const obras=getObrasConcluidasNoPeriodo(periodo);
+  const box=document.getElementById('dreObraBox');
+  dreSlides=obras;
+  const btn=document.querySelector('.dre-slides-open'); if(btn) btn.disabled=!obras.length;
+  if(!obras.length){ box.innerHTML=`<div class="empty"><h3>Nenhuma obra concluída em ${escapeHtml(fmtMes(periodo))}</h3><p>O filtro usa a data real de conclusão. Para obras antigas sem essa data, a previsão de entrega é usada como compatibilidade.</p></div>`; return; }
+  const totais=obras.reduce((acc,o)=>{ const c=calcObra(o); acc.venda+=c.venda; acc.custos+=c.custos; acc.resultado+=c.resultado; return acc; },{venda:0,custos:0,resultado:0});
+  const margem=totais.venda?totais.resultado/totais.venda*100:0;
+  box.innerHTML=`<div class="dre-period-summary"><div><span>OBRAS CONCLUÍDAS EM</span><h2>${escapeHtml(fmtMes(periodo))}</h2><p>${obras.length} obra${obras.length!==1?'s':''} no fechamento do período</p></div><div class="od-kpis"><div class="od-kpi"><div class="lbl">Venda total</div><div class="val">${BRL(totais.venda)}</div></div><div class="od-kpi"><div class="lbl">Custos totais</div><div class="val">${BRL(totais.custos)}</div></div><div class="od-kpi"><div class="lbl">Resultado total</div><div class="val ${totais.resultado>=0?'pos':'neg'}">${BRL(totais.resultado)}</div></div><div class="od-kpi"><div class="lbl">Margem consolidada</div><div class="val">${PCT(margem)}</div></div></div></div><div class="dre-completed-list">${obras.map(o=>dreResultadoCardHtml(o)).join('')}</div>`;
+}
+function openDreSlides(){
+  const periodo=populateDreConclusaoPeriod(); dreSlides=getObrasConcluidasNoPeriodo(periodo);
+  if(!dreSlides.length){ toast('Não há obras concluídas no período selecionado.',true); return; }
+  dreSlideIndex=0; document.getElementById('mDreSlides').classList.add('open'); renderDreSlide();
+}
+function renderDreSlide(){
+  if(!dreSlides.length) return;
+  dreSlideIndex=Math.max(0,Math.min(dreSlideIndex,dreSlides.length-1));
+  const periodo=`${document.getElementById('dreConclusaoAno').value}-${document.getElementById('dreConclusaoMes').value}`;
+  document.getElementById('dreSlideTitle').textContent=`Resultados de ${fmtMes(periodo)}`;
+  document.getElementById('dreSlideContent').innerHTML=dreResultadoCardHtml(dreSlides[dreSlideIndex],true);
+  document.getElementById('dreSlideCounter').textContent=`${dreSlideIndex+1} de ${dreSlides.length}`;
+}
+function prevDreSlide(){ dreSlideIndex=(dreSlideIndex-1+dreSlides.length)%dreSlides.length; renderDreSlide(); }
+function nextDreSlide(){ dreSlideIndex=(dreSlideIndex+1)%dreSlides.length; renderDreSlide(); }
+async function toggleDreSlidesFullscreen(){
+  const stage=document.getElementById('dreSlideStage');
+  try{ if(document.fullscreenElement) await document.exitFullscreen(); else await stage.requestFullscreen(); }catch(e){ toast('O navegador não permitiu abrir em tela cheia.',true); }
+}
+function closeDreSlides(){ if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); closeModal('mDreSlides'); }
+document.addEventListener('keydown',event=>{
+  if(!document.getElementById('mDreSlides')?.classList.contains('open')) return;
+  if(event.key==='ArrowLeft'){ event.preventDefault(); prevDreSlide(); }
+  if(event.key==='ArrowRight'){ event.preventDefault(); nextDreSlide(); }
+});
 // DESPESAS
 // ═══════════════════════════════════════════════════
 function renderDesp(){
