@@ -283,3 +283,10 @@ main{height:100vh;overflow:hidden;display:flex;flex-direction:column;padding:26p
   .pcarg-day-event{grid-template-columns:58px minmax(0,1fr);gap:10px;padding:14px}
   .pcarg-day-event-time{font-size:14px}
 }
+/* Correção de altura das caixas de Avisos e Reuniões. */
+#view-root>.feed-main{flex:0 0 auto;height:auto;overflow:visible}
+#view-root>.meeting-toolbar{flex:0 0 auto}
+.feed-main>.feed{min-height:0}
+.feed-main>.feed>.communication-card,
+.feed-main>.feed>.empty-state,
+.feed-main>.feed>.skeleton{min-width:0}
