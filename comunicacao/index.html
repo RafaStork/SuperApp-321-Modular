@@ -17,10 +17,10 @@
   <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260805-5">
   <link rel="stylesheet" href="../shared/ui-controls.css?v=20260807-controls-10">
   <link rel="stylesheet" href="../shared/delete-confirm.css?v=20260811-1">
-  <link rel="stylesheet" href="./styles.css?v=20260818-2">
+  <link rel="stylesheet" href="./styles.css?v=20260819-1">
   <script src="../shared/ui-controls.js?v=20260807-controls-10" defer></script>
   <script src="../shared/delete-confirm.js?v=20260811-1" defer></script>
-  <script src="./app.js?v=20260818-2" defer></script>
+  <script src="./app.js?v=20260819-1" defer></script>
 </head>
 <body>
   <div id="app-shell" aria-busy="true">
@@ -75,8 +75,8 @@
             <div class="field field-wide" id="date-field">
               <span>Data e hora <b>*</b></span>
               <div class="datetime-grid">
-                <label class="datetime-part"><small>Data</small><input id="date-input" type="date"></label>
-                <label class="datetime-part"><small>Hora</small><span class="hora-field-wrap"><input id="time-input" type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="00:00"><button class="hora-clock-btn" id="time-button" type="button" title="Escolher hora no relógio" aria-label="Escolher hora no relógio">🕐</button><span class="time-picker-host" id="time-picker-host"></span></span></label>
+                <label class="datetime-part"><small>Data</small><span class="date-field-wrap"><input id="date-input" type="hidden"><button class="cell-date" id="date-button" type="button" aria-haspopup="dialog" aria-expanded="false">Selecionar…</button><span class="date-picker-host" id="date-picker-host"></span></span></label>
+                <label class="datetime-part"><small>Hora</small><span class="hora-field-wrap"><input id="time-input" type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="00:00"><button class="hora-clock-btn" id="time-button" type="button" title="Escolher hora no relógio" aria-label="Escolher hora no relógio">&#128336;</button><span class="time-picker-host" id="time-picker-host"></span></span></label>
               </div>
             </div>
             <label class="field field-wide"><span>Descrição <b>*</b></span><textarea id="content-input" rows="6" maxlength="5000" required placeholder="Descreva as informações necessárias."></textarea><small><span id="content-count">0</span>/5000 caracteres</small></label>
