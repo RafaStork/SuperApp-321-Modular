@@ -239,3 +239,16 @@ main{height:100vh;overflow:hidden;display:flex;flex-direction:column;padding:26p
 .clock-hand.clock-step-46{transform:translate(-50%,-100%) rotate(345deg)}
 .clock-pos-47{left:101.665px;top:20.308px;width:2px;height:7px;transform:translate(-50%,-50%) rotate(352.5deg)}
 .clock-hand.clock-step-47{transform:translate(-50%,-100%) rotate(352.5deg)}
+/* Correções 2026-08-12: popovers, status e calendário mensal. */
+.communication-float-portal{position:fixed!important;right:auto!important;bottom:auto!important;z-index:650!important;max-width:calc(100vw - 16px);max-height:calc(100dvh - 16px);overflow-y:auto;overscroll-behavior:contain}
+#status-field .ui-select-button-label{font-size:14px;font-weight:750;line-height:1.25}
+#status-field .ui-select-option{font-size:13px;font-weight:700}
+.pcarg-calendar-page{min-height:0;align-self:stretch}
+.pcarg-grid{grid-auto-flow:row;grid-auto-rows:minmax(104px,auto);align-items:stretch;align-content:start}
+.pcarg-dia{height:100%;min-width:0}
+@media(max-width:620px){
+  .communication-float-portal.cal-dd{width:min(250px,calc(100vw - 16px))}
+  .communication-float-portal.clock-picker-float{width:min(264px,calc(100vw - 16px))}
+  .pcarg-calendar-page{overflow-x:auto}
+  .pcarg-grid{grid-auto-rows:minmax(92px,auto)}
+}

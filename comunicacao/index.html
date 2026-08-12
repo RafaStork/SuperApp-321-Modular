@@ -17,10 +17,10 @@
   <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260805-5">
   <link rel="stylesheet" href="../shared/ui-controls.css?v=20260807-controls-10">
   <link rel="stylesheet" href="../shared/delete-confirm.css?v=20260811-1">
-  <link rel="stylesheet" href="./styles.css?v=20260819-1">
+  <link rel="stylesheet" href="./styles.css?v=20260819-2">
   <script src="../shared/ui-controls.js?v=20260807-controls-10" defer></script>
   <script src="../shared/delete-confirm.js?v=20260811-1" defer></script>
-  <script src="./app.js?v=20260819-1" defer></script>
+  <script src="./app.js?v=20260819-2" defer></script>
 </head>
 <body>
   <div id="app-shell" aria-busy="true">
@@ -81,8 +81,8 @@
             </div>
             <label class="field field-wide"><span>Descrição <b>*</b></span><textarea id="content-input" rows="6" maxlength="5000" required placeholder="Descreva as informações necessárias."></textarea><small><span id="content-count">0</span>/5000 caracteres</small></label>
             <label class="field field-wide"><span>Link relacionado</span><input id="link-input" type="url" maxlength="1000" inputmode="url" placeholder="https://..."><small>Somente links HTTP ou HTTPS.</small></label>
-            <fieldset class="selection-box field-wide" id="role-audience"><legend>Cargos que receberão</legend><p>Sem seleção, o aviso ou treinamento será visível para todos os cargos com acesso ao app.</p><div class="selection-grid" id="audience-grid"></div></fieldset>
-            <fieldset class="selection-box field-wide" id="user-audience" hidden><legend>Participantes da reunião <b>*</b></legend><label class="search-users"><span class="sr-only">Buscar participante</span><input id="user-search" type="search" autocomplete="off" placeholder="Buscar por nome, cargo ou franquia..."></label><div class="selection-grid users" id="users-grid"></div><p class="selection-summary" id="users-summary">Nenhum participante selecionado.</p></fieldset>
+            <fieldset class="selection-box field-wide" id="role-audience"><legend>Cargos destinatários</legend><p>O aviso ou reunião ficará visível somente para os cargos e usuários selecionados.</p><div class="selection-grid" id="audience-grid"></div></fieldset>
+            <fieldset class="selection-box field-wide" id="user-audience"><legend>Usuários destinatários</legend><label class="search-users"><span class="sr-only">Buscar destinatário</span><input id="user-search" type="search" autocomplete="off" placeholder="Buscar por nome, cargo ou franquia..."></label><div class="selection-grid users" id="users-grid"></div><p class="selection-summary" id="users-summary">Nenhum usuário selecionado.</p></fieldset>
           </div>
           <p class="form-error" id="form-error" role="alert" hidden></p>
         </div>
