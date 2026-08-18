@@ -25,6 +25,27 @@ document.getElementById('themeToggle').addEventListener('click', ()=>{
 
 const sb = window.SuperAppAuth.getClient();
 let SESSION_READY = false;
+let SESSION_USER_ID = null;
+let financeAuthSubscription = null;
+
+function invalidateFinanceSession(){
+  if (!SESSION_USER_ID) return;
+  SESSION_READY = false;
+  SESSION_USER_ID = null;
+  try { financeAuthSubscription?.unsubscribe?.(); } catch (_) {}
+  financeAuthSubscription = null;
+  location.replace(window.SuperAppAuth.getPortalUrl());
+}
+
+function watchFinanceSession(expectedUserId){
+  try { financeAuthSubscription?.unsubscribe?.(); } catch (_) {}
+  const result = sb.auth.onAuthStateChange((_event, nextSession) => {
+    if (!SESSION_USER_ID) return;
+    const nextUserId = nextSession?.user?.id || null;
+    if (nextUserId !== expectedUserId) invalidateFinanceSession();
+  });
+  financeAuthSubscription = result?.data?.subscription || null;
+}
 
 function showFinanceLoadFailure(message){
   const page = document.createElement('main');
@@ -48,9 +69,18 @@ async function loadCentralFinanceSession(){
     location.replace(window.SuperAppAuth.getPortalUrl());
     return false;
   }
-  const { data, error } = await sb.rpc('load_app_data', {});
+  const loadedUserId = session.user?.id || null;
+  if (!loadedUserId) {
+    location.replace(window.SuperAppAuth.getPortalUrl());
+    return false;
+  }
+  const { data, error } = await sb.rpc('financeiro_load_app_data', {
+    p_expected_user_id: loadedUserId
+  });
   if (error) throw error;
+  SESSION_USER_ID = loadedUserId;
   SESSION_READY = true;
+  watchFinanceSession(loadedUserId);
   if (data && typeof data === 'object') DB = { ...DB, ...data };
   document.getElementById('appRoot').classList.remove('fin-csp-002');
   const profile = await window.SuperAppAuth.getProfile();
@@ -81,12 +111,21 @@ const OBRA_CATS = ['Kit Fábrica','Telhas','Frete','Munck (caminhão)','Alicerce
 // save() grava os dados do usuário logado no Supabase (substitui o antigo localStorage)
 let saveInFlight=Promise.resolve();
 function save(){
-  if(!SESSION_READY) return Promise.resolve(false);
+  if(!SESSION_READY || !SESSION_USER_ID) return Promise.resolve(false);
   // Serializa snapshots para uma edicao antiga nunca sobrescrever uma nova.
   const snapshot = JSON.parse(JSON.stringify(DB));
+  const expectedUserId = SESSION_USER_ID;
   saveInFlight = saveInFlight.catch(()=>{}).then(async ()=>{
     try{
-      const { error } = await sb.rpc('save_app_data', { p_data: snapshot });
+      const currentSession = await window.SuperAppAuth.getSession();
+      if (!currentSession?.user?.id || currentSession.user.id !== expectedUserId) {
+        invalidateFinanceSession();
+        return false;
+      }
+      const { error } = await sb.rpc('financeiro_save_app_data', {
+        p_expected_user_id: expectedUserId,
+        p_data: snapshot
+      });
       if(error){ console.error('Erro ao salvar no Supabase:', error); toast('Erro ao salvar: ' + (error.message || 'falha de persistencia'), true); return false; }
       return true;
     }catch(e){ console.error('Erro ao salvar no Supabase:', e); toast('Erro ao salvar: ' + (e.message || 'falha de rede'), true); return false; }
