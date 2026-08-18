@@ -31,7 +31,7 @@ function bootObras(){
   const PRIORITY={baixa:'#2B8A3E',media:'#d6a620',alta:'#E8590C',urgente:'#c0392b'};
   const VIEW_META={painel:['Painel','Acompanhe cada etapa das obras da franquia.'],calendario:['Calendário de obras','Visualize as datas previstas das obras por mês.'],cronograma:['Cronograma','Acompanhe obras, etapas e atividades em uma linha do tempo.'],locais:['Locais das obras','Navegue pelo mapa completo das obras cadastradas.']};
   const $=id=>document.getElementById(id);
-  const state={client:null,profile:null,franchises:[],carpenters:[],works:[],locations:{states:[],cities:[]},view:'painel',query:'',franchise:'',calendar:new Date(),timelineAnchor:new Date(),timelineInitialized:false,timelineCollapsed:new Set(),timelineGroupCollapsed:new Set(),timelineSaving:false,timelineAutoCenter:true,timelineUndo:[],timelineRedo:[],timelineHistoryBusy:false,sort:'recent',hideOldCompleted:true,visibleStatuses:new Set(STATUS.map(item=>item.id)),editing:null,dragged:null,map:null,mapLayer:null,mapBaseLayers:null,mapMarkers:new Map(),mapHasFit:false,datePicker:null,loadingWorks:false,loadError:false};
+  const state={client:null,profile:null,franchises:[],carpenters:[],works:[],locations:{states:[],cities:[]},view:'painel',query:'',franchise:'',calendar:new Date(),timelineAnchor:new Date(),timelineInitialized:false,timelineCollapsed:new Set(),timelineGroupCollapsed:new Set(),timelineSaving:false,timelineAutoCenter:true,timelineUndo:[],timelineRedo:[],timelineHistoryBusy:false,sort:'recent',hideOldCompleted:true,visibleStatuses:new Set(STATUS.map(item=>item.id)),editing:null,dragged:null,map:null,mapLayer:null,mapBaseLayers:null,mapMarkers:new Map(),mapHasFit:false,datePicker:null,loadingWorks:false,realtimePending:false,realtimeStop:null,loadError:false};
   const esc=value=>String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const statusBy=id=>STATUS.find(item=>item.id===id)||STATUS[0];
   const dateLabel=value=>value?new Intl.DateTimeFormat('pt-BR').format(new Date(value+'T12:00:00')):'Sem data';
@@ -116,27 +116,39 @@ function bootObras(){
   }
   function bindDatePickers(root){root.querySelectorAll('[data-date-field]:not([data-readonly="true"])').forEach(field=>{if(field.dataset.bound)return;field.dataset.bound='true';const display=field.querySelector('.date-display'),trigger=field.querySelector('.date-trigger');trigger.addEventListener('click',event=>{event.stopPropagation();openDatePicker(field)});display.addEventListener('focus',()=>openDatePicker(field));display.addEventListener('input',()=>{let digits=display.value.replace(/D/g,'').slice(0,8);if(digits.length>4)digits=digits.slice(0,2)+'/'+digits.slice(2,4)+'/'+digits.slice(4);else if(digits.length>2)digits=digits.slice(0,2)+'/'+digits.slice(2);display.value=digits});display.addEventListener('blur',()=>{const iso=displayToIso(display.value);if(iso)setDateField(field,iso);else if(!display.value)setDateField(field,'');else display.value=isoToDisplay(field.querySelector('.date-value').value)})})}
   async function loadLocations(){try{const response=await fetch('./ibge-locations.json');if(!response.ok)throw new Error('IBGE local indisponível');const data=await response.json();state.locations={states:Array.isArray(data.states)?data.states:[],cities:Array.isArray(data.cities)?data.cities:[]}}catch(error){console.warn(error);toast('Não foi possível carregar as localidades do IBGE.','error')}}
-  async function loadWorks(){
-    if(state.loadingWorks)return false;
-    state.loadingWorks=true;state.loadError=false;setBusy(true);
+  async function loadWorks(options){
+    const includeAux=options?.includeAux!==false,silent=options?.silent===true;
+    if(state.loadingWorks){state.realtimePending=true;return false}
+    state.loadingWorks=true;state.loadError=false;if(!silent)setBusy(true);
     try{
       const [worksResult,franchisesResult,carpentersResult]=await Promise.allSettled([
         withTimeout(rpc('obras_list'),15000,'Tempo limite ao carregar obras'),
-        withTimeout(rpc('obras_list_franchises'),15000,'Tempo limite ao carregar franquias'),
-        withTimeout(rpc('obras_list_carpenters'),15000,'Tempo limite ao carregar carpinteiros')
+        includeAux?withTimeout(rpc('obras_list_franchises'),15000,'Tempo limite ao carregar franquias'):Promise.resolve(state.franchises),
+        includeAux?withTimeout(rpc('obras_list_carpenters'),15000,'Tempo limite ao carregar carpinteiros'):Promise.resolve(state.carpenters)
       ]);
       if(worksResult.status==='rejected')throw worksResult.reason;
       state.works=rows(worksResult.value).filter(workVisibleToCurrentRole);state.timelineUndo.length=0;state.timelineRedo.length=0;
       if(franchisesResult.status==='fulfilled')state.franchises=rows(franchisesResult.value);
       if(carpentersResult.status==='fulfilled')state.carpenters=rows(carpentersResult.value);
       state.mapHasFit=false;renderFranchises();render();
-      if(franchisesResult.status==='rejected'||carpentersResult.status==='rejected')toast('Obras carregadas. Alguns dados auxiliares estão temporariamente indisponíveis.','error');
+      if(includeAux&&(franchisesResult.status==='rejected'||carpentersResult.status==='rejected'))toast('Obras carregadas. Alguns dados auxiliares estão temporariamente indisponíveis.','error');
       return true;
     }catch(error){
-      state.loadError=true;state.works=[];renderFranchises();render();
-      toast(safeMessage(error,'Não foi possível carregar as obras.'),'error');
+      state.loadError=true;
+      if(!silent){state.works=[];renderFranchises();render()}
+      toast(safeMessage(error,silent?'Não foi possível sincronizar as obras.':'Não foi possível carregar as obras.'),'error');
       return false;
-    }finally{state.loadingWorks=false;setBusy(false)}
+    }finally{
+      state.loadingWorks=false;if(!silent)setBusy(false);
+      if(state.realtimePending){state.realtimePending=false;setTimeout(()=>loadWorks({includeAux:true,silent:true}),0)}
+    }
+  }
+  function setupRealtime(){
+    state.realtimeStop?.();
+    state.realtimeStop=window.SuperAppRealtimeSync?.subscribe({
+      client:state.client,userId:state.profile?.user_id,appCode:APP,debounceMs:900,
+      onChange:()=>loadWorks({includeAux:true,silent:true})
+    })||null;
   }
   function renderMapFailure(error){console.error('[obras:map-render]',error);const empty=$('map-empty'),locationList=$('location-list');if(empty){empty.textContent='Não foi possível exibir o mapa agora.';empty.hidden=false}if(locationList)locationList.innerHTML='<div class="map-load-error"><strong>Falha ao exibir as obras no mapa</strong><small>Os dados permanecem protegidos. Atualize a tela e tente novamente.</small><button class="btn" type="button" data-obras-render-retry>Tentar novamente</button></div>';locationList?.querySelector('[data-obras-render-retry]')?.addEventListener('click',()=>{state.mapHasFit=false;render()})}
   function render(){const list=filtered();$('result-count').textContent=list.length+' '+(list.length===1?'obra':'obras');if(state.view==='painel')renderKanban(list);if(state.view==='calendario')renderCalendar(list);if(state.view==='cronograma')renderTimeline(list);if(state.view==='locais'){try{renderMap(mapFiltered())}catch(error){renderMapFailure(error)}}}
@@ -619,6 +631,6 @@ function cardHtml(work){const priority=PRIORITY[work.priority]||PRIORITY.media,e
     document.addEventListener('keydown',handleTimelineHistoryShortcut);
     window.__obrasSetTimelineMonth=setMonth;window.__obrasCloseTimelineMonth=closeMonthMenu;
   }
-  async function boot(){try{state.client=SuperAppAuth.getScopedClient('core');state.profile=await SuperAppAuth.getProfile();profileCopy();configureTheme();configureShell();configureTimelineV25();await Promise.all([loadLocations(),loadWorks()]);$('app-shell').setAttribute('aria-busy','false');SuperAppAuth.releaseAppGuard()}catch(error){toast(safeMessage(error,'Não foi possível iniciar o acompanhamento de obras.'),'error');SuperAppAuth.releaseAppGuard()}}
+  async function boot(){try{state.client=SuperAppAuth.getScopedClient('core');state.profile=await SuperAppAuth.getProfile();profileCopy();configureTheme();configureShell();configureTimelineV25();await Promise.all([loadLocations(),loadWorks()]);setupRealtime();$('app-shell').setAttribute('aria-busy','false');SuperAppAuth.releaseAppGuard()}catch(error){toast(safeMessage(error,'Não foi possível iniciar o acompanhamento de obras.'),'error');SuperAppAuth.releaseAppGuard()}}
   window.addEventListener('superapp:authorized',boot,{once:true});
 } bootObras();

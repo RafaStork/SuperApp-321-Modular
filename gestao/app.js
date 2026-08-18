@@ -8,6 +8,10 @@ let profilesCache = [];
 let menuOpcoes = {};
 let reclamacoesIndustriaTipos = [];
 let reclamacoesIndustriaTiposPorId = new Map();
+let notificacoesFallbackTimer = null;
+let gestaoRealtimeStop = null;
+let gestaoRefreshInFlight = false;
+let gestaoRealtimePending = false;
 // O cliente envia e renova o JWT do Supabase Auth automaticamente.
 // Nenhum papel ou ID de usuário é aceito por cabeçalho customizado.
 
@@ -362,28 +366,50 @@ async function bootAfterLogin(){
   await loadPermissoesAbas();
   buildNav();
   atualizarBolinhaNotificacoes();
-  setInterval(atualizarBolinhaNotificacoes, 45000); // só a contagem da bolinha — não recarrega dado nenhum de tela
+  if (notificacoesFallbackTimer) clearInterval(notificacoesFallbackTimer);
+  // Contingência; o fluxo principal passa a ser acionado pelo Realtime.
+  notificacoesFallbackTimer = setInterval(()=>{ if (!document.hidden) atualizarBolinhaNotificacoes(); }, 300000);
   const abasPermitidas = abasPermitidasPara(currentProfile.role).map(([key])=>key);
   const preferida = ['UEng','UInd'].includes(currentProfile.role) ? 'minhas-tarefas' : 'dashboard';
   const firstView = abasPermitidas.includes(preferida) ? preferida : (abasPermitidas[0] || 'minhas-tarefas');
-  navigateTo(firstView);
+  await navigateTo(firstView);
+  setupGestaoRealtime();
   return true;
 }
 
 // Atualização manual preserva a aba e a posição de rolagem. A sessão JWT é
 // renovada automaticamente pelo cliente do Supabase Auth.
-async function atualizarManualmente(){
+async function atualizarManualmente(options){
+  const automatico = options?.automatico === true;
+  if (gestaoRefreshInFlight){ if (automatico) gestaoRealtimePending = true; return; }
+  gestaoRefreshInFlight = true;
   const btn = document.getElementById('btn-atualizar');
-  if (btn){ btn.disabled = true; btn.textContent = 'Atualizando…'; }
-  const viewRoot = document.getElementById('view-root');
-  const tableWrap = viewRoot.querySelector('.table-wrap');
-  const scrollTop = tableWrap ? tableWrap.scrollTop : 0;
-  await navigateTo(currentView, { silencioso: true });
-  const novoWrap = document.getElementById('view-root').querySelector('.table-wrap');
-  if (novoWrap) novoWrap.scrollTop = scrollTop;
-  atualizarBolinhaNotificacoes();
-  if (btn){ btn.disabled = false; btn.textContent = '⟳ Atualizar'; }
-  toast('Dados atualizados.');
+  if (!automatico && btn){ btn.disabled = true; btn.textContent = 'Atualizando…'; }
+  try{
+    const viewRoot = document.getElementById('view-root');
+    const tableWrap = viewRoot.querySelector('.table-wrap');
+    const scrollTop = tableWrap ? tableWrap.scrollTop : 0;
+    await navigateTo(currentView, { silencioso: true });
+    const novoWrap = document.getElementById('view-root').querySelector('.table-wrap');
+    if (novoWrap) novoWrap.scrollTop = scrollTop;
+    await atualizarBolinhaNotificacoes();
+    if (!automatico) toast('Dados atualizados.');
+  } finally {
+    gestaoRefreshInFlight = false;
+    if (!automatico && btn){ btn.disabled = false; btn.textContent = '⟳ Atualizar'; }
+    if (gestaoRealtimePending){ gestaoRealtimePending = false; setTimeout(()=>atualizarManualmente({ automatico: true }), 0); }
+  }
+}
+
+function setupGestaoRealtime(){
+  gestaoRealtimeStop?.();
+  gestaoRealtimeStop = window.SuperAppRealtimeSync?.subscribe({
+    client: sb,
+    userId: currentUser?.id,
+    appCode: 'gestao',
+    debounceMs: 900,
+    onChange: ()=>atualizarManualmente({ automatico: true })
+  }) || null;
 }
 
 
