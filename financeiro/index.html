@@ -13,7 +13,7 @@
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
 <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
 <script src="../shared/jspdf.umd.min.js?v=2.5.1"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260819-dre-preview-2">
+<link rel="stylesheet" href="./styles-external.css?v=20260819-dre-monthly-pdf-2">
 <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
 <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260805-5">
 <link rel="stylesheet" href="../shared/ui-controls.css?v=20260807-controls-10">
@@ -286,8 +286,10 @@
       <div class="dre-obras-controls fin-is-hidden" id="dreObraConclusaoControls">
         <label class="dre-select-field"><span>Ano de conclusão</span><select id="dreConclusaoAno" data-fin-change-call="renderDREObra"></select></label>
         <label class="dre-select-field"><span>Mês de conclusão</span><select id="dreConclusaoMes" data-fin-change-call="renderDREObra"><option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select></label>
-        <button type="button" class="btn bs dre-completed-pdf-open" id="dreCompletedPdfOpen" data-fin-call="openDreCompletedPdfModal">Gerar PDF</button>
-        <button type="button" class="btn bp dre-slides-open" data-fin-call="openDreSlides">Apresentar em tela cheia</button>
+        <div class="dre-completed-actions">
+          <button type="button" class="btn bp dre-completed-pdf-open" id="dreCompletedPdfOpen" data-fin-call="openDreCompletedPdfModal">Gerar PDF</button>
+          <button type="button" class="btn bp dre-slides-open" data-fin-call="openDreSlides">Apresentar em tela cheia</button>
+        </div>
       </div>
     </div>
     <div id="dreObraBox"></div>
@@ -829,7 +831,7 @@
 <script src="../shared/delete-confirm.js?v=20260807-delete-2"></script>
 <script src="./app-support.js?v=20260807-delete-2"></script>
 
-<script src="./app.js?v=20260819-dre-preview-2"></script>
+<script src="./app.js?v=20260819-dre-monthly-pdf-2"></script>
 </body>
 </html>
 
