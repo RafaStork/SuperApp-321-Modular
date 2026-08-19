@@ -6228,6 +6228,7 @@ function renderTabs() {
         return;
       }
       state.activeTab = tab.id;
+      generalBuildWarningAccepted=false;
       renderTabs();
       renderInv();
     };
@@ -6259,6 +6260,21 @@ function renderTabs() {
 function usedCount(id){return state.panels.filter(p=>p.typeId===id).length;}
 function usedCountWall(id){return state.wallInstances.filter(wi=>wi.wallTypeId===id).length;}
 
+let generalBuildWarningAccepted=false;
+let generalBuildWarningPromise=null;
+function confirmGeneralBuild(){
+  if(state.activeTab!=='geral'||generalBuildWarningAccepted) return Promise.resolve(true);
+  if(generalBuildWarningPromise) return generalBuildWarningPromise;
+  generalBuildWarningPromise=confirmDialog(
+    'O modelo “Geral” reúne painéis de diferentes modelos. Continue somente se souber identificar e combinar corretamente cada componente, pois misturar painéis incompatíveis pode comprometer a planta e o orçamento. Deseja continuar?',
+    {titulo:'Montar no modelo Geral?',textoConfirmar:'Sim, continuar',textoCancelar:'Cancelar'}
+  ).then(ok=>{
+    if(ok) generalBuildWarningAccepted=true;
+    return ok;
+  }).finally(()=>{generalBuildWarningPromise=null;});
+  return generalBuildWarningPromise;
+}
+
 function renderInv(){
   const inv=document.getElementById("inv");inv.innerHTML="";
   const isAndar2=state.floorMode==='andar2';
@@ -6277,9 +6293,7 @@ function renderInv(){
 
   const renderTypeCard=(ty)=>{
     const used=usedCount(ty.id);
-    const isGeral=state.activeTab==='geral';
-    const canPlace=!isGeral||isAdmin();
-    const card=document.createElement("div");card.className="ptype"+(armedType===ty.id?" armed":"")+(isGeral&&!isAdmin()?" geral-only":"");
+    const card=document.createElement("div");card.className="ptype"+(armedType===ty.id?" armed":"");
     let swatchStyle = `background:${ty.color}`;
     if (ty.hwall) swatchStyle = (ty.hwall.twoTone!==false)
       ? `background: linear-gradient(180deg, ${WOOD_L} 50%, ${WOOD_D} 50%)`
@@ -6305,14 +6319,11 @@ function renderInv(){
       <div class="dims">${dimsTxt}</div>
       ${priceBadge}
       <div class="budget"><div class="nums"><span>em uso: <b>${used}</b></span></div></div>`;
-    if(canPlace) card.addEventListener("click",e=>{if(e.target.dataset.edit||e.target.dataset.dup)return;armPlace(ty.id);});
-    else if(isGeral && !isAdmin()) {
-      // Gestor/Vendedor na aba Geral: intercepta o clique e exibe aviso orientando o usuário
-      card.addEventListener("click", e => {
-        if(e.target.dataset.edit || e.target.dataset.dup) return;
-        toastError("Você precisa escolher a aba de algum modelo para poder continuar.");
-      });
-    }
+    card.addEventListener("click",async e=>{
+      if(e.target.dataset.edit||e.target.dataset.dup)return;
+      if(!(await confirmGeneralBuild()))return;
+      armPlace(ty.id);
+    });
     if(isAdmin()){
       card.querySelector("[data-edit]")?.addEventListener("click",e=>{e.stopPropagation();
         requireAdmin(()=> ty.isStair ? openStairModal(ty.id) : openTypeModal(ty.id));});
@@ -6376,13 +6387,11 @@ function renderInv(){
   const currentWallTypes = state.wallTypes.filter(wt => wt.tabIds && wt.tabIds.includes(state.activeTab)).slice().sort((a,b)=>a.name.localeCompare(b.name,'pt'));
   currentWallTypes.forEach(wt=>{
     const used=usedCountWall(wt.id);
-    const isGeral=state.activeTab==='geral';
-    const canPlace=!isGeral||isAdmin();
     const info=wallTypeRectInfo(wt);
     const _selPanel2=state.panels.find(p=>p.id===selId);
     const _pisoTid=_selPanel2?_selPanel2.typeId:null;
     const _wtOk=!(wt.allowedPisoIds&&wt.allowedPisoIds.length>0)||!_pisoTid||!wt.allowedPisoIds.includes(_pisoTid);
-    const card=document.createElement("div");card.className="ptype"+(armedWallType===wt.id?" armed":"")+(isGeral&&!isAdmin()?" geral-only":"");
+    const card=document.createElement("div");card.className="ptype"+(armedWallType===wt.id?" armed":"");
     if(!_wtOk){card.style.opacity="0.35";card.title="Incompatível com o tipo de piso selecionado";}
     const wallAdminBtns=isAdmin()?`
       <button class="mini" data-dup="${wt.id}" title="Duplicar parede">⧉</button>
@@ -6392,14 +6401,11 @@ function renderInv(){
       ${wallAdminBtns}</div>
       <div class="dims">${fmt(info.length)} m · esp. ${fmt(info.thickness)} m${wt.door?" · 🚪 com porta":""}</div>
       <div class="budget"><div class="nums"><span>em uso: <b>${used}</b></span></div></div>`;
-    if(canPlace) card.addEventListener("click",e=>{if(e.target.dataset.edit||e.target.dataset.dup)return;armWallPlace(wt.id);});
-    else if(isGeral && !isAdmin()) {
-      // Gestor/Vendedor na aba Geral: intercepta o clique e exibe aviso orientando o usuário
-      card.addEventListener("click", e => {
-        if(e.target.dataset.edit || e.target.dataset.dup) return;
-        toastError("Você precisa escolher a aba de algum modelo para poder continuar.");
-      });
-    }
+    card.addEventListener("click",async e=>{
+      if(e.target.dataset.edit||e.target.dataset.dup)return;
+      if(!(await confirmGeneralBuild()))return;
+      armWallPlace(wt.id);
+    });
     if(isAdmin()){
       card.querySelector("[data-edit]")?.addEventListener("click",e=>{e.stopPropagation();requireAdmin(()=>openWallTypeModal(wt.id));});
       card.querySelector("[data-dup]")?.addEventListener("click",e=>{e.stopPropagation();requireAdmin(()=>openWallTypeModal(null,wt.id));});
@@ -6407,10 +6413,10 @@ function renderInv(){
     inv.appendChild(card);
   });
   
-  if(state.activeTab === 'geral' && !isAdmin()){
+  if(state.activeTab === 'geral'){
     const hint=document.createElement("p");
-    hint.style.cssText="font-size:11px;color:var(--ink-faint);margin:8px 4px 0;line-height:1.5;";
-    hint.textContent="Na aba Geral só é possível criar e editar tipos. Para usar, selecione outra aba.";
+    hint.style.cssText="font-size:11px;color:var(--ink);margin:8px 4px 0;padding:9px 10px;line-height:1.5;background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:9px;";
+    hint.innerHTML="<b>Modelo Geral:</b> permite combinar componentes de modelos diferentes. Confira cuidadosamente a compatibilidade antes de posicioná-los.";
     inv.appendChild(hint);
   }
   
@@ -8124,7 +8130,7 @@ document.getElementById("btnNew").onclick=async()=>{
     const ok=await confirmDialog("Começar uma planta nova? As alterações não salvas serão perdidas.", { titulo:"Começar planta nova", textoConfirmar:"Começar nova", perigo:true });
     if(!ok) return;
   }
-  state.panels=[];state.labels=[];state.wallInstances=[];state.manualDims=[];state.name="";state.meta={cliente:"",local:"",modelo:"",revisao:"01",projetadoPor:"321 MODULAR",logo:DEFAULT_LOGO};
+  state.panels=[];state.labels=[];state.wallInstances=[];state.manualDims=[];state.name="";generalBuildWarningAccepted=false;state.meta={cliente:"",local:"",modelo:"",revisao:"01",projetadoPor:"321 MODULAR",logo:DEFAULT_LOGO};
   historyStack=[];
   document.getElementById("projName").value=state.name;selId=null;
   renderTabs();renderInv();fit();render();};
@@ -8214,7 +8220,7 @@ function normalizeWallInstance(wi){
     oitaoAtivo:!!wi.oitaoAtivo,
     doorOpens:wi.doorOpens,doorHinge:wi.doorHinge};
 }
-function load(data){state.name=data.name||"";state.meta=data.meta||{cliente:"",local:"",modelo:"",revisao:"01",projetadoPor:"321 MODULAR",logo:DEFAULT_LOGO};
+function load(data){generalBuildWarningAccepted=false;state.name=data.name||"";state.meta=data.meta||{cliente:"",local:"",modelo:"",revisao:"01",projetadoPor:"321 MODULAR",logo:DEFAULT_LOGO};
   if(!state.meta.logo)state.meta.logo=DEFAULT_LOGO;
   state.tabs=data.tabs||[{id:"geral", name:"Geral"}];
   state.activeTab=data.activeTab||state.tabs[0].id;
@@ -8297,6 +8303,7 @@ function serializeModelo(){
   };
 }
 function loadModelo(data){
+  generalBuildWarningAccepted=false;
   state.name=data.name||state.name;
   if(data.meta) state.meta={...state.meta, ...data.meta, logo:(data.meta.logo||state.meta.logo||DEFAULT_LOGO)};
   if(data.activeTab && (state.tabs||[]).some(t=>t.id===data.activeTab)) state.activeTab=data.activeTab;

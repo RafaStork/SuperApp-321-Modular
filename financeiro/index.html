@@ -13,7 +13,7 @@
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
 <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
 <script src="../shared/jspdf.umd.min.js?v=2.5.1"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260819-dre-pdf-1">
+<link rel="stylesheet" href="./styles-external.css?v=20260819-dre-preview-2">
 <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
 <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260805-5">
 <link rel="stylesheet" href="../shared/ui-controls.css?v=20260807-controls-10">
@@ -761,14 +761,21 @@
       <div><span class="dre-slide-kicker">DRE POR OBRA</span><h2 id="drePdfPreviewTitle">Pré-visualização do PDF</h2></div>
       <button type="button" class="mc dre-pdf-close" data-fin-call="closeDrePdfPreview" aria-label="Fechar">✕</button>
     </div>
-    <iframe id="drePdfPreviewFrame" title="Pré-visualização do DRE em PDF"></iframe>
-    <div class="dre-pdf-mobile-preview">
-      <strong>PDF pronto para visualizar</strong>
-      <p>Abra o arquivo no visualizador seguro do seu dispositivo.</p>
-      <a class="btn bp" id="drePdfOpenFile" target="_blank" rel="noopener noreferrer">Abrir PDF</a>
+    <div class="dre-pdf-preview-body" id="drePdfPreviewBody" aria-busy="true">
+      <div class="dre-pdf-preview-loading" id="drePdfPreviewLoading" role="status" aria-live="polite">
+        <span class="dre-pdf-spinner" aria-hidden="true"></span>
+        <strong>Preparando pré-visualização...</strong>
+        <small>Renderizando o PDF com segurança no dispositivo.</small>
+      </div>
+      <div class="dre-pdf-preview-pages" id="drePdfPreviewPages" aria-label="Páginas do PDF"></div>
+      <div class="dre-pdf-preview-error fin-is-hidden" id="drePdfPreviewError" role="alert">
+        <strong>Não foi possível mostrar o PDF dentro do aplicativo.</strong>
+        <p>O arquivo continua disponível para abrir ou salvar.</p>
+      </div>
     </div>
-    <div class="btns dre-pdf-modal-foot">
+    <div class="btns dre-pdf-modal-foot dre-pdf-preview-actions">
       <button type="button" class="btn bs" data-fin-call="closeDrePdfPreview">Fechar</button>
+      <a class="btn bs" id="drePdfOpenFile" target="_blank" rel="noopener noreferrer">Abrir PDF</a>
       <button type="button" class="btn bp" id="drePdfSavePreview" data-fin-call="saveDrePdfPreview">Salvar PDF</button>
     </div>
   </div>
@@ -799,7 +806,7 @@
 <script src="../shared/delete-confirm.js?v=20260807-delete-2"></script>
 <script src="./app-support.js?v=20260807-delete-2"></script>
 
-<script src="./app.js?v=20260819-dre-pdf-1"></script>
+<script src="./app.js?v=20260819-dre-preview-2"></script>
 </body>
 </html>
 
