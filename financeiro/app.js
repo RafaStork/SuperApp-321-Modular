@@ -82,6 +82,7 @@ async function loadCentralFinanceSession(){
   SESSION_READY = true;
   watchFinanceSession(loadedUserId);
   if (data && typeof data === 'object') DB = { ...DB, ...data };
+  normalizeFinanceDB();
   document.getElementById('appRoot').classList.remove('fin-csp-002');
   const profile = await window.SuperAppAuth.getProfile();
   const sessionLabel = profile?.display_name || session.user.email || 'Usuário';
@@ -94,8 +95,10 @@ async function loadCentralFinanceSession(){
   return true;
 }
 async function doLogout(){ location.href = window.SuperAppAuth.getPortalUrl(); }
+const DEFAULT_OBRA_MODELS = Object.freeze(['Chalé 25m²','Chalé 40m²','Chalé 40m² + Deck','Chalé Duplex 60m²','Outro']);
 let DB = {
   obras:[], receber:[], pagar:[],
+  modelos:[...DEFAULT_OBRA_MODELS],
   config:{ nome:'321 Modular | Minha Loja', resp:'', royalties:5, comissao:3, marketing:0, limitePermuta:0 },
   despesas:{ aluguel:0, salarios:0, encargos:0, contabilidade:0, impostos:0, energia:0, agua:0, internet:0, assinaturas:0, marketing_local:0, outras:0 },
   despesasExtras:[], // despesas fixas cadastradas livremente pelo usuário: [{id, nome, valor}]
@@ -107,6 +110,11 @@ let DB = {
 };
 const DESP_LBL = { aluguel:'Aluguel do ponto', salarios:'Salários e pró-labore', encargos:'Encargos / FGTS', contabilidade:'Contabilidade', impostos:'Impostos e taxas', energia:'Energia elétrica', agua:'Água', internet:'Internet / Telefonia', assinaturas:'Assinaturas', marketing_local:'Marketing local', outras:'Outras despesas' };
 const OBRA_CATS = ['Kit Fábrica','Telhas','Frete','Munck (caminhão)','Alicerce / Blocos','Mão de obra montagem','Material elétrico','Pintura','Alimentação / Estadia','Outros custos de obra'];
+
+function normalizeFinanceDB(){
+  const source=Array.isArray(DB.modelos)?DB.modelos:DEFAULT_OBRA_MODELS;
+  DB.modelos=[...new Set(source.map(value=>String(value||'').trim()).filter(Boolean))];
+}
 
 // save() grava os dados do usuário logado no Supabase (substitui o antigo localStorage)
 let saveInFlight=Promise.resolve();
@@ -409,90 +417,66 @@ function abrirFlutuante(trigger, classe, montar){
   };
 }
 
+function formatDateDigits(value){
+  const digits=String(value||'').replace(/\D/g,'').slice(0,8);
+  if(digits.length<=2)return digits;
+  if(digits.length<=4)return digits.slice(0,2)+'/'+digits.slice(2);
+  return digits.slice(0,2)+'/'+digits.slice(2,4)+'/'+digits.slice(4);
+}
+function dateTextToIso(value){
+  const match=String(value||'').trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!match)return null;
+  const day=Number(match[1]),month=Number(match[2]),year=Number(match[3]);
+  const date=new Date(year,month-1,day);
+  if(date.getFullYear()!==year||date.getMonth()!==month-1||date.getDate()!==day)return null;
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
 function syncDateButton(inputId){
-  const input = document.getElementById(inputId);
-  const btn = document.querySelector(`.cell-date[data-target="${inputId}"]`);
-  if(!input || !btn) return;
-  if(input.value){ btn.textContent = fmtDate(input.value); btn.classList.remove('placeholder'); }
-  else{ btn.textContent = 'Selecionar…'; btn.classList.add('placeholder'); }
+  const input=document.getElementById(inputId);
+  const text=document.querySelector(`.date-entry-input[data-target="${inputId}"]`);
+  const legacy=document.querySelector(`button.cell-date[data-target="${inputId}"]`);
+  if(!input)return;
+  if(text&&document.activeElement!==text){text.value=input.value?fmtDate(input.value):'';text.classList.toggle('placeholder',!input.value);text.removeAttribute('aria-invalid')}
+  if(legacy&&!legacy.classList.contains('date-calendar-trigger')){legacy.textContent=input.value?fmtDate(input.value):'Selecionar…';legacy.classList.toggle('placeholder',!input.value)}
 }
 function syncAllDateButtons(){
-  document.querySelectorAll('.cell-date[data-target]').forEach(btn=>syncDateButton(btn.dataset.target));
+  document.querySelectorAll('[data-target]').forEach(control=>{if(control.classList.contains('cell-date')||control.classList.contains('date-entry-input'))syncDateButton(control.dataset.target)});
 }
-
+function commitTypedDate(inputId,text,{notify=true}={}){
+  const input=document.getElementById(inputId),value=text.value.trim();
+  if(!value){input.value='';text.removeAttribute('aria-invalid');text.classList.add('placeholder');return true}
+  const iso=dateTextToIso(value);
+  if(!iso){input.value='';text.setAttribute('aria-invalid','true');if(notify)toast('Informe uma data válida no formato dd/mm/aaaa.',true);return false}
+  input.value=iso;text.value=fmtDate(iso);text.removeAttribute('aria-invalid');text.classList.remove('placeholder');input.dispatchEvent(new Event('change',{bubbles:true}));return true
+}
+function enhanceDateControl(button,inputId){
+  if(button.dataset.dateReady)return button.closest('.date-entry');
+  button.dataset.dateReady='1';
+  const wrapper=document.createElement('div'),text=document.createElement('input');
+  wrapper.className='date-entry';text.type='text';text.inputMode='numeric';text.autocomplete='off';text.maxLength=10;text.className='date-entry-input placeholder';text.dataset.target=inputId;text.placeholder='dd/mm/aaaa';text.setAttribute('aria-label','Data no formato dia, mês e ano');
+  button.parentNode.insertBefore(wrapper,button);wrapper.append(text,button);button.className='cell-date date-calendar-trigger';button.textContent='';button.setAttribute('aria-label','Abrir calendário');button.title='Abrir calendário';
+  text.addEventListener('focus',()=>{text.dataset.committed=document.getElementById(inputId).value||''});
+  text.addEventListener('input',()=>{text.value=formatDateDigits(text.value);text.classList.toggle('placeholder',!text.value);const iso=dateTextToIso(text.value);if(iso)document.getElementById(inputId).value=iso;else if(!text.value)document.getElementById(inputId).value='';text.toggleAttribute('aria-invalid',text.value.length===10&&!iso)});
+  text.addEventListener('blur',()=>commitTypedDate(inputId,text));
+  text.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();if(commitTypedDate(inputId,text))text.blur()}if(event.key==='Escape'){event.preventDefault();event.stopPropagation();const committed=text.dataset.committed||'';document.getElementById(inputId).value=committed;text.value=committed?fmtDate(committed):'';text.removeAttribute('aria-invalid');text.blur()}});
+  return wrapper
+}
 function initCalendarios(){
-  document.querySelectorAll('.cell-date[data-target]').forEach(btn=>{
-    const inputId = btn.dataset.target;
-    const input = document.getElementById(inputId);
-    if(!input) return;
-    syncDateButton(inputId);
-    btn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      btn.classList.add('dd-active');
-      __floatActiveBtn = btn;
-      let selecionado = input.value || null;
-      const base = selecionado ? selecionado.split('-').map(Number) : [new Date().getFullYear(), new Date().getMonth()+1];
-      let ano = base[0], mes = base[1];
-      abrirFlutuante(btn, 'cal-dd', (painelEl, fechar)=>{
+  document.querySelectorAll('button.cell-date[data-target]').forEach(btn=>{
+    const inputId=btn.dataset.target,input=document.getElementById(inputId);if(!input)return;enhanceDateControl(btn,inputId);syncDateButton(inputId);
+    btn.addEventListener('click',event=>{
+      event.stopPropagation();let selecionado=input.value||null;const base=selecionado?selecionado.split('-').map(Number):[new Date().getFullYear(),new Date().getMonth()+1];let ano=base[0],mes=base[1];
+      abrirFlutuante(btn,'cal-dd',(painelEl,fechar)=>{
         function montarPainel(){
-          const primeiroDia = new Date(ano, mes-1, 1);
-          const nomeMes = primeiroDia.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
-          const diaSemanaInicio = primeiroDia.getDay();
-          const totalDias = new Date(ano, mes, 0).getDate();
-          const totalDiasMesAnterior = new Date(ano, mes-1, 0).getDate();
-          const hojeISO = new Date().toISOString().slice(0,10);
-          let celulas = '';
-          for(let i=0;i<diaSemanaInicio;i++){
-            celulas += `<div class="cal-day cal-muted">${totalDiasMesAnterior - diaSemanaInicio + 1 + i}</div>`;
-          }
-          for(let d=1; d<=totalDias; d++){
-            const iso = `${ano}-${String(mes).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const cls = ['cal-day'];
-            if(iso===hojeISO) cls.push('cal-today');
-            if(iso===selecionado) cls.push('cal-selected');
-            celulas += `<div class="${cls.join(' ')}" data-iso="${iso}">${d}</div>`;
-          }
-          const restante = (7 - ((diaSemanaInicio+totalDias)%7))%7;
-          for(let d=1; d<=restante; d++){ celulas += `<div class="cal-day cal-muted">${d}</div>`; }
-          painelEl.innerHTML = `
-            <div class="cal-head">
-              <button type="button" data-nav="-1">‹</button>
-              <div class="cal-title">${nomeMes}</div>
-              <button type="button" data-nav="1">›</button>
-            </div>
-            <div class="cal-grid">
-              ${['D','S','T','Q','Q','S','S'].map(d=>`<div class="cal-dow">${d}</div>`).join('')}
-              ${celulas}
-            </div>
-            <div class="cal-foot">
-              <button type="button" data-acao="hoje">Hoje</button>
-              <button type="button" data-acao="limpar">Limpar</button>
-            </div>`;
-          painelEl.querySelectorAll('[data-nav]').forEach(b=>b.addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            mes += parseInt(b.dataset.nav); if(mes<1){mes=12;ano--;} if(mes>12){mes=1;ano++;}
-            montarPainel();
-          }));
-          painelEl.querySelectorAll('.cal-day[data-iso]').forEach(c=>c.addEventListener('click', ()=>{
-            selecionado = c.dataset.iso;
-            input.value = selecionado;
-            syncDateButton(inputId);
-            fechar();
-          }));
-          painelEl.querySelector('[data-acao="hoje"]').addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            selecionado = new Date().toISOString().slice(0,10);
-            input.value = selecionado;
-            syncDateButton(inputId);
-            fechar();
-          });
-          painelEl.querySelector('[data-acao="limpar"]').addEventListener('click', (ev)=>{
-            ev.stopPropagation();
-            selecionado = null;
-            input.value = '';
-            syncDateButton(inputId);
-            fechar();
-          });
+          const primeiroDia=new Date(ano,mes-1,1),nomeMes=primeiroDia.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}),diaSemanaInicio=primeiroDia.getDay(),totalDias=new Date(ano,mes,0).getDate(),totalDiasMesAnterior=new Date(ano,mes-1,0).getDate(),hojeISO=new Date().toISOString().slice(0,10);let celulas='';
+          for(let i=0;i<diaSemanaInicio;i++)celulas+=`<div class="cal-day cal-muted">${totalDiasMesAnterior-diaSemanaInicio+1+i}</div>`;
+          for(let day=1;day<=totalDias;day++){const iso=`${ano}-${String(mes).padStart(2,'0')}-${String(day).padStart(2,'0')}`,classes=['cal-day'];if(iso===hojeISO)classes.push('cal-today');if(iso===selecionado)classes.push('cal-selected');celulas+=`<div class="${classes.join(' ')}" data-iso="${iso}">${day}</div>`}
+          const restante=(7-((diaSemanaInicio+totalDias)%7))%7;for(let day=1;day<=restante;day++)celulas+=`<div class="cal-day cal-muted">${day}</div>`;
+          painelEl.innerHTML=`<div class="cal-head"><button type="button" data-nav="-1">‹</button><div class="cal-title">${nomeMes}</div><button type="button" data-nav="1">›</button></div><div class="cal-grid">${['D','S','T','Q','Q','S','S'].map(day=>`<div class="cal-dow">${day}</div>`).join('')}${celulas}</div><div class="cal-foot"><button type="button" data-acao="hoje">Hoje</button><button type="button" data-acao="limpar">Limpar</button></div>`;
+          painelEl.querySelectorAll('[data-nav]').forEach(control=>control.addEventListener('click',navEvent=>{navEvent.stopPropagation();mes+=Number(control.dataset.nav);if(mes<1){mes=12;ano--}if(mes>12){mes=1;ano++}montarPainel()}));
+          painelEl.querySelectorAll('.cal-day[data-iso]').forEach(day=>day.addEventListener('click',()=>{selecionado=day.dataset.iso;input.value=selecionado;syncDateButton(inputId);input.dispatchEvent(new Event('change',{bubbles:true}));fechar()}));
+          painelEl.querySelector('[data-acao="hoje"]').addEventListener('click',actionEvent=>{actionEvent.stopPropagation();selecionado=new Date().toISOString().slice(0,10);input.value=selecionado;syncDateButton(inputId);input.dispatchEvent(new Event('change',{bubbles:true}));fechar()});
+          painelEl.querySelector('[data-acao="limpar"]').addEventListener('click',actionEvent=>{actionEvent.stopPropagation();selecionado=null;input.value='';syncDateButton(inputId);input.dispatchEvent(new Event('change',{bubbles:true}));fechar()});
         }
         montarPainel();
       });
@@ -909,8 +893,51 @@ function renderObras(){
   badges();
 }
 
+function fillObraModelSelect(selected=''){
+  normalizeFinanceDB();
+  const select=document.getElementById('oModelo');
+  if(!select)return;
+  const values=[...DB.modelos];
+  select.innerHTML='<option value="">Sem modelo definido</option>'+values.map(model=>`<option value="${escapeAttr(model)}">${escapeHtml(model)}</option>`).join('');
+  if(selected&&!values.includes(selected))select.insertAdjacentHTML('beforeend',`<option value="${escapeAttr(selected)}">${escapeHtml(selected)} (modelo removido)</option>`);
+  select.value=selected||'';
+  select.__syncSelBtn?.();
+}
+function openModelosObraModal(){
+  renderModelosObraList();
+  document.getElementById('novoModeloObra').value='';
+  openModal('mModelosObra');
+}
+function renderModelosObraList(){
+  normalizeFinanceDB();
+  const container=document.getElementById('modelosObraList');
+  if(!container)return;
+  container.innerHTML=DB.modelos.length?DB.modelos.map(model=>`<div class="model-manager-row"><input value="${escapeAttr(model)}" aria-label="Nome do modelo" data-fin-dynamic-call="renomearModeloObra" data-fin-dynamic-id="${escapeAttr(model)}" data-fin-dynamic-value="current"><button type="button" class="btn brd bsm" data-fin-dynamic-call="removeModeloObra" data-fin-dynamic-id="${escapeAttr(model)}">Excluir</button></div>`).join(''):'<p class="model-manager-empty">Nenhum modelo cadastrado. A obra poderá ser salva sem modelo.</p>';
+}
+function addModeloObra(){
+  const input=document.getElementById('novoModeloObra'),name=input.value.trim();
+  if(!name){toast('Informe o nome do modelo.',true);return}
+  normalizeFinanceDB();
+  if(DB.modelos.some(model=>model.localeCompare(name,'pt-BR',{sensitivity:'accent'})===0)){toast('Este modelo já está cadastrado.',true);return}
+  DB.modelos.push(name);save();renderModelosObraList();fillObraModelSelect(name);input.value='';toast('Modelo adicionado.')
+}
+function renomearModeloObra(currentName,nextName){
+  const name=String(nextName||'').trim();
+  if(!name){renderModelosObraList();toast('O nome do modelo não pode ficar vazio.',true);return}
+  const index=DB.modelos.indexOf(currentName);if(index<0)return;
+  if(DB.modelos.some((model,modelIndex)=>modelIndex!==index&&model.localeCompare(name,'pt-BR',{sensitivity:'accent'})===0)){renderModelosObraList();toast('Este modelo já está cadastrado.',true);return}
+  DB.modelos[index]=name;
+  DB.obras.forEach(work=>{if(work.modelo===currentName)work.modelo=name});
+  save();renderModelosObraList();fillObraModelSelect(document.getElementById('oModelo').value===currentName?name:document.getElementById('oModelo').value);toast('Modelo atualizado.')
+}
+async function removeModeloObra(name){
+  if(!(await confirmarAcao(`Excluir o modelo “${name}” da lista? Obras já cadastradas manterão o nome salvo.`,{titulo:'Excluir modelo?',textoBotao:'Excluir',destrutivo:true})))return;
+  DB.modelos=DB.modelos.filter(model=>model!==name);save();renderModelosObraList();
+  const selected=document.getElementById('oModelo').value;fillObraModelSelect(selected===name?'':selected);toast('Modelo removido.')
+}
 function openObraModal(id){
   clearObraForm();
+  fillObraModelSelect();
   document.getElementById('mObraTitle').textContent = id ? 'Editar obra' : 'Nova obra';
   document.getElementById('oId').value = '';
   document.getElementById('btnDelObra').style.display='none';
@@ -924,13 +951,14 @@ function openObraModal(id){
   document.querySelector('#mObra .msub').textContent = id
     ? 'Dados da obra. O valor de venda e os lançamentos já gerados podem ser ajustados na aba "A Receber".'
     : 'Informe o valor de venda e como será recebido — os lançamentos em A Receber são gerados automaticamente.';
-  document.getElementById('mObra').classList.add('open');
+  openModal('mObra');
 }
 
 function clearObraForm(){
   ['oCliente','oCidade','oFPag','oObs','oEnt','oDtEnt','oParc','oNParc','oDtParc1','oPerm','oPermDesc','oSaldo','oDtE','oDtR','oVenda','oEntChequeBanco','oSaldoChequeBanco'].forEach(f=>{
     const el=document.getElementById(f); if(el) el.value='';
   });
+  document.getElementById('oModelo').value='';
   document.getElementById('oStatus').value='Em negociação';
   document.getElementById('oTipoEnt').value='Entrada';
   document.getElementById('oEntRecebida').checked=false;
@@ -965,7 +993,7 @@ function fillObraForm(id){
   document.getElementById('oId').value=id;
   document.getElementById('btnDelObra').style.display='inline-flex';
   document.getElementById('oCliente').value=o.cliente||'';
-  document.getElementById('oModelo').value=o.modelo||'Chalé 40m²';
+  fillObraModelSelect(o.modelo||'');
   document.getElementById('oDtC').value=o.dtC||'';
   document.getElementById('oStatus').value=o.status||'Em negociação';
   document.getElementById('oCidade').value=o.cidade||'';
@@ -1363,7 +1391,7 @@ function abrirDepositoCheque(id){
   fillContaSelect('chDepositoConta');
   document.getElementById('chDepositoId').value=id;
   document.getElementById('chDepositoInfo').textContent=`${BRL(c.valor)} — venc. ${fmtDate(c.vencimento)}${c.banco?' — '+c.banco:''}`;
-  document.getElementById('mChequeDeposito').classList.add('open');
+  openModal('mChequeDeposito');
 }
 
 function confirmarDepositoCheque(){
@@ -1441,11 +1469,11 @@ function openFornecedorModal(id, fromPagar){
       document.getElementById('fObs').value=f.obs||'';
     }
   }
-  document.getElementById('mFornecedor').classList.add('open');
+  openModal('mFornecedor');
 }
 
 function closeFornecedorModal(){
-  document.getElementById('mFornecedor').classList.remove('open');
+  closeModal('mFornecedor');
   fornModalContext=null;
 }
 
@@ -1519,7 +1547,7 @@ function openContaModal(id){
       document.getElementById('ctSaldo').value=n(c.saldoInicial)||'';
     }
   }
-  document.getElementById('mConta').classList.add('open');
+  openModal('mConta');
 }
 
 function saveConta(){
@@ -1555,7 +1583,7 @@ function fillTiposContaSelect(){
 function openTiposContaModal(){
   renderTiposContaList();
   document.getElementById('novoTipoConta').value='';
-  document.getElementById('mTiposConta').classList.add('open');
+  openModal('mTiposConta');
 }
 
 function renderTiposContaList(){
@@ -1693,7 +1721,7 @@ function openRecModal(id){
   onRecStatusChange();
   if(id) editRec(id,true);
   syncDateButton('rVenc');
-  document.getElementById('mRec').classList.add('open');
+  openModal('mRec');
 }
 
 function editRec(id, fromModal){
@@ -1935,7 +1963,7 @@ function openPagModal(preObraId){
   onPagCatChange();
   onPagStatusChange();
   syncDateButton('pVenc');
-  document.getElementById('mPag').classList.add('open');
+  openModal('mPag');
 }
 
 function editPag(id){
@@ -1962,7 +1990,7 @@ function editPag(id){
   onPagFormaChange();
   if(p.forma!=='Cheque'&&p.forma!=='Permuta') document.getElementById('pConta').value=p.contaId||'';
   syncDateButton('pVenc');
-  document.getElementById('mPag').classList.add('open');
+  openModal('mPag');
 }
 
 async function savePag(){
@@ -2355,7 +2383,7 @@ function renderDREObrasConcluidas(){
 function openDreSlides(){
   const periodo=populateDreConclusaoPeriod(); dreSlides=getObrasConcluidasNoPeriodo(periodo);
   if(!dreSlides.length){ toast('Não há obras concluídas no período selecionado.',true); return; }
-  dreSlideIndex=0; document.getElementById('mDreSlides').classList.add('open'); renderDreSlide();
+  dreSlideIndex=0; openModal('mDreSlides'); renderDreSlide();
 }
 function renderDreSlide(){
   if(!dreSlides.length) return;
@@ -2485,9 +2513,27 @@ function saveConfig(){
 // ═══════════════════════════════════════════════════
 // MODALS / UTILS
 // ═══════════════════════════════════════════════════
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.mb').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
-
+function openModal(id){
+  const backdrop=document.getElementById(id);if(!backdrop)return;
+  fecharFlutuante();
+  backdrop.__returnFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
+  backdrop.classList.add('open');document.body.classList.add('modal-open');
+  requestAnimationFrame(()=>backdrop.querySelector('input:not([type="hidden"]),select,textarea,button')?.focus({preventScroll:true}));
+}
+function closeModal(id){
+  const backdrop=document.getElementById(id);if(!backdrop)return;
+  fecharFlutuante();backdrop.classList.remove('open');
+  if(!document.querySelector('.mb.open'))document.body.classList.remove('modal-open');
+  const target=backdrop.__returnFocus;backdrop.__returnFocus=null;
+  if(target?.isConnected)requestAnimationFrame(()=>target.focus({preventScroll:true}));
+}
+document.querySelectorAll('.mb').forEach(modal=>modal.addEventListener('click',event=>{if(event.target===modal)closeModal(modal.id)}));
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  if(__floatEl){event.preventDefault();fecharFlutuante();return}
+  const opened=[...document.querySelectorAll('.mb.open')];
+  if(opened.length){event.preventDefault();closeModal(opened.at(-1).id)}
+});
 function badges(){
   document.getElementById('bObras').textContent=DB.obras.length;
   document.getElementById('bRec').textContent=DB.receber.filter(r=>r.status!=='Recebido').length;
@@ -2502,6 +2548,7 @@ async function loadDemo(){
   if(!(await confirmarAcao('Carregar dados de demonstração? Os dados atuais serão substituídos.', { textoBotao:'Carregar demo', destrutivo:true }))) return;
   const hoje=new Date(); const d=(m,dd)=>{ const dt=new Date(hoje); dt.setMonth(dt.getMonth()+m); return dt.toISOString().slice(0,7)+'-'+String(dd).padStart(2,'0'); };
   DB.config={nome:'321 Modular | Florianópolis',resp:'João Franqueado',royalties:5,comissao:3,marketing:0};
+  DB.modelos=[...DEFAULT_OBRA_MODELS];
   DB.despesas={aluguel:2800,salarios:5300,encargos:0,contabilidade:600,impostos:350,energia:300,agua:80,internet:180,assinaturas:120,marketing_local:300,outras:150};
 
   const o1=uid(),o2=uid(),o3=uid(),o4=uid(),o5=uid(),o6=uid();
@@ -2585,6 +2632,7 @@ async function clearAll(){
   if(!ok) return;
   DB = {
     obras:[], receber:[], pagar:[],
+    modelos:[...DEFAULT_OBRA_MODELS],
     config:{ nome:'321 Modular | Minha Loja', resp:'', royalties:5, comissao:3, marketing:0, limitePermuta:0 },
     despesas:{ aluguel:0, salarios:0, encargos:0, contabilidade:0, impostos:0, energia:0, agua:0, internet:0, assinaturas:0, marketing_local:0, outras:0 },
     despesasExtras:[],

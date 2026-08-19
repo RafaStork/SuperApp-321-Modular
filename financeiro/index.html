@@ -12,7 +12,7 @@
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
 <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260812-dre-1">
+<link rel="stylesheet" href="./styles-external.css?v=20260819-finance-ui-1">
 <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
 <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260805-5">
 <link rel="stylesheet" href="../shared/ui-controls.css?v=20260807-controls-10">
@@ -368,7 +368,10 @@
       <div class="fgrid g3">
         <div class="fg gfull"><label>Cliente *</label><input id="oCliente" placeholder="Nome completo do cliente"></div>
         <div class="fg"><label>Modelo</label>
-          <select id="oModelo"><option>Chalé 25m²</option><option>Chalé 40m²</option><option>Chalé 40m² + Deck</option><option>Chalé Duplex 60m²</option><option>Outro</option></select>
+          <div class="model-select-row">
+            <select id="oModelo"><option value="">Sem modelo definido</option></select>
+            <button type="button" class="btn bs bsm model-manage-btn" data-fin-call="openModelosObraModal">Gerenciar</button>
+          </div>
         </div>
         <div class="fg"><label>Data do contrato</label><input id="oDtC" type="hidden"><button type="button" class="cell-date placeholder" data-target="oDtC">Selecionar…</button></div>
         <div class="fg"><label>Status</label>
@@ -450,6 +453,22 @@
   </div>
 </div>
 
+<!-- ═══ MODAL MODELOS DE OBRA ═══ -->
+<div class="mb" id="mModelosObra">
+  <div class="modal model-manager-modal">
+    <button class="mc" data-fin-close-modal="mModelosObra" aria-label="Fechar">✕</button>
+    <h2>Modelos de obra</h2>
+    <p class="msub">Cadastre, renomeie ou remova as opções disponíveis ao lançar uma obra.</p>
+    <div class="fsec model-manager-body">
+      <div class="model-create-row">
+        <div class="fg"><label for="novoModeloObra">Novo modelo</label><input id="novoModeloObra" placeholder="Ex: Chalé Modelo 05C"></div>
+        <button type="button" class="btn bp" data-fin-call="addModeloObra">Adicionar</button>
+      </div>
+      <div id="modelosObraList" class="model-manager-list"></div>
+    </div>
+    <div class="btns"><button type="button" class="btn bp" data-fin-close-modal="mModelosObra">Concluir</button></div>
+  </div>
+</div>
 <!-- ═══ MODAL A RECEBER (avulso / edição) ═══ -->
 <div class="mb" id="mRec">
   <div class="modal fin-csp-040">
@@ -730,7 +749,7 @@
 <script src="../shared/delete-confirm.js?v=20260807-delete-2"></script>
 <script src="./app-support.js?v=20260807-delete-2"></script>
 
-<script src="./app.js?v=20260818-finance-session-2"></script>
+<script src="./app.js?v=20260819-finance-ui-1"></script>
 </body>
 </html>
 

@@ -144,7 +144,7 @@ tr:hover td{background:var(--zebra)}
 .th-filtro.ativo{color:#fff;background:var(--or);box-shadow:0 2px 6px -1px rgba(238,107,27,.45)}
 .link-btn{background:none;border:none;color:var(--or);font-size:11px;font-weight:700;padding:3px 5px;cursor:pointer;border-radius:4px}
 .link-btn:hover{text-decoration:underline;background:var(--or-soft)}
-.dd-panel-float{position:fixed;z-index:600;background:var(--wh);border:1px solid var(--bdr);border-radius:11px;box-shadow:0 18px 45px rgba(0,0,0,.24);min-width:220px;max-width:360px;max-height:300px;overflow-y:auto;padding:7px;transform-origin:top center;animation:panelIn .18s var(--ease-out)}
+.dd-panel-float{position:fixed;z-index:2100;background:var(--wh);border:1px solid var(--bdr);border-radius:11px;box-shadow:0 18px 45px rgba(0,0,0,.24);min-width:220px;max-width:360px;max-height:300px;overflow-y:auto;padding:7px;transform-origin:top center;animation:panelIn .18s var(--ease-out)}
 .dd-panel-float .dd-opt{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--t1);transition:background .12s var(--ease-out)}
 .dd-panel-float .dd-opt:hover{background:var(--gc)}
 .dd-panel-float .dd-opt.dd-opt-sel{outline:1.5px solid var(--or);outline-offset:-1.5px;background:var(--or-soft);color:var(--or)}
@@ -236,7 +236,7 @@ tr:hover td{background:var(--zebra)}
 .od-kpi .val{font-size:16px;font-weight:700;color:var(--t1)}
 
 /* ── MODAL (com blur no fundo, igual ao index.html) ── */
-.mb{display:none;position:fixed;inset:0;background:rgba(15,17,20,.55);backdrop-filter:blur(3px);z-index:500;align-items:center;justify-content:center;padding:20px}
+.mb{display:none;position:fixed;inset:0;background:rgba(15,17,20,.55);backdrop-filter:blur(3px);z-index:2000;align-items:center;justify-content:center;padding:20px}
 .mb.open{display:flex}
 .modal{background:var(--wh);border-radius:14px;padding:26px;width:min(740px,100%);max-height:90vh;overflow-y:auto;position:relative}
 .modal h2{font-size:17px;font-weight:700;margin-bottom:3px}
@@ -245,14 +245,14 @@ tr:hover td{background:var(--zebra)}
 .mc:hover{background:var(--gp)}
 
 /* ── TOAST (substitui alert() nativo para avisos rápidos) ── */
-#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px) scale(.96);background:var(--wh);color:var(--t1);border:1px solid var(--bdr);border-left:4px solid var(--gd);padding:12px 22px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);z-index:900;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s var(--ease-spring);max-width:420px}
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(14px) scale(.96);background:var(--wh);color:var(--t1);border:1px solid var(--bdr);border-left:4px solid var(--gd);padding:12px 22px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);z-index:2300;opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s var(--ease-spring);max-width:420px}
 #toast::before{content:'✓';margin-right:8px;font-weight:800;color:var(--gd)}
 #toast.err{border-left-color:var(--red)}
 #toast.err::before{content:'!';color:var(--red)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto}
 
 /* ── CONFIRMAÇÃO DENTRO DO APP (substitui confirm() nativo do navegador) ── */
-.confirm-backdrop{display:none;position:fixed;inset:0;background:rgba(15,17,20,.6);backdrop-filter:blur(3px);z-index:700;align-items:center;justify-content:center;padding:16px}
+.confirm-backdrop{display:none;position:fixed;inset:0;background:rgba(15,17,20,.6);backdrop-filter:blur(3px);z-index:2200;align-items:center;justify-content:center;padding:16px}
 .confirm-backdrop.open{display:flex;animation:backdropIn .18s ease both}
 .confirm-box{background:var(--wh);border-radius:14px;width:100%;max-width:400px;padding:24px 26px;box-shadow:var(--shadow-lg);animation:cardIn .25s var(--ease-out) both}
 .confirm-box h3{font-size:15px;font-weight:700;margin-bottom:10px;color:var(--t1);display:flex;align-items:center;gap:8px}
@@ -291,7 +291,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or)!impo
 .cell-date.placeholder{color:var(--tm)}
 .cell-date:hover{border-color:var(--tm)}
 .cell-date:focus,.cell-date.dd-active{outline:none;border-color:var(--or);box-shadow:0 0 0 3px var(--or-soft)}
-.cal-dd{position:fixed;z-index:600;background:var(--wh);border:1px solid var(--bdr);border-radius:12px;box-shadow:0 18px 45px rgba(0,0,0,.24);padding:12px;width:312px;transform-origin:top center;animation:panelIn .18s var(--ease-out)}
+.cal-dd{position:fixed;z-index:2100;background:var(--wh);border:1px solid var(--bdr);border-radius:12px;box-shadow:0 18px 45px rgba(0,0,0,.24);padding:12px;width:312px;transform-origin:top center;animation:panelIn .18s var(--ease-out)}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .cal-head button{background:var(--gc);border:1px solid var(--bdr);color:var(--t1);width:36px;height:34px;border-radius:8px;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s var(--ease-out),color .15s var(--ease-out),border-color .15s var(--ease-out),transform .12s var(--ease-spring)}
 .cal-head button:hover{background:var(--or);color:#fff;border-color:var(--or)}
@@ -325,7 +325,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or)!impo
 .roy-calc{background:#FFF8E1;border:1px solid #FBBF24;border-radius:8px;padding:10px 14px;margin-top:8px;font-size:12px;color:#78350F;display:none}
 
 /* ── LOGIN ── */
-.login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;
+.login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:3000;padding:20px;
   background:
     radial-gradient(1100px 550px at 15% 0%, var(--or-soft), transparent 60%),
     radial-gradient(900px 500px at 100% 100%, var(--bl-soft), transparent 55%),
@@ -500,7 +500,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or)!impo
 .fin-csp-046 { width:16px;height:16px;accent-color:var(--or) }
 .fin-csp-047 { font-size:11px;font-weight:700;text-transform:uppercase;color:#78350F }
 .fin-csp-048 { margin-top:4px;padding:6px 10px;border:1.5px solid #FBBF24;border-radius:6px;font-size:13px;width:160px }
-.fin-csp-049 { z-index:600 }
+.fin-csp-049 { z-index:2000 }
 .fin-csp-050 { max-width:480px }
 .fin-csp-051 { max-width:440px }
 .fin-csp-052 { margin:10px 0 }
@@ -576,3 +576,37 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or)!impo
   .dre-slide-header .btn{display:none}
   .dre-slide-content{padding:12px}
 }
+/* Financeiro: modais sempre acima do shell e controles flutuantes. */
+body.modal-open{overflow:hidden}
+.mb{z-index:2000;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);isolation:isolate}
+.mb.open{display:flex}
+.mb>.modal{isolation:isolate;box-shadow:0 24px 70px rgba(0,0,0,.38)}
+.dd-panel-float,.cal-dd{z-index:2100}
+.confirm-backdrop{z-index:2200}
+#toast{z-index:2300}
+
+/* Data digitável + acionador de calendário. */
+.date-entry{display:grid;grid-template-columns:minmax(0,1fr) 44px;width:100%;min-width:0}
+.fg .date-entry-input{min-width:0;min-height:43px;border:1.5px solid var(--bdr);border-right:0;border-radius:10px 0 0 10px;background:var(--gc);color:var(--t1);padding:10px 12px;font:inherit;font-size:13px;line-height:1.2;transition:border-color .15s var(--ease-out),box-shadow .15s var(--ease-out),background .15s var(--ease-out)}
+.date-entry-input.placeholder{color:var(--tm)}
+.date-entry-input:hover,.fg .date-entry:focus-within .date-entry-input{border-color:var(--or)}
+.date-entry:focus-within{border-radius:10px;box-shadow:0 0 0 3px var(--or-soft)}
+.date-entry-input:focus{outline:none;box-shadow:none}
+.date-entry-input[aria-invalid="true"]{border-color:var(--rd)}
+.cell-date.date-calendar-trigger{width:44px;min-width:44px;min-height:43px;border-radius:0 10px 10px 0;padding:0;display:grid;place-items:center;border-color:var(--bdr);background:var(--gc)}
+.cell-date.date-calendar-trigger::before{content:"";width:17px;height:17px;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888882' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M16 3v4M8 3v4M3 10h18'/%3E%3C/svg%3E")}
+.date-entry:focus-within .date-calendar-trigger,.cell-date.date-calendar-trigger:hover{border-color:var(--or);background:var(--or-soft)}
+
+/* Gerenciamento dos modelos de obra. */
+.model-select-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.model-select-row .sel-simple-btn{width:100%;min-width:0}
+.model-manage-btn{min-height:43px;white-space:nowrap}
+.model-manager-modal{width:min(660px,calc(100vw - 32px))}
+.model-manager-body{min-height:180px}
+.model-create-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end;margin-bottom:16px}
+.model-create-row>.btn{min-height:43px}
+.model-manager-list{display:flex;flex-direction:column;gap:8px}
+.model-manager-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.model-manager-row input{width:100%;min-height:43px;padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;background:var(--gc);color:var(--t1);font:inherit}
+.model-manager-empty{color:var(--tm);font-size:13px;padding:18px;text-align:center;border:1px dashed var(--bdr);border-radius:10px}
+@media(max-width:560px){.model-select-row,.model-create-row{grid-template-columns:1fr}.model-manage-btn,.model-create-row>.btn{width:100%}.model-manager-row{grid-template-columns:minmax(0,1fr) auto}}
