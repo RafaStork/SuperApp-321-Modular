@@ -2405,6 +2405,216 @@ document.addEventListener('keydown',event=>{
   if(event.key==='ArrowLeft'){ event.preventDefault(); prevDreSlide(); }
   if(event.key==='ArrowRight'){ event.preventDefault(); nextDreSlide(); }
 });
+// ═══════════════════════════════════════════════════
+// PDF A4 — DRE POR OBRA
+// ═══════════════════════════════════════════════════
+let drePdfFontsPromise=null;
+let drePdfFontName='Montserrat';
+let drePdfPreviewUrl=null;
+let drePdfPreviewDoc=null;
+let drePdfPreviewName='dre-por-obra.pdf';
+
+function drePdfArrayBufferToBase64(buffer){
+  const bytes=new Uint8Array(buffer),chunk=0x8000;
+  let binary='';
+  for(let index=0;index<bytes.length;index+=chunk) binary+=String.fromCharCode(...bytes.subarray(index,index+chunk));
+  return btoa(binary);
+}
+async function registerDrePdfFonts(doc){
+  if(!drePdfFontsPromise){
+    drePdfFontsPromise=Promise.all([
+      fetch('../shared/Montserrat-Variable.ttf',{credentials:'same-origin',cache:'force-cache'}),
+      fetch('../shared/Montserrat-Bold.ttf',{credentials:'same-origin',cache:'force-cache'})
+    ]).then(async responses=>{
+      if(responses.some(response=>!response.ok)) throw new Error('Não foi possível carregar as fontes do PDF.');
+      const buffers=await Promise.all(responses.map(response=>response.arrayBuffer()));
+      return buffers.map(drePdfArrayBufferToBase64);
+    });
+  }
+  const [regular,bold]=await drePdfFontsPromise;
+  doc.addFileToVFS('Montserrat-Regular.ttf',regular);
+  doc.addFont('Montserrat-Regular.ttf','Montserrat','normal');
+  doc.addFileToVFS('Montserrat-Bold.ttf',bold);
+  doc.addFont('Montserrat-Bold.ttf','Montserrat','bold');
+}
+function drePdfSelectedWork(){
+  const id=document.getElementById('dreObraSel')?.value;
+  return DB.obras.find(work=>work.id===id)||null;
+}
+function drePdfSafeFilePart(value){
+  return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[<>:"/\\|?*\u0000-\u001F]/g,' ').replace(/\s+/g,' ').trim().slice(0,80)||'Obra';
+}
+function drePdfMonthData(workId,month){
+  const receber=DB.receber.filter(item=>item.obraId===workId&&(item.venc||'').startsWith(month));
+  const pagar=DB.pagar.filter(item=>item.obraId===workId&&isObraCat(item.cat)&&(item.venc||'').startsWith(month));
+  const custosMap={};
+  pagar.forEach(item=>{const cat=normalizeObraCat(item.cat);custosMap[cat]=(custosMap[cat]||0)+n(item.valor)});
+  const previsto=receber.reduce((sum,item)=>sum+n(item.prev),0);
+  const recebido=receber.reduce((sum,item)=>sum+n(item.rec),0);
+  const custos=pagar.reduce((sum,item)=>sum+n(item.valor),0);
+  return {month,previsto,recebido,saldo:previsto-recebido,custos,resultado:recebido-custos,custosMap};
+}
+function drePdfRgb(hex){
+  const value=String(hex||'').replace('#','');
+  const parsed=parseInt(value,16);
+  return Number.isFinite(parsed)?[(parsed>>16)&255,(parsed>>8)&255,parsed&255]:[238,107,27];
+}
+function drePdfSetColor(doc,hex,kind='text'){
+  const rgb=drePdfRgb(hex);
+  if(kind==='fill') doc.setFillColor(...rgb);
+  else if(kind==='draw') doc.setDrawColor(...rgb);
+  else doc.setTextColor(...rgb);
+}
+function drePdfHeader(doc,work,subtitle){
+  const pageW=doc.internal.pageSize.getWidth();
+  drePdfSetColor(doc,'#1C1F24','fill');doc.rect(0,0,pageW,28,'F');
+  drePdfSetColor(doc,'#FFFFFF');doc.setFont(drePdfFontName,'bold');doc.setFontSize(13);doc.text('321 MODULAR',14,12);
+  doc.setFontSize(8);doc.text('GESTÃO FINANCEIRA',14,19);
+  drePdfSetColor(doc,'#F9B218');doc.setFontSize(8);doc.text('DRE POR OBRA',pageW-14,12,{align:'right'});
+  drePdfSetColor(doc,'#D4D7DC');doc.setFont(drePdfFontName,'normal');doc.setFontSize(7.5);doc.text(String(subtitle||''),pageW-14,19,{align:'right'});
+  drePdfSetColor(doc,'#EE6B1B','fill');doc.rect(0,28,pageW,2,'F');
+  drePdfSetColor(doc,'#1C1F24');doc.setFont(drePdfFontName,'bold');doc.setFontSize(15);
+  const title=`${work.cliente||'Cliente não informado'} - ${work.modelo||'Modelo não informado'}`;
+  doc.text(doc.splitTextToSize(title,pageW-28)[0],14,41);
+  drePdfSetColor(doc,'#6B7280');doc.setFont(drePdfFontName,'normal');doc.setFontSize(8);
+  const meta=[work.cidade,getObraConclusionDate(work)?`Concluída em ${fmtDate(getObraConclusionDate(work))}`:work.status,work.dtC?`Contrato em ${fmtDate(work.dtC)}`:''].filter(Boolean).join('  |  ');
+  doc.text(doc.splitTextToSize(meta,pageW-28)[0]||'',14,47);
+}
+function drePdfMetricGrid(doc,items,startY){
+  const left=14,gap=6,width=88,height=22;
+  items.forEach((item,index)=>{
+    const column=index%2,row=Math.floor(index/2),x=left+column*(width+gap),y=startY+row*(height+6);
+    drePdfSetColor(doc,'#F4F5F6','fill');drePdfSetColor(doc,'#D8DCE1','draw');doc.roundedRect(x,y,width,height,3,3,'FD');
+    drePdfSetColor(doc,'#6B7280');doc.setFont(drePdfFontName,'bold');doc.setFontSize(6.7);doc.text(String(item.label||'').toLocaleUpperCase('pt-BR'),x+5,y+7);
+    drePdfSetColor(doc,item.color||'#1C1F24');doc.setFontSize(11);doc.text(String(item.value||'—'),x+5,y+16);
+  });
+  return startY+Math.ceil(items.length/2)*(height+6);
+}
+function drePdfTable(doc,title,rows,startY,totalRow){
+  const left=14,pageW=doc.internal.pageSize.getWidth(),tableW=pageW-28,valueW=44,rowH=8;
+  drePdfSetColor(doc,'#3B5132','fill');doc.roundedRect(left,startY,tableW,9,2,2,'F');
+  drePdfSetColor(doc,'#FFFFFF');doc.setFont(drePdfFontName,'bold');doc.setFontSize(7.2);doc.text(String(title||''),left+4,startY+6);
+  let y=startY+9;
+  if(!rows.length) rows=[{label:'Nenhum lançamento neste período',value:'—'}];
+  rows.forEach((row,index)=>{
+    drePdfSetColor(doc,index%2?'#FAFAFA':'#F3F4F5','fill');doc.rect(left,y,tableW,rowH,'F');
+    drePdfSetColor(doc,'#E0E3E6','draw');doc.rect(left,y,tableW,rowH);
+    drePdfSetColor(doc,'#30343A');doc.setFont(drePdfFontName,'bold');doc.setFontSize(7.3);
+    const label=doc.splitTextToSize(String(row.label||''),tableW-valueW-8)[0]||'';
+    doc.text(label,left+4,y+5.3);
+    doc.text(String(row.value||'—'),left+tableW-4,y+5.3,{align:'right'});
+    y+=rowH;
+  });
+  if(totalRow){
+    drePdfSetColor(doc,totalRow.background||'#E8ECE5','fill');doc.rect(left,y,tableW,10,'F');
+    drePdfSetColor(doc,totalRow.color||'#1C1F24');doc.setFont(drePdfFontName,'bold');doc.setFontSize(8);
+    doc.text(String(totalRow.label||'TOTAL'),left+4,y+6.5);
+    doc.text(String(totalRow.value||'—'),left+tableW-4,y+6.5,{align:'right'});
+    y+=10;
+  }
+  return y;
+}
+function drePdfFooter(doc){
+  const pages=doc.getNumberOfPages(),pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight();
+  for(let page=1;page<=pages;page++){
+    doc.setPage(page);drePdfSetColor(doc,'#D8DCE1','draw');doc.line(14,pageH-13,pageW-14,pageH-13);
+    drePdfSetColor(doc,'#747B86');doc.setFont(drePdfFontName,'normal');doc.setFontSize(6.8);
+    doc.text('321 Modular | Gestão Financeira',14,pageH-7);
+    doc.text(`${page} / ${pages}`,pageW-14,pageH-7,{align:'right'});
+  }
+}
+async function buildDreObraPdf(work,type){
+  const PDF=window.jspdf&&window.jspdf.jsPDF;
+  if(!PDF) throw new Error('Gerador de PDF indisponível. Atualize a página e tente novamente.');
+  const doc=new PDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+  drePdfFontName='Montserrat';
+  try{await registerDrePdfFonts(doc)}catch(error){console.warn('[DRE PDF] Fonte local indisponível; usando fonte segura padrão.',error);drePdfFontName='helvetica'}
+  if(type==='monthly'){
+    const months=getMesesObra(work.id);
+    if(!months.length) throw new Error('A obra selecionada ainda não possui movimentações mensais para o relatório.');
+    months.forEach((month,index)=>{
+      if(index) doc.addPage('a4','portrait');
+      const data=drePdfMonthData(work.id,month);
+      drePdfHeader(doc,work,`Movimentação de ${fmtMes(month)}`);
+      let y=54;
+      y=drePdfMetricGrid(doc,[
+        {label:'Previsto no mês',value:BRL(data.previsto)},
+        {label:'Recebido no mês',value:BRL(data.recebido),color:'#2A5EA9'},
+        {label:'Custos no mês',value:BRL(data.custos),color:'#EE6B1B'},
+        {label:'Resultado do mês',value:BRL(data.resultado),color:data.resultado>=0?'#15803D':'#C0392B'}
+      ],y);
+      const costRows=Object.entries(data.custosMap).filter(([,value])=>value>0).sort(([a],[b])=>a.localeCompare(b,'pt-BR')).map(([label,value])=>({label,value:BRL(value)}));
+      y=drePdfTable(doc,'COMPOSIÇÃO DOS CUSTOS DO MÊS',costRows,y+2,{label:'TOTAL DE CUSTOS',value:BRL(data.custos)});
+      y+=8;drePdfSetColor(doc,'#F4F5F6','fill');drePdfSetColor(doc,'#D8DCE1','draw');doc.roundedRect(14,y,182,22,3,3,'FD');
+      drePdfSetColor(doc,'#6B7280');doc.setFont(drePdfFontName,'normal');doc.setFontSize(7.2);doc.text('Saldo previsto a receber neste mês',19,y+8);
+      drePdfSetColor(doc,'#1C1F24');doc.setFont(drePdfFontName,'bold');doc.setFontSize(10);doc.text(BRL(data.saldo),19,y+16);
+    });
+  }else{
+    const complete=getDreObraCompleto(work),costRows=Object.entries(complete.custosMap).filter(([,value])=>value>0).sort(([a],[b])=>a.localeCompare(b,'pt-BR')).map(([label,value])=>({label,value:BRL(value)}));
+    drePdfHeader(doc,work,'Resumo geral acumulado');
+    let y=54;
+    y=drePdfMetricGrid(doc,[
+      {label:'Venda contratada',value:BRL(complete.c.venda)},
+      {label:'Recebido',value:BRL(complete.recebido),color:'#2A5EA9'},
+      {label:'Custos totais',value:BRL(complete.c.custos),color:'#EE6B1B'},
+      {label:'Resultado da obra',value:BRL(complete.c.resultado),color:complete.c.resultado>=0?'#15803D':'#C0392B'},
+      {label:'Saldo a receber',value:BRL(complete.saldo)},
+      {label:'Margem',value:PCT(complete.c.margem),color:complete.c.margem>=0?'#15803D':'#C0392B'}
+    ],y);
+    y=drePdfTable(doc,'COMPOSIÇÃO GERAL DOS CUSTOS',costRows,y+2,{label:'TOTAL DE CUSTOS',value:BRL(complete.c.custos)});
+    y+=7;drePdfSetColor(doc,complete.c.resultado>=0?'#E3F4E7':'#FCE8E6','fill');doc.roundedRect(14,y,182,18,3,3,'F');
+    drePdfSetColor(doc,complete.c.resultado>=0?'#126B31':'#A52C21');doc.setFont(drePdfFontName,'bold');doc.setFontSize(8);doc.text(work.status==='Entregue'?'RESULTADO FINAL':'RESULTADO PARCIAL',19,y+7);
+    doc.setFontSize(12);doc.text(BRL(complete.c.resultado),191,y+12,{align:'right'});
+  }
+  drePdfFooter(doc);
+  const reportLabel=type==='monthly'?'Meses separados':'Resumo geral';
+  doc.setProperties({title:`DRE - ${work.cliente||'Obra'} - ${reportLabel}`,subject:`DRE por obra - ${reportLabel}`,creator:'321 Modular SuperApp'});
+  return doc;
+}
+function openDrePdfModal(){
+  const work=drePdfSelectedWork();
+  if(!work){toast('Selecione uma obra para gerar o PDF.',true);return}
+  const months=getMesesObra(work.id).length;
+  const box=document.getElementById('drePdfWork');
+  box.innerHTML=`<span>OBRA SELECIONADA</span><strong>${escapeHtml(work.cliente||'Cliente não informado')} — ${escapeHtml(work.modelo||'Modelo não informado')}</strong><small>${months} mês${months!==1?'es':''} com movimentação financeira</small>`;
+  openModal('mDrePdf');
+}
+function drePdfCleanupPreview(){
+  document.getElementById('drePdfPreviewFrame')?.removeAttribute('src');
+  document.getElementById('drePdfOpenFile')?.removeAttribute('href');
+  if(drePdfPreviewUrl){URL.revokeObjectURL(drePdfPreviewUrl);drePdfPreviewUrl=null}
+  drePdfPreviewDoc=null;
+}
+function closeDrePdfPreview(){closeModal('mDrePdfPreview')}
+function showDrePdfPreview(doc,name){
+  drePdfCleanupPreview();
+  drePdfPreviewDoc=doc;drePdfPreviewName=name;
+  const blob=doc.output('blob');drePdfPreviewUrl=URL.createObjectURL(blob);
+  const frame=document.getElementById('drePdfPreviewFrame'),link=document.getElementById('drePdfOpenFile');
+  frame.src=drePdfPreviewUrl;frame.title=name;link.href=drePdfPreviewUrl;link.setAttribute('aria-label',`Abrir ${name}`);
+  document.getElementById('drePdfSavePreview').title=`Salvar ${name}`;
+  openModal('mDrePdfPreview');
+}
+function saveDrePdfPreview(){if(drePdfPreviewDoc)drePdfPreviewDoc.save(drePdfPreviewName)}
+async function createDreObraPdf(action){
+  const work=drePdfSelectedWork();
+  if(!work){toast('Selecione uma obra para gerar o PDF.',true);return}
+  const type=document.querySelector('input[name="drePdfType"]:checked')?.value==='summary'?'summary':'monthly';
+  const buttons=[document.getElementById('drePdfPreviewBtn'),document.getElementById('drePdfDownloadBtn')].filter(Boolean);
+  buttons.forEach(button=>button.disabled=true);
+  try{
+    toast('Preparando PDF...');
+    const doc=await buildDreObraPdf(work,type);
+    const suffix=type==='monthly'?'DRE mensal':'DRE resumo geral';
+    const name=`${drePdfSafeFilePart(work.cliente)} - ${drePdfSafeFilePart(work.modelo)} - ${suffix}.pdf`;
+    closeModal('mDrePdf');
+    if(action==='preview') showDrePdfPreview(doc,name);
+    else{doc.save(name);toast('PDF da DRE gerado com sucesso.')}
+  }catch(error){console.error('[DRE PDF]',error);toast(error.message||'Não foi possível gerar o PDF.',true)}
+  finally{buttons.forEach(button=>button.disabled=false)}
+}
+function previewDreObraPdf(){return createDreObraPdf('preview')}
+function downloadDreObraPdf(){return createDreObraPdf('download')}
 // DESPESAS
 // ═══════════════════════════════════════════════════
 function renderDesp(){
@@ -2523,6 +2733,7 @@ function openModal(id){
 function closeModal(id){
   const backdrop=document.getElementById(id);if(!backdrop)return;
   fecharFlutuante();backdrop.classList.remove('open');
+  if(id==='mDrePdfPreview') drePdfCleanupPreview();
   if(!document.querySelector('.mb.open'))document.body.classList.remove('modal-open');
   const target=backdrop.__returnFocus;backdrop.__returnFocus=null;
   if(target?.isConnected)requestAnimationFrame(()=>target.focus({preventScroll:true}));

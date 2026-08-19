@@ -12,7 +12,8 @@
 <script src="../shared/runtime-config.js"></script>
 <script src="../shared/auth.js?v=20260731-auth-safe-1"></script>
 <script src="../shared/app-guard.js?v=20260731-entry-2"></script>
-<link rel="stylesheet" href="./styles-external.css?v=20260819-finance-ui-1">
+<script src="../shared/jspdf.umd.min.js?v=2.5.1"></script>
+<link rel="stylesheet" href="./styles-external.css?v=20260819-dre-pdf-1">
 <link rel="stylesheet" href="../shared/brand-system.css?v=20260731-layout-2">
 <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260805-5">
 <link rel="stylesheet" href="../shared/ui-controls.css?v=20260807-controls-10">
@@ -280,6 +281,7 @@
         <label class="dre-search-field"><span>Pesquisar obra</span><input id="dreObraSearch" type="search" placeholder="Cliente, modelo ou cidade…" autocomplete="off" data-fin-input-call="filterDREObras"></label>
         <label class="dre-select-field"><span>Obra</span><select id="dreObraSel" data-fin-change-call="renderDREObra" class="fin-csp-021"></select></label>
         <label class="dre-select-field"><span>Período</span><select id="dreObraPer" data-fin-change-call="renderDREObra" class="fin-csp-005"><option value="all">Acumulado (todo o período)</option></select></label>
+        <button type="button" class="btn bp dre-pdf-open" id="drePdfOpen" data-fin-call="openDrePdfModal">Gerar PDF</button>
       </div>
       <div class="dre-obras-controls fin-is-hidden" id="dreObraConclusaoControls">
         <label class="dre-select-field"><span>Ano de conclusão</span><select id="dreConclusaoAno" data-fin-change-call="renderDREObra"></select></label>
@@ -723,6 +725,54 @@
   </div>
 </div>
 
+<!-- ── PDF DRE POR OBRA ── -->
+<div class="mb" id="mDrePdf">
+  <div class="modal dre-pdf-modal" role="dialog" aria-modal="true" aria-labelledby="drePdfTitle">
+    <div class="dre-pdf-modal-head">
+      <div><span class="dre-slide-kicker">DRE POR OBRA</span><h2 id="drePdfTitle">Gerar PDF</h2></div>
+      <button type="button" class="mc dre-pdf-close" data-fin-close-modal="mDrePdf" aria-label="Fechar">✕</button>
+    </div>
+    <div class="dre-pdf-modal-body">
+      <div class="dre-pdf-work" id="drePdfWork"></div>
+      <fieldset class="dre-pdf-options">
+        <legend>Formato do relatório</legend>
+        <label class="dre-pdf-option">
+          <input type="radio" name="drePdfType" value="monthly" checked>
+          <span><strong>Meses separados</strong><small>Cria uma seção A4 para cada mês com movimentação financeira da obra.</small></span>
+        </label>
+        <label class="dre-pdf-option">
+          <input type="radio" name="drePdfType" value="summary">
+          <span><strong>Resumo geral</strong><small>Consolida venda, recebimentos, custos, resultado e composição da obra.</small></span>
+        </label>
+      </fieldset>
+      <p class="dre-pdf-note">O arquivo é gerado em A4, orientação retrato, somente com os dados da obra selecionada.</p>
+    </div>
+    <div class="btns dre-pdf-modal-foot">
+      <button type="button" class="btn bs" data-fin-close-modal="mDrePdf">Cancelar</button>
+      <button type="button" class="btn bs" id="drePdfPreviewBtn" data-fin-call="previewDreObraPdf">Pré-visualizar</button>
+      <button type="button" class="btn bp" id="drePdfDownloadBtn" data-fin-call="downloadDreObraPdf">Baixar PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="mb" id="mDrePdfPreview">
+  <div class="modal dre-pdf-preview-modal" role="dialog" aria-modal="true" aria-labelledby="drePdfPreviewTitle">
+    <div class="dre-pdf-modal-head">
+      <div><span class="dre-slide-kicker">DRE POR OBRA</span><h2 id="drePdfPreviewTitle">Pré-visualização do PDF</h2></div>
+      <button type="button" class="mc dre-pdf-close" data-fin-call="closeDrePdfPreview" aria-label="Fechar">✕</button>
+    </div>
+    <iframe id="drePdfPreviewFrame" title="Pré-visualização do DRE em PDF"></iframe>
+    <div class="dre-pdf-mobile-preview">
+      <strong>PDF pronto para visualizar</strong>
+      <p>Abra o arquivo no visualizador seguro do seu dispositivo.</p>
+      <a class="btn bp" id="drePdfOpenFile" target="_blank" rel="noopener noreferrer">Abrir PDF</a>
+    </div>
+    <div class="btns dre-pdf-modal-foot">
+      <button type="button" class="btn bs" data-fin-call="closeDrePdfPreview">Fechar</button>
+      <button type="button" class="btn bp" id="drePdfSavePreview" data-fin-call="saveDrePdfPreview">Salvar PDF</button>
+    </div>
+  </div>
+</div>
 <!-- ── APRESENTAÇÃO DRE POR OBRA ── -->
 <div class="mb" id="mDreSlides">
   <div class="modal dre-slide-modal" id="dreSlideStage">
@@ -749,7 +799,7 @@
 <script src="../shared/delete-confirm.js?v=20260807-delete-2"></script>
 <script src="./app-support.js?v=20260807-delete-2"></script>
 
-<script src="./app.js?v=20260819-finance-ui-1"></script>
+<script src="./app.js?v=20260819-dre-pdf-1"></script>
 </body>
 </html>
 
