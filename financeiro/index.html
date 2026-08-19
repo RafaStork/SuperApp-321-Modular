@@ -286,6 +286,7 @@
       <div class="dre-obras-controls fin-is-hidden" id="dreObraConclusaoControls">
         <label class="dre-select-field"><span>Ano de conclusão</span><select id="dreConclusaoAno" data-fin-change-call="renderDREObra"></select></label>
         <label class="dre-select-field"><span>Mês de conclusão</span><select id="dreConclusaoMes" data-fin-change-call="renderDREObra"><option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select></label>
+        <button type="button" class="btn bs dre-completed-pdf-open" id="dreCompletedPdfOpen" data-fin-call="openDreCompletedPdfModal">Gerar PDF</button>
         <button type="button" class="btn bp dre-slides-open" data-fin-call="openDreSlides">Apresentar em tela cheia</button>
       </div>
     </div>
@@ -755,10 +756,32 @@
   </div>
 </div>
 
+<!-- ── PDF DAS OBRAS CONCLUÍDAS NO MÊS ── -->
+<div class="mb" id="mDreCompletedPdf">
+  <div class="modal dre-pdf-modal" role="dialog" aria-modal="true" aria-labelledby="dreCompletedPdfTitle">
+    <div class="dre-pdf-modal-head">
+      <div><span class="dre-slide-kicker">DRE - OBRAS CONCLUÍDAS</span><h2 id="dreCompletedPdfTitle">Gerar fechamento mensal</h2></div>
+      <button type="button" class="mc dre-pdf-close" data-fin-close-modal="mDreCompletedPdf" aria-label="Fechar">✕</button>
+    </div>
+    <div class="dre-pdf-modal-body">
+      <div class="dre-pdf-work" id="dreCompletedPdfPeriod"></div>
+      <div class="dre-completed-pdf-description">
+        <strong>Relatório completo do período</strong>
+        <p>O PDF inclui o consolidado do mês e uma página detalhada para cada obra concluída.</p>
+      </div>
+      <p class="dre-pdf-note">O arquivo é gerado em A4, orientação retrato, somente com as obras visíveis no período selecionado.</p>
+    </div>
+    <div class="btns dre-pdf-modal-foot">
+      <button type="button" class="btn bs" data-fin-close-modal="mDreCompletedPdf">Cancelar</button>
+      <button type="button" class="btn bs" id="dreCompletedPdfPreviewBtn" data-fin-call="previewDreCompletedPdf">Pré-visualizar</button>
+      <button type="button" class="btn bp" id="dreCompletedPdfDownloadBtn" data-fin-call="downloadDreCompletedPdf">Baixar PDF</button>
+    </div>
+  </div>
+</div>
 <div class="mb" id="mDrePdfPreview">
   <div class="modal dre-pdf-preview-modal" role="dialog" aria-modal="true" aria-labelledby="drePdfPreviewTitle">
     <div class="dre-pdf-modal-head">
-      <div><span class="dre-slide-kicker">DRE POR OBRA</span><h2 id="drePdfPreviewTitle">Pré-visualização do PDF</h2></div>
+      <div><span class="dre-slide-kicker" id="drePdfPreviewKicker">DRE POR OBRA</span><h2 id="drePdfPreviewTitle">Pré-visualização do PDF</h2></div>
       <button type="button" class="mc dre-pdf-close" data-fin-call="closeDrePdfPreview" aria-label="Fechar">✕</button>
     </div>
     <div class="dre-pdf-preview-body" id="drePdfPreviewBody" aria-busy="true">

@@ -2375,6 +2375,7 @@ function renderDREObrasConcluidas(){
   const box=document.getElementById('dreObraBox');
   dreSlides=obras;
   const btn=document.querySelector('.dre-slides-open'); if(btn) btn.disabled=!obras.length;
+  const pdfBtn=document.getElementById('dreCompletedPdfOpen'); if(pdfBtn) pdfBtn.disabled=!obras.length;
   if(!obras.length){ box.innerHTML=`<div class="empty"><h3>Nenhuma obra concluída em ${escapeHtml(fmtMes(periodo))}</h3><p>O filtro usa a data real de conclusão. Para obras antigas sem essa data, a previsão de entrega é usada como compatibilidade.</p></div>`; return; }
   const totais=obras.reduce((acc,o)=>{ const c=calcObra(o); acc.venda+=c.venda; acc.custos+=c.custos; acc.resultado+=c.resultado; return acc; },{venda:0,custos:0,resultado:0});
   const margem=totais.venda?totais.resultado/totais.venda*100:0;
@@ -2575,6 +2576,138 @@ async function buildDreObraPdf(work,type){
   doc.setProperties({title:`DRE - ${work.cliente||'Obra'} - ${reportLabel}`,subject:`DRE por obra - ${reportLabel}`,creator:'321 Modular SuperApp'});
   return doc;
 }
+
+function drePdfCompletedPeriod(){
+  const year=document.getElementById('dreConclusaoAno')?.value||'';
+  const month=document.getElementById('dreConclusaoMes')?.value||'';
+  const period=`${year}-${month}`;
+  return /^\d{4}-\d{2}$/.test(period)?period:'';
+}
+function drePdfCompletedHeader(doc,period,subtitle='Fechamento mensal'){
+  const pageW=doc.internal.pageSize.getWidth();
+  drePdfSetColor(doc,'#1C1F24','fill');doc.rect(0,0,pageW,28,'F');
+  drePdfSetColor(doc,'#FFFFFF');doc.setFont(drePdfFontName,'bold');doc.setFontSize(13);doc.text('321 MODULAR',14,12);
+  doc.setFontSize(8);doc.text('GESTÃO FINANCEIRA',14,19);
+  drePdfSetColor(doc,'#F9B218');doc.setFontSize(8);doc.text('DRE - OBRAS CONCLUÍDAS',pageW-14,12,{align:'right'});
+  drePdfSetColor(doc,'#D4D7DC');doc.setFont(drePdfFontName,'normal');doc.setFontSize(7.5);doc.text(String(subtitle||''),pageW-14,19,{align:'right'});
+  drePdfSetColor(doc,'#EE6B1B','fill');doc.rect(0,28,pageW,2,'F');
+  drePdfSetColor(doc,'#1C1F24');doc.setFont(drePdfFontName,'bold');doc.setFontSize(15);
+  doc.text(`Obras concluídas em ${fmtMes(period)}`,14,41);
+}
+function drePdfCompletedIndex(doc,works,period,startY){
+  const left=14,pageW=doc.internal.pageSize.getWidth(),pageH=doc.internal.pageSize.getHeight();
+  const widths=[75,36,36,35],headers=['OBRA','VENDA','CUSTOS','RESULTADO'];
+  let y=startY;
+  const drawHead=()=>{
+    drePdfSetColor(doc,'#3B5132','fill');doc.roundedRect(left,y,pageW-28,9,2,2,'F');
+    drePdfSetColor(doc,'#FFFFFF');doc.setFont(drePdfFontName,'bold');doc.setFontSize(6.6);
+    let x=left;
+    headers.forEach((header,index)=>{doc.text(header,index?x+widths[index]-4:x+4,y+6,{align:index?'right':'left'});x+=widths[index]});
+    y+=9;
+  };
+  drawHead();
+  works.forEach((work,index)=>{
+    if(y+13>pageH-18){
+      doc.addPage('a4','portrait');
+      drePdfCompletedHeader(doc,period,'Relação de obras - continuação');
+      y=53;drawHead();
+    }
+    const complete=getDreObraCompleto(work);
+    drePdfSetColor(doc,index%2?'#FAFAFA':'#F3F4F5','fill');doc.rect(left,y,pageW-28,13,'F');
+    drePdfSetColor(doc,'#E0E3E6','draw');doc.rect(left,y,pageW-28,13);
+    drePdfSetColor(doc,'#24282E');doc.setFont(drePdfFontName,'bold');doc.setFontSize(6.8);
+    const title=doc.splitTextToSize(`${work.cliente||'Cliente não informado'} - ${work.modelo||'Modelo não informado'}`,67)[0]||'';
+    doc.text(title,left+4,y+5);
+    drePdfSetColor(doc,'#747B86');doc.setFont(drePdfFontName,'normal');doc.setFontSize(5.8);
+    const meta=[work.cidade,fmtDate(getObraConclusionDate(work))].filter(Boolean).join(' | ');
+    doc.text(doc.splitTextToSize(meta,67)[0]||'',left+4,y+10);
+    let x=left+widths[0];
+    const values=[BRL(complete.c.venda),BRL(complete.c.custos),BRL(complete.c.resultado)];
+    values.forEach((value,valueIndex)=>{
+      drePdfSetColor(doc,valueIndex===2?(complete.c.resultado>=0?'#15803D':'#C0392B'):'#30343A');
+      doc.setFont(drePdfFontName,'bold');doc.setFontSize(6.4);
+      doc.text(value,x+widths[valueIndex+1]-4,y+7.8,{align:'right'});
+      x+=widths[valueIndex+1];
+    });
+    y+=13;
+  });
+  return y;
+}
+function drePdfCompletedWorkPage(doc,work,period){
+  const complete=getDreObraCompleto(work);
+  const costRows=Object.entries(complete.custosMap).filter(([,value])=>value>0).sort(([a],[b])=>a.localeCompare(b,'pt-BR')).map(([label,value])=>({label,value:BRL(value)}));
+  drePdfHeader(doc,work,`Fechamento de ${fmtMes(period)}`);
+  let y=54;
+  y=drePdfMetricGrid(doc,[
+    {label:'Venda contratada',value:BRL(complete.c.venda)},
+    {label:'Recebido',value:BRL(complete.recebido),color:'#2A5EA9'},
+    {label:'Custos totais',value:BRL(complete.c.custos),color:'#EE6B1B'},
+    {label:'Resultado final',value:BRL(complete.c.resultado),color:complete.c.resultado>=0?'#15803D':'#C0392B'},
+    {label:'Saldo a receber',value:BRL(complete.saldo)},
+    {label:'Margem',value:PCT(complete.c.margem),color:complete.c.margem>=0?'#15803D':'#C0392B'}
+  ],y);
+  y=drePdfTable(doc,'COMPOSIÇÃO GERAL DOS CUSTOS',costRows,y+2,{label:'TOTAL DE CUSTOS',value:BRL(complete.c.custos)});
+  y+=7;drePdfSetColor(doc,complete.c.resultado>=0?'#E3F4E7':'#FCE8E6','fill');doc.roundedRect(14,y,182,18,3,3,'F');
+  drePdfSetColor(doc,complete.c.resultado>=0?'#126B31':'#A52C21');doc.setFont(drePdfFontName,'bold');doc.setFontSize(8);doc.text('RESULTADO FINAL',19,y+7);
+  doc.setFontSize(12);doc.text(BRL(complete.c.resultado),191,y+12,{align:'right'});
+}
+async function buildDreCompletedPdf(period,works){
+  const PDF=window.jspdf&&window.jspdf.jsPDF;
+  if(!PDF) throw new Error('Gerador de PDF indisponível. Atualize a página e tente novamente.');
+  if(!period||!works.length) throw new Error('Não há obras concluídas no período selecionado.');
+  const doc=new PDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+  drePdfFontName='Montserrat';
+  try{await registerDrePdfFonts(doc)}catch(error){console.warn('[DRE PDF] Fonte local indisponível; usando fonte segura padrão.',error);drePdfFontName='helvetica'}
+  const totals=works.reduce((acc,work)=>{
+    const complete=getDreObraCompleto(work);
+    acc.sales+=complete.c.venda;acc.costs+=complete.c.custos;acc.result+=complete.c.resultado;
+    return acc;
+  },{sales:0,costs:0,result:0});
+  const margin=totals.sales?totals.result/totals.sales*100:0;
+  drePdfCompletedHeader(doc,period,`${works.length} obra${works.length!==1?'s':''} no fechamento`);
+  let y=54;
+  y=drePdfMetricGrid(doc,[
+    {label:'Obras concluídas',value:String(works.length)},
+    {label:'Venda total',value:BRL(totals.sales)},
+    {label:'Custos totais',value:BRL(totals.costs),color:'#EE6B1B'},
+    {label:'Resultado total',value:BRL(totals.result),color:totals.result>=0?'#15803D':'#C0392B'},
+    {label:'Margem consolidada',value:PCT(margin),color:margin>=0?'#15803D':'#C0392B'}
+  ],y);
+  drePdfCompletedIndex(doc,works,period,y+2);
+  works.forEach(work=>{doc.addPage('a4','portrait');drePdfCompletedWorkPage(doc,work,period)});
+  drePdfFooter(doc);
+  const periodLabel=fmtMes(period);
+  doc.setProperties({title:`DRE - Obras concluídas - ${periodLabel}`,subject:`Fechamento mensal das obras concluídas em ${periodLabel}`,creator:'321 Modular SuperApp'});
+  return doc;
+}
+function openDreCompletedPdfModal(){
+  const period=drePdfCompletedPeriod()||populateDreConclusaoPeriod();
+  const works=getObrasConcluidasNoPeriodo(period);
+  if(!works.length){toast('Não há obras concluídas no período selecionado.',true);return}
+  const totals=works.reduce((acc,work)=>{const result=calcObra(work);acc.sales+=result.venda;acc.result+=result.resultado;return acc},{sales:0,result:0});
+  const box=document.getElementById('dreCompletedPdfPeriod');
+  box.innerHTML=`<span>FECHAMENTO SELECIONADO</span><strong>${escapeHtml(fmtMes(period))}</strong><small>${works.length} obra${works.length!==1?'s':''} · Venda total ${escapeHtml(BRL(totals.sales))} · Resultado ${escapeHtml(BRL(totals.result))}</small>`;
+  openModal('mDreCompletedPdf');
+}
+async function createDreCompletedPdf(action){
+  const period=drePdfCompletedPeriod()||populateDreConclusaoPeriod();
+  const works=getObrasConcluidasNoPeriodo(period);
+  if(!works.length){toast('Não há obras concluídas no período selecionado.',true);return}
+  const buttons=[document.getElementById('dreCompletedPdfPreviewBtn'),document.getElementById('dreCompletedPdfDownloadBtn')].filter(Boolean);
+  buttons.forEach(button=>button.disabled=true);
+  try{
+    toast('Preparando PDF do fechamento mensal...');
+    const doc=await buildDreCompletedPdf(period,works);
+    const name=`DRE - Obras concluídas - ${drePdfSafeFilePart(fmtMes(period))}.pdf`;
+    closeModal('mDreCompletedPdf');
+    if(action==='preview') showDrePdfPreview(doc,name,{kicker:'DRE - OBRAS CONCLUÍDAS',title:`Fechamento de ${fmtMes(period)}`});
+    else{doc.save(name);toast('PDF das obras concluídas gerado com sucesso.')}
+  }catch(error){console.error('[DRE PDF CONCLUÍDAS]',error);toast(error.message||'Não foi possível gerar o PDF.',true)}
+  finally{buttons.forEach(button=>button.disabled=false)}
+}
+function previewDreCompletedPdf(){return createDreCompletedPdf('preview')}
+function downloadDreCompletedPdf(){return createDreCompletedPdf('download')}
+
 function openDrePdfModal(){
   const work=drePdfSelectedWork();
   if(!work){toast('Selecione uma obra para gerar o PDF.',true);return}
@@ -2662,7 +2795,9 @@ async function renderDrePdfPreview(blob,token){
   }
 }
 function closeDrePdfPreview(){closeModal('mDrePdfPreview')}
-function showDrePdfPreview(doc,name){
+function showDrePdfPreview(doc,name,meta={}){
+  const kicker=document.getElementById('drePdfPreviewKicker');if(kicker)kicker.textContent=meta.kicker||'DRE POR OBRA';
+  const title=document.getElementById('drePdfPreviewTitle');if(title)title.textContent=meta.title||'Pré-visualização do PDF';
   drePdfCleanupPreview();
   drePdfPreviewDoc=doc;drePdfPreviewName=name;
   const blob=doc.output('blob');drePdfPreviewUrl=URL.createObjectURL(blob);
