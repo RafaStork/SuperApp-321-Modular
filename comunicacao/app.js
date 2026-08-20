@@ -8,7 +8,14 @@
   function node(tag,className,text){const el=document.createElement(tag);if(className)el.className=className;if(text!==undefined)el.textContent=String(text);return el}
   function rows(value){if(Array.isArray(value))return value;if(Array.isArray(value?.items))return value.items;return value?[value]:[]}
   function safeMessage(error,fallback){console.error('[comunicacao]',error);return window.SuperAppAuth?.getSafeAuthMessage?.(error,fallback)||fallback}
-  async function rpc(name,params){const {data,error}=await state.client.rpc(name,params||{});if(error)throw error;return data}
+  const READ_ONLY_RPCS=new Set(['comunicacao_assignable_users','comunicacao_capabilities','comunicacao_list','comunicacao_roles']);
+  function markLocalChange(){state.realtimeStop?.markLocalChange?.(8000)}
+  function realtimeInteractionActive(){
+    const active=document.activeElement;
+    const editing=!!(active&&active.matches?.('input, textarea, select, [contenteditable="true"]'));
+    return editing||Boolean(state.modal)||Boolean(state.float);
+  }
+  async function rpc(name,params){if(!READ_ONLY_RPCS.has(name))markLocalChange();const {data,error}=await state.client.rpc(name,params||{});if(error)throw error;return data}
   function toast(message,type){const el=$('toast');el.textContent=message;el.className='toast show'+(type?' '+type:'');clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.className='toast'},3400)}
   function dateValue(value){const date=value?new Date(value):null;return date&&!Number.isNaN(date.getTime())?date:null}
   function sameDay(a,b){return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate()}
@@ -107,7 +114,8 @@
   function setupRealtime(){
     state.realtimeStop?.();
     state.realtimeStop=window.SuperAppRealtimeSync?.subscribe({
-      client:state.client,userId:state.userId,appCode:'comunicacao',debounceMs:900,
+      client:state.client,userId:state.userId,appCode:'comunicacao',debounceMs:250,
+      shouldDefer:realtimeInteractionActive,
       onChange:()=>loadItems({silent:true})
     })||null
   }

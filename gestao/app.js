@@ -12,6 +12,36 @@ let notificacoesFallbackTimer = null;
 let gestaoRealtimeStop = null;
 let gestaoRefreshInFlight = false;
 let gestaoRealtimePending = false;
+let gestaoSafeRenderTimer = null;
+let gestaoAutomaticRetryTimer = null;
+
+function markGestaoLocalChange(){
+  gestaoRealtimeStop?.markLocalChange?.(8000);
+}
+function gestaoInteractionActive(){
+  const active = document.activeElement;
+  const root = document.getElementById('view-root');
+  const editingField = !!(active && root?.contains(active) && active.matches?.('input, textarea, select, [contenteditable="true"]'));
+  const floatingControl = !!document.querySelector('.dd-panel-float, .msel-panel-float, .cal-dd-float, .color-picker-float');
+  const modalOpen = document.getElementById('modal-backdrop')?.classList.contains('active') || document.getElementById('lightbox-backdrop')?.classList.contains('active');
+  return editingField || floatingControl || modalOpen;
+}
+function renderGestaoWhenSafe(renderFn){
+  const target = typeof renderFn === 'function' ? renderFn : aplicarFiltrosAtual;
+  if (typeof target !== 'function') return;
+  const requestedView = currentView;
+  clearTimeout(gestaoSafeRenderTimer);
+  const attempt = ()=>{
+    if (requestedView !== currentView) return;
+    if (gestaoInteractionActive()){
+      gestaoSafeRenderTimer = setTimeout(attempt, 140);
+      return;
+    }
+    gestaoSafeRenderTimer = null;
+    target();
+  };
+  attempt();
+}
 // O cliente envia e renova o JWT do Supabase Auth automaticamente.
 // Nenhum papel ou ID de usuário é aceito por cabeçalho customizado.
 
@@ -381,7 +411,14 @@ async function bootAfterLogin(){
 // renovada automaticamente pelo cliente do Supabase Auth.
 async function atualizarManualmente(options){
   const automatico = options?.automatico === true;
+  if (automatico && gestaoInteractionActive()){
+    gestaoRealtimePending = true;
+    clearTimeout(gestaoAutomaticRetryTimer);
+    gestaoAutomaticRetryTimer = setTimeout(()=>atualizarManualmente({ automatico: true }), 180);
+    return;
+  }
   if (gestaoRefreshInFlight){ if (automatico) gestaoRealtimePending = true; return; }
+  if (automatico){ gestaoRealtimePending = false; clearTimeout(gestaoAutomaticRetryTimer); gestaoAutomaticRetryTimer = null; }
   gestaoRefreshInFlight = true;
   const btn = document.getElementById('btn-atualizar');
   if (!automatico && btn){ btn.disabled = true; btn.textContent = 'Atualizando…'; }
@@ -407,7 +444,8 @@ function setupGestaoRealtime(){
     client: sb,
     userId: currentUser?.id,
     appCode: 'gestao',
-    debounceMs: 900,
+    debounceMs: 250,
+    shouldDefer: gestaoInteractionActive,
     onChange: ()=>atualizarManualmente({ automatico: true })
   }) || null;
 }
@@ -815,6 +853,7 @@ async function navigateTo(key, opts){
 }
 
 async function saveField(table, id, field, value){
+  markGestaoLocalChange();
   const { data, error } = await sb.from(table)
     .update({ [field]: value })
     .eq('id', id)
@@ -830,6 +869,7 @@ async function saveField(table, id, field, value){
 // Franquia é uma fonte canônica no menu_opcoes. Sempre que o rótulo muda,
 // grava também o ID correspondente para não deixar label e vínculo divergentes.
 async function saveFranquiaField(table, id, value){
+  markGestaoLocalChange();
   const opcao = opcoesDe('chamados_franquia').find(o=>o.valor===value);
   const payload = { franquia: value || null, franquia_id: opcao?.franquia_id || null };
   const { data, error } = await sb.from(table)
@@ -844,6 +884,7 @@ async function saveFranquiaField(table, id, value){
   return data;
 }
 async function saveTipoProblemaState(table, id, field, tipoId, classe){
+  markGestaoLocalChange();
   // A classe pode ser gravada sem uma subclasse. O update é confirmado com
   // select() para não deixar a tela afirmar que salvou quando a API recusou
   // ou quando a coluna nova ainda não foi reconhecida pelo PostgREST.
@@ -1144,7 +1185,7 @@ function renderTipoProblemaCell(table, row, field){
       btn.textContent = novoTipo ? `${novoTipo.classe} · ${novoTipo.subclasse}` : 'Sem definir';
     }
     flashSavedCor(btn);
-    if (typeof aplicarFiltrosAtual === 'function') aplicarFiltrosAtual();
+    renderGestaoWhenSafe();
   }, {placeholder:classeAtual && !tipoAtual ? `${classeAtual} · Sem definir` : 'Sem definir'})}</div>`;
   queueMicrotask(()=>{
     const root = document.getElementById(id); if (!root) return;
@@ -1171,14 +1212,14 @@ function renderSelectCell(table, row, field){
         row.franquia = salvo.franquia;
         row.franquia_id = salvo.franquia_id;
         flashSavedCor(btn);
-        if (typeof aplicarFiltrosAtual === 'function') aplicarFiltrosAtual();
+        renderGestaoWhenSafe();
         return true;
       }
       const ok = await saveField(table, row.id, field.key, v);
       if (ok){
         row[field.key] = v;
         flashSavedCor(btn);
-        if (typeof aplicarFiltrosAtual === 'function') aplicarFiltrosAtual();
+        renderGestaoWhenSafe();
         return true;
       }
       return false;
@@ -1191,14 +1232,35 @@ function registerAutoSave(id, table, row, key, transform, evt){
     const el = document.getElementById(id);
     if (!el) return;
     const eventName = evt || (el.tagName==='INPUT' && el.type!=='text' ? 'change' : 'blur');
-    el.addEventListener(eventName, async ()=>{
-      const novoValor = transform(el.value);
-      const ok = await saveField(table, row.id, key, novoValor);
-      if (ok){
-        row[key] = novoValor;
-        flashSaved(el);
-        if (typeof aplicarFiltrosAtual === 'function') aplicarFiltrosAtual();
+    let saving = false;
+    let queued = false;
+    let latestRawValue = el.value;
+
+    async function persistLatest(){
+      if (saving){ queued = true; return; }
+      saving = true;
+      let savedAny = false;
+      try{
+        do{
+          queued = false;
+          const rawValue = latestRawValue;
+          const novoValor = transform(rawValue);
+          const ok = await saveField(table, row.id, key, novoValor);
+          if (ok){ row[key] = novoValor; savedAny = true; }
+        }while(queued);
+      }finally{
+        saving = false;
       }
+      if (savedAny){
+        if (el.isConnected) flashSaved(el);
+        renderGestaoWhenSafe();
+      }
+    }
+
+    el.addEventListener(eventName, ()=>{
+      latestRawValue = el.value;
+      queued = true;
+      void persistLatest();
     });
   });
   return '';
@@ -1590,7 +1652,7 @@ function renderCell(table, row, field){
       const ok = await saveField(table, row.id, field.key, novoValor);
       if (ok){
         row[field.key] = novoValor;
-        if (typeof aplicarFiltrosAtual === 'function') aplicarFiltrosAtual();
+        renderGestaoWhenSafe();
       }
       return ok;
     });
@@ -1631,6 +1693,7 @@ function renderMultiSelectCell(table, row, field){
         painel.innerHTML = profilesCache.map(p=>`<label><input type="checkbox" value="${p.id}" ${(row.__resp_ids||[]).includes(p.id)?'checked':''}> ${escapeHtml(p.nome)}</label>`).join('') || '<div class="csp-inline-010">Nenhum usuário cadastrado.</div>';
         painel.querySelectorAll('input[type=checkbox]').forEach(cb=>{
           cb.addEventListener('change', async ()=>{
+            markGestaoLocalChange();
             const profileId = cb.value;
             if (cb.checked){
               const { error } = await sb.from(cfg.respTable).insert({ [cfg.respFk]: row.id, profile_id: profileId });
@@ -2171,6 +2234,7 @@ async function viewTabela(tableName){
 
   if (podeCriar){
     document.getElementById('btn-new').addEventListener('click', async ()=>{
+      markGestaoLocalChange();
       const defaults = {};
       cfg.fields.forEach(f=>{
         if (f.edit==='percent') defaults[f.key]=0;
@@ -2254,13 +2318,14 @@ async function viewTabela(tableName){
     for (let i = data.length - 1; i >= 0; i--){ if (!registroVisivel(perm, data[i])) data.splice(i, 1); }
     if (cfg.notificacoes) eventosPorRegistro = await carregarNotificacoes();
     await loadProfilesCache();
-    aplicarFiltrosOrdenacao();
+    renderGestaoWhenSafe(aplicarFiltrosOrdenacao);
     if (cfg.notificacoes) atualizarBotaoMarcarTudoTabela();
   };
 }
 
 window.deleteRow = async function(tableName, id){
   if (!(await confirmarAcao('Tem certeza que deseja excluir este registro? Essa ação fica registrada no log de auditoria.'))) return;
+  markGestaoLocalChange();
   const { error } = await sb.from(tableName).delete().eq('id', id);
   if (error) return toast('Erro ao excluir: '+error.message, true);
   toast('Registro excluído.');
@@ -3035,7 +3100,7 @@ async function viewMinhasTarefas(){
     dados.length = 0; dados.push(...novosDados);
     eventosPorProjeto = await carregarNotificacoesMinhasTarefas();
     atualizarBotaoMarcarTudoMT();
-    aplicarFiltrosOrdenacao();
+    renderGestaoWhenSafe(aplicarFiltrosOrdenacao);
   };
 }
 

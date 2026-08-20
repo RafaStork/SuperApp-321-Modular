@@ -38,7 +38,16 @@ function bootObras(){
   const titleCase=value=>String(value||'').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
   function toast(message,type){const el=$('toast');el.textContent=message;el.className='toast show '+(type||'');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.className='toast',3200)}
   function safeMessage(error,fallback){console.error('[obras]',error);return window.SuperAppAuth?.getSafeAuthMessage?.(error,fallback)||fallback}
-  async function rpc(name,params){const {data,error}=await state.client.rpc(name,params||{});if(error)throw error;return data}
+  const READ_ONLY_RPCS=new Set(['obras_list','obras_list_carpenters','obras_list_franchises','obras_resolve_map_link']);
+  function markLocalChange(){state.realtimeStop?.markLocalChange?.(8000)}
+  function realtimeInteractionActive(){
+    const active=document.activeElement;
+    const editing=!!(active&&active.matches?.('input, textarea, select, [contenteditable="true"]'));
+    const modal=$('modal-backdrop')?.classList.contains('open');
+    const floating=!!document.querySelector('.select-popover.open, .date-popover.open, #timeline-jump-popover:not([hidden])');
+    return editing||modal||floating;
+  }
+  async function rpc(name,params){if(!READ_ONLY_RPCS.has(name))markLocalChange();const {data,error}=await state.client.rpc(name,params||{});if(error)throw error;return data}
   function withTimeout(promise,timeoutMs,label){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label||'Tempo limite excedido')),timeoutMs)})]).finally(()=>clearTimeout(timer))}
   function rows(value){if(Array.isArray(value))return value;if(Array.isArray(value?.items))return value.items;return value?[value]:[]}
   function isMFrq(){return state.profile?.role_code==='MFrq'}
@@ -146,7 +155,8 @@ function bootObras(){
   function setupRealtime(){
     state.realtimeStop?.();
     state.realtimeStop=window.SuperAppRealtimeSync?.subscribe({
-      client:state.client,userId:state.profile?.user_id,appCode:APP,debounceMs:900,
+      client:state.client,userId:state.profile?.user_id,appCode:APP,debounceMs:250,
+      shouldDefer:realtimeInteractionActive,
       onChange:()=>loadWorks({includeAux:true,silent:true})
     })||null;
   }
