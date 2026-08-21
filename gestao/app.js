@@ -811,6 +811,9 @@ let currentSilentRefresh = null;
 // consegue reordenar/refiltrar a linha na hora, sem precisar recarregar a
 // tela inteira. Fica null quando a tela atual não é uma tabela editável.
 let aplicarFiltrosAtual = null;
+// Preenchida por viewTabela() com a remoção local da linha que acabou de ser
+// excluída no banco. Mantém a instância atual da tabela, os filtros e o scroll.
+let removerLinhaAtual = null;
 let __viewToken = 0;
 async function navigateTo(key, opts){
   const silencioso = !!(opts && opts.silencioso);
@@ -821,6 +824,7 @@ async function navigateTo(key, opts){
   const meuToken = ++__viewToken;
   currentSilentRefresh = null;
   aplicarFiltrosAtual = null;
+  removerLinhaAtual = null;
   currentView = key;
   setActiveTab(key);
   const root = document.getElementById('view-root');
@@ -2103,6 +2107,37 @@ async function viewTabela(tableName){
   }
 
   aplicarFiltrosAtual = aplicarFiltrosOrdenacao;
+  removerLinhaAtual = (alvoTabela, alvoId)=>{
+    if (alvoTabela !== tableName) return false;
+    const indice = data.findIndex(registro=>String(registro.id) === String(alvoId));
+    if (indice < 0) return false;
+
+    const tableWrap = root.querySelector('.table-wrap');
+    const scrollTop = tableWrap?.scrollTop || 0;
+    const scrollLeft = tableWrap?.scrollLeft || 0;
+    const rootScrollTop = root.scrollTop;
+    const rootScrollLeft = root.scrollLeft;
+    data.splice(indice, 1);
+    delete eventosPorRegistro[alvoId];
+    aplicarFiltrosOrdenacao();
+    atualizarBotaoMarcarTudoTabela();
+
+    root.scrollTop = rootScrollTop;
+    root.scrollLeft = rootScrollLeft;
+    if (tableWrap){
+      tableWrap.scrollTop = scrollTop;
+      tableWrap.scrollLeft = scrollLeft;
+    }
+    requestAnimationFrame(()=>{
+      root.scrollTop = rootScrollTop;
+      root.scrollLeft = rootScrollLeft;
+      if (tableWrap){
+        tableWrap.scrollTop = scrollTop;
+        tableWrap.scrollLeft = scrollLeft;
+      }
+    });
+    return true;
+  };
   aplicarFiltrosOrdenacao();
   ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), tableName);
   atualizarIndicadoresOrdenacao();
@@ -2328,8 +2363,11 @@ window.deleteRow = async function(tableName, id){
   markGestaoLocalChange();
   const { error } = await sb.from(tableName).delete().eq('id', id);
   if (error) return toast('Erro ao excluir: '+error.message, true);
+  const removidaLocalmente = removerLinhaAtual?.(tableName, id) === true;
   toast('Registro excluído.');
-  navigateTo(currentView);
+  // Contingência para uma exclusão disparada fora da tabela que está ativa.
+  // No fluxo normal, somente o tbody é redesenhado e a aba não é remontada.
+  if (!removidaLocalmente) await navigateTo(currentView, { silencioso: true });
 };
 
 // ── Programação Carregamento (calendário) ──────────────────────────────────
