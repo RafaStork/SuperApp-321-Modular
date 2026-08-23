@@ -23,10 +23,10 @@
   <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260823-corte-1">
   <link rel="stylesheet" href="../shared/ui-controls.css?v=20260823-corte-1">
   <link rel="stylesheet" href="integration.css?v=20260823-corte-2">
-  <link rel="stylesheet" href="audit-fixes.css?v=20260823-audit-1">
+  <link rel="stylesheet" href="audit-fixes.css?v=20260823-audit-2">
   <script src="../shared/ui-controls.js?v=20260823-corte-1" defer></script>
   <script src="optimizer.js?v=20260823-audit-1" defer></script>
-  <script src="app.js?v=20260823-audit-1" defer></script>
+  <script src="app.js?v=20260823-audit-2" defer></script>
   <script src="integration.js?v=20260823-corte-2" defer></script>
 </head>
 <body>
@@ -67,17 +67,17 @@
           </label>
           <label class="field">
             <span>Comprimento final</span>
-            <div class="input-unit"><input id="partLength" type="number" max="100000" inputmode="decimal" value="600" min="1" step="0.5"><span>mm</span></div>
+            <div class="input-unit"><input id="partLength" type="number" class="gestao-number" data-ui-native max="100000" inputmode="decimal" value="600" min="1" step="0.5"><span>mm</span></div>
           </label>
 
           <div class="two-fields profile-inputs">
             <label class="field">
               <span>Largura da peça no corte</span>
-              <div class="input-unit"><input id="partWidth" type="number" max="100000" inputmode="decimal" value="90" min="1" step="0.5"><span>mm</span></div>
+              <div class="input-unit"><input id="partWidth" type="number" class="gestao-number" data-ui-native max="100000" inputmode="decimal" value="90" min="1" step="0.5"><span>mm</span></div>
             </label>
             <label class="field">
               <span>Espessura</span>
-              <div class="input-unit"><input id="partThickness" type="number" max="100000" inputmode="decimal" value="45" min="1" step="0.5"><span>mm</span></div>
+              <div class="input-unit"><input id="partThickness" type="number" class="gestao-number" data-ui-native max="100000" inputmode="decimal" value="45" min="1" step="0.5"><span>mm</span></div>
             </label>
           </div>
 
@@ -97,11 +97,11 @@
             </label>
             <label class="field">
               <span>Posição X inicial</span>
-              <div class="input-unit"><input id="cutStartX" type="number" min="-100000" max="100000" inputmode="decimal" value="0.00" step="0.01"><span>mm</span></div>
+              <div class="input-unit"><input id="cutStartX" type="number" class="gestao-number" data-ui-native min="-100000" max="100000" inputmode="decimal" value="0.00" step="0.01"><span>mm</span></div>
             </label>
             <label class="field full-field">
               <span>Ângulo em relação à vertical</span>
-              <div class="input-unit"><input id="cutAngle" type="number" inputmode="decimal" value="0.00" min="-89" max="89" step="0.01"><span>°</span></div>
+              <div class="input-unit"><input id="cutAngle" type="number" class="gestao-number" data-ui-native inputmode="decimal" value="0.00" min="-89" max="89" step="0.01"><span>°</span></div>
             </label>
           </div>
           <div id="cutProjection" class="cut-projection">Ponto oposto: x 0,00 mm</div>
@@ -173,26 +173,26 @@
           </div>
           <label class="field">
             <span>Comprimento da barra</span>
-            <div class="input-unit"><input id="stockLength" type="number" max="100000" inputmode="decimal" value="3000" min="100" step="1"><span>mm</span></div>
+            <div class="input-unit"><input id="stockLength" type="number" class="gestao-number" data-ui-native max="100000" inputmode="decimal" value="3000" min="100" step="1"><span>mm</span></div>
           </label>
           <div class="two-fields">
             <label class="field">
               <span>Largura da matéria-prima</span>
-              <div class="input-unit"><input id="stockWidth" type="number" max="100000" inputmode="decimal" value="90" min="1" step="0.5"><span>mm</span></div>
+              <div class="input-unit"><input id="stockWidth" type="number" class="gestao-number" data-ui-native max="100000" inputmode="decimal" value="90" min="1" step="0.5"><span>mm</span></div>
             </label>
             <label class="field">
               <span>Espessura da matéria-prima</span>
-              <div class="input-unit"><input id="stockThickness" type="number" max="100000" inputmode="decimal" value="45" min="1" step="0.5"><span>mm</span></div>
+              <div class="input-unit"><input id="stockThickness" type="number" class="gestao-number" data-ui-native max="100000" inputmode="decimal" value="45" min="1" step="0.5"><span>mm</span></div>
             </label>
           </div>
           <div class="two-fields">
             <label class="field">
               <span>Espessura da lâmina (kerf)</span>
-              <div class="input-unit"><input id="kerf" type="number" max="10000" inputmode="decimal" value="3.2" min="0" step="0.1"><span>mm</span></div>
+              <div class="input-unit"><input id="kerf" type="number" class="gestao-number" data-ui-native max="10000" inputmode="decimal" value="3.2" min="0" step="0.1"><span>mm</span></div>
             </label>
             <label class="field">
               <span>Refilo inicial</span>
-              <div class="input-unit"><input id="initialTrim" type="number" max="100000" inputmode="decimal" value="10" min="0" step="0.5"><span>mm</span></div>
+              <div class="input-unit"><input id="initialTrim" type="number" class="gestao-number" data-ui-native max="100000" inputmode="decimal" value="10" min="0" step="0.5"><span>mm</span></div>
             </label>
           </div>
           <div class="profile-grid compact-profile">

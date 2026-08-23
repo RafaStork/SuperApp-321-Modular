@@ -538,7 +538,7 @@
     container.innerHTML = compatiblePieces.map((piece) => `
       <label class="order-item">
         <div><strong>${escapeHtml(piece.code)} · ${escapeHtml(piece.name)}</strong><span>${formatMm(piece.lengthMm)} mm · largura ${formatMm(piece.profile.widthMm)} × esp. ${formatMm(piece.profile.thicknessMm)} mm · ${piece.cuts.length} cortes</span></div>
-        <input type="number" inputmode="numeric" min="0" max="${LIMITS.maxQuantityPerPiece}" step="1" value="${Number(state.quantities[piece.id] || 0)}" data-quantity="${escapeHtml(piece.id)}" aria-label="Quantidade de ${escapeHtml(piece.code)}">
+        <input type="number" class="gestao-number" data-ui-native inputmode="numeric" min="0" max="${LIMITS.maxQuantityPerPiece}" step="1" value="${Number(state.quantities[piece.id] || 0)}" data-quantity="${escapeHtml(piece.id)}" aria-label="Quantidade de ${escapeHtml(piece.code)}">
       </label>`).join("");
   }
 
