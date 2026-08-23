@@ -1,118 +1,127 @@
 {
-    "$schema":  "https://openapi.vercel.sh/vercel.json",
-    "redirects":  [
-                      {
-                          "source":  "/security/:path*",
-                          "destination":  "/",
-                          "permanent":  false
-                      }
-                  ],
-    "headers":  [
-                    {
-                        "source":  "/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "X-Frame-Options",
-                                            "value":  "DENY"
-                                        },
-                                        {
-                                            "key":  "X-Content-Type-Options",
-                                            "value":  "nosniff"
-                                        },
-                                        {
-                                            "key":  "Referrer-Policy",
-                                            "value":  "no-referrer"
-                                        },
-                                        {
-                                            "key":  "Permissions-Policy",
-                                            "value":  "camera=(), microphone=(), geolocation=()"
-                                        },
-                                        {
-                                            "key":  "Strict-Transport-Security",
-                                            "value":  "max-age=63072000; includeSubDomains; preload"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src \u0027self\u0027; img-src \u0027self\u0027 data:; font-src \u0027self\u0027 data:; connect-src \u0027self\u0027 https://*.supabase.co wss://*.supabase.co; frame-src https://challenges.cloudflare.com; manifest-src \u0027self\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; object-src \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/index.html",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src \u0027self\u0027; img-src \u0027self\u0027 data:; font-src \u0027self\u0027 data:; connect-src \u0027self\u0027 https://*.supabase.co wss://*.supabase.co; frame-src https://challenges.cloudflare.com; manifest-src \u0027self\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; object-src \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/gestao/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 \u0027unsafe-inline\u0027 https://cdn.jsdelivr.net; style-src \u0027self\u0027 \u0027unsafe-inline\u0027; font-src \u0027self\u0027; connect-src \u0027self\u0027 https://*.supabase.co wss://*.supabase.co; img-src \u0027self\u0027 data: https://drive.google.com https://lh3.googleusercontent.com https://*.supabase.co; manifest-src \u0027self\u0027; object-src \u0027none\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/planta/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net \u0027sha256-XOzT6OF3f/mmmiVkT8ddz2tHeP/fErjSGZmTLlfYj7k=\u0027; style-src \u0027self\u0027 https://fonts.googleapis.com; font-src \u0027self\u0027 https://fonts.gstatic.com data:; connect-src \u0027self\u0027 blob: https://*.supabase.co wss://*.supabase.co https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev https://drive.google.com https://raw.githubusercontent.com https://github.com; img-src \u0027self\u0027 data: blob: https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev https://*.supabase.co https://drive.google.com https://lh3.googleusercontent.com https://raw.githubusercontent.com https://github.com; frame-src \u0027self\u0027 blob:; worker-src \u0027self\u0027 blob:; manifest-src \u0027self\u0027; object-src \u0027none\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/obras/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 https://cdn.jsdelivr.net; connect-src \u0027self\u0027 https://*.supabase.co wss://*.supabase.co; style-src \u0027self\u0027; style-src-attr \u0027unsafe-inline\u0027; img-src \u0027self\u0027 data: https://tile.openstreetmap.org https://server.arcgisonline.com https://drive.google.com https://lh3.googleusercontent.com https://drive.usercontent.google.com; font-src \u0027self\u0027 data:; frame-src \u0027self\u0027 blob:; manifest-src \u0027self\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; object-src \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/financeiro/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src \u0027self\u0027 \u0027unsafe-inline\u0027; img-src \u0027self\u0027 data:; font-src \u0027self\u0027 data:; connect-src \u0027self\u0027 https://*.supabase.co wss://*.supabase.co; worker-src \u0027self\u0027; manifest-src \u0027self\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; object-src \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/playbook/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 https://cdn.jsdelivr.net; style-src \u0027self\u0027; img-src \u0027self\u0027 data:; font-src \u0027self\u0027 data:; connect-src \u0027self\u0027 https://*.supabase.co wss://*.supabase.co; manifest-src \u0027self\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; object-src \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/simulacao/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027; img-src \u0027self\u0027 data:; font-src \u0027self\u0027 data:; connect-src \u0027self\u0027 https://*.supabase.co wss://*.supabase.co; manifest-src \u0027self\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; object-src \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    },
-                    {
-                        "source":  "/comunicacao/(.*)",
-                        "headers":  [
-                                        {
-                                            "key":  "Content-Security-Policy",
-                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027; style-src \u0027self\u0027; img-src \u0027self\u0027 data:; font-src \u0027self\u0027 data:; connect-src \u0027self\u0027 https://*.supabase.co wss://*.supabase.co; manifest-src \u0027self\u0027; base-uri \u0027none\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027; object-src \u0027none\u0027; upgrade-insecure-requests"
-                                        }
-                                    ]
-                    }
-                ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/security/:path*",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://challenges.cloudflare.com; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-src https://challenges.cloudflare.com; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/gestao/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: https://drive.google.com https://lh3.googleusercontent.com https://*.supabase.co; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/planta/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net 'sha256-XOzT6OF3f/mmmiVkT8ddz2tHeP/fErjSGZmTLlfYj7k='; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev https://drive.google.com https://raw.githubusercontent.com https://github.com; img-src 'self' data: blob: https://pub-23aa4a72b2b54deabef4f4d1916eb601.r2.dev https://*.supabase.co https://drive.google.com https://lh3.googleusercontent.com https://raw.githubusercontent.com https://github.com; frame-src 'self' blob:; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/obras/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https://tile.openstreetmap.org https://server.arcgisonline.com https://drive.google.com https://lh3.googleusercontent.com https://drive.usercontent.google.com; font-src 'self' data:; frame-src 'self' blob:; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/financeiro/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/playbook/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/simulacao/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/comunicacao/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+        }
+      ]
+    },
+    {
+      "source": "/corte/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; manifest-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests"
+        }
+      ]
+    }
+  ]
 }

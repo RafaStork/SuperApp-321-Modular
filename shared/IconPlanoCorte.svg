@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1254" height="1254" viewBox="0 0 1254 1254" role="img" aria-labelledby="title desc">
+  <title id="title">Ícone Plano de Corte</title>
+  <desc id="desc">Perfil modular com marcações de corte e serra circular no padrão visual da 321 Modular.</desc>
+  <rect width="1254" height="1254" fill="#1f331b"/>
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity=".26">
+    <circle cx="627" cy="627" r="366"/>
+    <path d="M282 338V282H338M916 282H972V338M282 916V972H338M916 972H972V916"/>
+  </g>
+  <g fill="none" stroke="#a7c798" stroke-width="3" opacity=".2" stroke-dasharray="14 14">
+    <path d="M308 466H946M308 630H946M308 794H946M430 322V932M627 322V932M824 322V932"/>
+  </g>
+  <rect x="260" y="548" width="734" height="226" rx="42" fill="#a7c798"/>
+  <path d="M344 548 276 774M516 548 448 774M724 548 656 774M896 548 828 774" fill="none" stroke="#1f331b" stroke-width="20" opacity=".9"/>
+  <path d="M365 501v320M734 501v320" fill="none" stroke="#ed6b1d" stroke-width="28" stroke-linecap="round"/>
+  <g transform="translate(808 704)">
+    <circle cx="0" cy="0" r="170" fill="#2d5da9" stroke="#f9b215" stroke-width="22"/>
+    <circle cx="0" cy="0" r="54" fill="#1f331b" stroke="#a7c798" stroke-width="18"/>
+    <g fill="#f9b215">
+      <path d="M-20-169 0-226 20-169Z"/><path d="M-20-169 0-226 20-169Z" transform="rotate(45)"/><path d="M-20-169 0-226 20-169Z" transform="rotate(90)"/><path d="M-20-169 0-226 20-169Z" transform="rotate(135)"/><path d="M-20-169 0-226 20-169Z" transform="rotate(180)"/><path d="M-20-169 0-226 20-169Z" transform="rotate(225)"/><path d="M-20-169 0-226 20-169Z" transform="rotate(270)"/><path d="M-20-169 0-226 20-169Z" transform="rotate(315)"/>
+    </g>
+  </g>
+  <path d="M365 482h369" stroke="#f9b215" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="365" cy="482" r="20" fill="#ed6b1d"/><circle cx="734" cy="482" r="20" fill="#ed6b1d"/>
+</svg>

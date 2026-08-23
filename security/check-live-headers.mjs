@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const base = new URL(process.env.SUPERAPP_BASE_URL || 'https://superapp.321modular.com.br/');
-const routes = ['/', '/gestao/', '/planta/', '/financeiro/', '/playbook/'];
+const routes = ['/', '/gestao/', '/planta/', '/financeiro/', '/playbook/', '/corte/'];
 const failures = [];
 const results = [];
 

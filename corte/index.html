@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="light" data-app-code="corte">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eef0f2">
+  <meta name="description" content="Planejamento seguro e local de cortes da 321 Modular.">
+  <title>321 Modular | Plano de Corte</title>
+  <link rel="icon" type="image/svg+xml" href="../shared/IconPlanoCorte.svg">
+  <script src="./vendor/supabase.min.js?v=2.110.8"></script>
+  <link rel="stylesheet" href="../shared/boot.css?v=20260823-corte-1">
+  <script src="../shared/theme-bootstrap.js"></script>
+  <script src="../shared/runtime-config.js"></script>
+  <script src="../shared/auth.js?v=20260823-corte-1"></script>
+  <script src="../shared/app-guard.js?v=20260823-corte-1"></script>
+  <link rel="stylesheet" href="styles-base.css?v=20260823-corte-1">
+  <link rel="stylesheet" href="../shared/brand-system.css?v=20260823-corte-1">
+  <link rel="stylesheet" href="../shared/sidebar-standard.css?v=20260823-corte-1">
+  <link rel="stylesheet" href="../shared/ui-controls.css?v=20260823-corte-1">
+  <link rel="stylesheet" href="integration.css?v=20260823-corte-1">
+  <script src="../shared/ui-controls.js?v=20260823-corte-1" defer></script>
+  <script src="optimizer.js" defer></script>
+  <script src="app.js" defer></script>
+  <script src="integration.js?v=20260823-corte-1" defer></script>
+</head>
+<body>
+  <div class="aside-backdrop" id="asideBackdrop"></div>
+  <div class="app-shell">
+    <aside class="side" id="side">
+      <div class="brand"><div class="brand-mark"><img class="brand-logo-ref superapp-brand-logo" src="../shared/Logo321Modular.svg" alt="321 Modular"></div><div class="brand-name"><strong>Plano de</strong><strong>Corte</strong></div></div>
+      <div class="nav-scroll"><nav class="tabs nav" aria-label="Áreas do aplicativo"><button class="tab nav-item active" data-tab="pieces" type="button"><span>Peças</span></button><button class="tab nav-item" data-tab="plans" type="button"><span>Plano de corte</span></button></nav></div>
+      <div class="side-footer"><button class="theme-toggle" id="themeBtn" type="button" title="Alternar tema claro e escuro" aria-label="Alternar tema"><span class="knob"></span></button><div class="side-session"><span class="side-session-copy"><strong class="side-session-name" id="sideUserName">—</strong><small class="side-session-role" id="sideUserRole">—</small></span><button class="button side-logout" id="logoutBtn" type="button">Sair</button></div></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="title-group"><button class="mobile-menu" id="menuBtn" type="button" aria-label="Abrir menu" aria-controls="side" aria-expanded="false">☰</button><div><h1 id="pageTitle">Peças</h1><p id="workspaceStatus">Arquivos de demonstração</p></div></div><div class="workspace-actions"><button id="openFolderButton" class="button button-light" type="button">Selecionar pasta</button><button id="importButton" class="button button-ghost-light" type="button">Importar JSON</button><input id="fileInput" type="file" accept="application/json,.json" multiple hidden></div></header>
+      <div class="shell main-shell">
+    <section id="piecesPage" class="page active" aria-labelledby="piecesTitle">
+      <header class="page-heading">
+        <span class="eyebrow">EDITOR DE PEÇAS</span>
+        <h1 id="piecesTitle">Comece pelo retângulo.<br>Marque os cortes.</h1>
+        <p>A vista do corte usa a largura da peça. Escolha a borda de origem, informe X com precisão de 0,01 mm e defina o ângulo. A espessura é registrada separadamente.</p>
+      </header>
+
+      <div class="editor-layout">
+        <aside class="panel editor-fields">
+          <div class="panel-heading">
+            <div>
+              <span class="step">PASSO 1</span>
+              <h2>Dimensões da peça</h2>
+            </div>
+            <button id="newPieceButton" class="icon-button" type="button" title="Limpar e criar nova peça">Nova</button>
+          </div>
+
+          <label class="field">
+            <span>Código</span>
+            <input id="partCode" type="text" placeholder="TRAV-420" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Nome da peça</span>
+            <input id="partName" type="text" placeholder="Travessa inclinada" autocomplete="off">
+          </label>
+          <label class="field">
+            <span>Comprimento final</span>
+            <div class="input-unit"><input id="partLength" type="number" value="600" min="1" step="0.5"><span>mm</span></div>
+          </label>
+
+          <div class="two-fields profile-inputs">
+            <label class="field">
+              <span>Largura da peça no corte</span>
+              <div class="input-unit"><input id="partWidth" type="number" value="90" min="1" step="0.5"><span>mm</span></div>
+            </label>
+            <label class="field">
+              <span>Espessura</span>
+              <div class="input-unit"><input id="partThickness" type="number" value="45" min="1" step="0.5"><span>mm</span></div>
+            </label>
+          </div>
+
+          <div class="cut-summary">
+            <span class="step">PASSO 2</span>
+            <div class="summary-row"><span>Cortes definidos</span><strong id="cutCount">0</strong></div>
+            <p id="cutInstruction">Ângulo 0° é vertical. Positivo significa que o ponto inferior fica à direita do superior.</p>
+          </div>
+
+          <div class="cut-fields">
+            <label class="field">
+              <span>Origem do corte</span>
+              <select id="cutOrigin">
+                <option value="top">Borda superior</option>
+                <option value="bottom">Borda inferior</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Posição X inicial</span>
+              <div class="input-unit"><input id="cutStartX" type="number" value="0.00" step="0.01"><span>mm</span></div>
+            </label>
+            <label class="field full-field">
+              <span>Ângulo em relação à vertical</span>
+              <div class="input-unit"><input id="cutAngle" type="number" value="0.00" min="-89" max="89" step="0.01"><span>°</span></div>
+            </label>
+          </div>
+          <div id="cutProjection" class="cut-projection">Ponto oposto: x 0,00 mm</div>
+          <button id="addCutButton" class="button button-secondary full" type="button">＋ Adicionar corte</button>
+          <button id="clearCutsButton" class="button button-link full" type="button">Limpar todos os cortes</button>
+          <button id="savePieceButton" class="button button-primary full" type="button">Salvar arquivo da peça</button>
+        </aside>
+
+        <section class="drawing-column">
+          <div class="panel drawing-panel">
+            <div class="drawing-toolbar">
+              <div>
+                <span class="step">VISTA DO CORTE — LARGURA</span>
+                <strong id="drawingCaption">600 × 90 mm</strong>
+              </div>
+              <div class="legend">
+                <span><i class="legend-dot point"></i> ponto</span>
+                <span><i class="legend-line"></i> corte</span>
+                <span><i class="legend-reference"></i> retângulo de referência</span>
+              </div>
+            </div>
+            <div class="canvas-wrap" id="canvasWrap">
+              <svg id="pieceCanvas" role="img" aria-label="Editor da peça retangular"></svg>
+            </div>
+            <div class="canvas-help">
+              <span>Precisão de entrada: 0,01 mm.</span>
+              <span>Pontos externos levam a peça para uma beirada da barra.</span>
+            </div>
+          </div>
+
+          <div class="panel cuts-panel">
+            <div class="panel-heading compact">
+              <div>
+                <span class="step">CORTES DA PEÇA</span>
+                <h2>Pontos e inclinações</h2>
+              </div>
+            </div>
+            <div id="cutsList" class="cuts-list"></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="library-section">
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">PASTA /PECAS</span>
+            <h2>Biblioteca carregada</h2>
+          </div>
+          <span id="pieceLibraryCount" class="count-badge">0 peças</span>
+        </div>
+        <div id="piecesGrid" class="pieces-grid"></div>
+      </section>
+    </section>
+
+    <section id="plansPage" class="page" aria-labelledby="plansTitle">
+      <header class="page-heading plan-heading">
+        <span class="eyebrow">OTIMIZAÇÃO 1D</span>
+        <h1 id="plansTitle">Diga o comprimento da barra.<br>O app organiza as peças.</h1>
+        <p>Defina comprimento, largura e espessura da matéria-prima. Somente peças compatíveis ficam disponíveis para o plano.</p>
+      </header>
+
+      <div class="plan-layout">
+        <aside class="panel plan-form">
+          <div class="panel-heading compact">
+            <div>
+              <span class="step">MATÉRIA-PRIMA</span>
+              <h2>Barra abastecida</h2>
+            </div>
+          </div>
+          <label class="field">
+            <span>Comprimento da barra</span>
+            <div class="input-unit"><input id="stockLength" type="number" value="3000" min="100" step="1"><span>mm</span></div>
+          </label>
+          <div class="two-fields">
+            <label class="field">
+              <span>Largura da matéria-prima</span>
+              <div class="input-unit"><input id="stockWidth" type="number" value="90" min="1" step="0.5"><span>mm</span></div>
+            </label>
+            <label class="field">
+              <span>Espessura da matéria-prima</span>
+              <div class="input-unit"><input id="stockThickness" type="number" value="45" min="1" step="0.5"><span>mm</span></div>
+            </label>
+          </div>
+          <div class="two-fields">
+            <label class="field">
+              <span>Espessura da lâmina (kerf)</span>
+              <div class="input-unit"><input id="kerf" type="number" value="3.2" min="0" step="0.1"><span>mm</span></div>
+            </label>
+            <label class="field">
+              <span>Refilo inicial</span>
+              <div class="input-unit"><input id="initialTrim" type="number" value="10" min="0" step="0.5"><span>mm</span></div>
+            </label>
+          </div>
+          <div class="profile-grid compact-profile">
+            <div><span>PERFIL ATIVO</span><strong id="stockProfileSummary">90 × 45 mm</strong></div>
+            <div><span>MÉTODO</span><strong>melhor encaixe</strong></div>
+          </div>
+
+          <span class="step order-step">PEÇAS E QUANTIDADES</span>
+          <p id="compatibilitySummary" class="compatibility-summary">Filtrando peças compatíveis.</p>
+          <div id="orderItems" class="order-items"></div>
+          <button id="generatePlanButton" class="button button-primary full" type="button">Gerar plano de corte</button>
+        </aside>
+
+        <section class="result-column">
+          <div id="planEmpty" class="empty-state">
+            <div class="empty-icon" aria-hidden="true">╱╲</div>
+            <h2>O plano aparecerá aqui</h2>
+            <p>Informe as quantidades e gere uma distribuição para o comprimento disponível.</p>
+          </div>
+          <div id="planResult" class="hidden"></div>
+        </section>
+      </div>
+    </section>
+  </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
