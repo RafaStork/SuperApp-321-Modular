@@ -26,15 +26,15 @@
   }
 
   function closeMobileMenu() {
-    $('side')?.classList.remove('open');
+    $('side')?.classList.remove('aside-open');
     $('asideBackdrop')?.classList.remove('active');
     document.body.classList.remove('menu-open');
     $('menuBtn')?.setAttribute('aria-expanded', 'false');
   }
 
   function toggleMobileMenu() {
-    const open = !$('side')?.classList.contains('open');
-    $('side')?.classList.toggle('open', open);
+    const open = !$('side')?.classList.contains('aside-open');
+    $('side')?.classList.toggle('aside-open', open);
     $('asideBackdrop')?.classList.toggle('active', open);
     document.body.classList.toggle('menu-open', open);
     $('menuBtn')?.setAttribute('aria-expanded', open ? 'true' : 'false');

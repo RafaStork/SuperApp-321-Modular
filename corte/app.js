@@ -6,6 +6,24 @@
   const byId = (id) => document.getElementById(id);
   const formatMm = (value) => Number(value).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
   const uid = () => globalThis.crypto?.randomUUID?.() || `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const LIMITS = Object.freeze({
+    maxFiles: 100,
+    maxFileBytes: 2 * 1024 * 1024,
+    maxPieces: 1000,
+    maxPlans: 300,
+    maxCutsPerPiece: 200,
+    maxBarsPerPlan: 1000,
+    maxQuantityPerPiece: 1000,
+    maxRequestedPieces: 10000,
+    maxDimensionMm: 100000,
+    maxTextLength: 120,
+  });
+  const isPlainObject = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  const cleanText = (value, maxLength = LIMITS.maxTextLength) => String(value ?? "").trim().slice(0, maxLength);
+  function boundedNumber(value, fallback, min = 0, max = LIMITS.maxDimensionMm) {
+    const number = Number(value);
+    return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+  }
 
   const demoPieces = [
     {
@@ -67,28 +85,32 @@
   }
 
   function switchTab(name) {
-    document.querySelectorAll(".tab").forEach((button) => button.classList.toggle("active", button.dataset.tab === name));
-    byId("piecesPage").classList.toggle("active", name === "pieces");
-    byId("plansPage").classList.toggle("active", name === "plans");
-    if (name === "plans") renderOrderItems();
+    const selected = name === "plans" ? "plans" : "pieces";
+    document.querySelectorAll(".tab[data-tab]").forEach((button) => {
+      const active = button.dataset.tab === selected;
+      button.classList.toggle("active", active);
+      if (active) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    });
+    [["piecesPage", "pieces"], ["plansPage", "plans"]].forEach(([id, tab]) => {
+      const page = byId(id), active = tab === selected;
+      page.classList.toggle("active", active);
+      page.setAttribute("aria-hidden", active ? "false" : "true");
+    });
+    if (selected === "plans") renderOrderItems();
+    document.querySelector(".main-shell")?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function currentLength() {
-    return Math.max(1, Number(byId("partLength").value) || 1);
+    return boundedNumber(byId("partLength").value, 1, 1);
   }
 
   function currentProfile() {
-    return {
-      widthMm: Math.max(1, Number(byId("partWidth").value) || DEFAULT_PROFILE.widthMm),
-      thicknessMm: Math.max(1, Number(byId("partThickness").value) || DEFAULT_PROFILE.thicknessMm),
-    };
+    return normalizeProfile({ widthMm: byId("partWidth").value, thicknessMm: byId("partThickness").value });
   }
 
   function currentStockProfile() {
-    return {
-      widthMm: Math.max(1, Number(byId("stockWidth").value) || DEFAULT_PROFILE.widthMm),
-      thicknessMm: Math.max(1, Number(byId("stockThickness").value) || DEFAULT_PROFILE.thicknessMm),
-    };
+    return normalizeProfile({ widthMm: byId("stockWidth").value, thicknessMm: byId("stockThickness").value });
   }
 
   function requiredPieceSpan(piece) {
@@ -107,43 +129,42 @@
 
   function normalizeProfile(profile = {}) {
     return {
-      widthMm: Math.max(1, Number(profile.widthMm) || DEFAULT_PROFILE.widthMm),
-      thicknessMm: Math.max(1, Number(profile.thicknessMm ?? profile.heightMm) || DEFAULT_PROFILE.thicknessMm),
+      widthMm: boundedNumber(profile.widthMm, DEFAULT_PROFILE.widthMm, 1),
+      thicknessMm: boundedNumber(profile.thicknessMm ?? profile.heightMm, DEFAULT_PROFILE.thicknessMm, 1),
     };
   }
 
-  function normalizeCut(cut, profile) {
+  function normalizeCut(cut = {}, profile) {
     const faceWidthMm = profile.widthMm;
-    const rawTop = Number(cut.p1?.y) === 0 ? cut.p1 : cut.p2;
-    const rawBottom = rawTop === cut.p1 ? cut.p2 : cut.p1;
-    const topX = Number(rawTop?.x ?? 0);
-    const bottomX = Number(rawBottom?.x ?? topX);
+    const p1 = isPlainObject(cut.p1) ? cut.p1 : {};
+    const p2 = isPlainObject(cut.p2) ? cut.p2 : {};
+    const rawTop = Number(p1.y) === 0 ? p1 : p2;
+    const rawBottom = rawTop === p1 ? p2 : p1;
+    const topX = boundedNumber(rawTop.x, 0, -LIMITS.maxDimensionMm, LIMITS.maxDimensionMm);
+    const bottomX = boundedNumber(rawBottom.x, topX, -LIMITS.maxDimensionMm, LIMITS.maxDimensionMm);
     const origin = cut.origin === "bottom" ? "bottom" : "top";
-    const angleDeg = Number.isFinite(Number(cut.angleDeg))
-      ? Number(cut.angleDeg)
-      : Number.isFinite(Number(cut.inclinationDeg))
-        ? Number(cut.inclinationDeg)
-        : Math.atan2(bottomX - topX, Number(rawBottom?.y) || faceWidthMm) * 180 / Math.PI;
-    const startX = Number.isFinite(Number(cut.startX))
-      ? Number(cut.startX)
-      : origin === "top" ? topX : bottomX;
-    return projectCut(origin, startX, angleDeg, faceWidthMm, cut.id || uid());
+    const inferredAngle = Math.atan2(bottomX - topX, boundedNumber(rawBottom.y, faceWidthMm, 1)) * 180 / Math.PI;
+    const angleDeg = Number.isFinite(Number(cut.angleDeg)) ? Number(cut.angleDeg) : Number.isFinite(Number(cut.inclinationDeg)) ? Number(cut.inclinationDeg) : inferredAngle;
+    const startX = Number.isFinite(Number(cut.startX)) ? Number(cut.startX) : origin === "top" ? topX : bottomX;
+    return projectCut(origin, startX, angleDeg, faceWidthMm, cleanText(cut.id, 120) || uid());
   }
 
-  function normalizePiece(piece) {
-    const profile = normalizeProfile(piece.profile);
+  function normalizePiece(piece = {}) {
+    const profile = normalizeProfile(isPlainObject(piece.profile) ? piece.profile : {});
+    const updatedAt = Number.isFinite(Date.parse(piece.updatedAt)) ? new Date(piece.updatedAt).toISOString() : new Date().toISOString();
     return {
-      ...piece,
-      schemaVersion: Math.max(2, Number(piece.schemaVersion) || 1),
-      profile,
-      cuts: (piece.cuts || []).map((cut) => normalizeCut(cut, profile)),
+      schemaVersion: 2, type: "piece", id: cleanText(piece.id, 120) || uid(),
+      code: cleanText(piece.code, 80).toUpperCase(), name: cleanText(piece.name, LIMITS.maxTextLength),
+      profile, lengthMm: boundedNumber(piece.lengthMm, 1, 1),
+      cuts: (Array.isArray(piece.cuts) ? piece.cuts : []).slice(0, LIMITS.maxCutsPerPiece).map((cut) => normalizeCut(cut, profile)),
+      updatedAt, source: cleanText(piece.source, 80) || "arquivo JSON",
     };
   }
 
   function projectCut(origin, startX, angleDeg, faceWidthMm, id = uid()) {
     const x = Number(Number(startX).toFixed(2));
     const angle = Number(Number(angleDeg).toFixed(2));
-    if (!Number.isFinite(x)) throw new Error("Informe uma posição X válida.");
+    if (!Number.isFinite(x) || Math.abs(x) > LIMITS.maxDimensionMm) throw new Error(`Informe uma posição X entre -${LIMITS.maxDimensionMm} e ${LIMITS.maxDimensionMm} mm.`);
     if (!Number.isFinite(angle) || angle <= -89.9 || angle >= 89.9) {
       throw new Error("O ângulo deve estar entre -89,89° e 89,89°.");
     }
@@ -178,6 +199,7 @@
   }
 
   function addCutFromInputs() {
+    if (state.cuts.length >= LIMITS.maxCutsPerPiece) { toast(`Limite de ${LIMITS.maxCutsPerPiece} cortes por peça atingido.`, "error"); return; }
     try {
       const cut = projectCut(
         byId("cutOrigin").value,
@@ -215,40 +237,40 @@
     const ticks = [];
     const tickStep = length <= 800 ? 50 : length <= 2000 ? 100 : 250;
     for (let x = 0; x <= length; x += tickStep) {
-      ticks.push(`<line x1="${x}" y1="-8" x2="${x}" y2="${faceWidth + 8}" stroke="#d9ddd6" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
-      ticks.push(`<text x="${x}" y="${faceWidth + 23}" text-anchor="middle" fill="#718079" font-size="9">${formatMm(x)}</text>`);
+      ticks.push(`<line class="piece-grid-line" x1="${x}" y1="-8" x2="${x}" y2="${faceWidth + 8}" stroke="#d9ddd6" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
+      ticks.push(`<text class="piece-grid-label" x="${x}" y="${faceWidth + 23}" text-anchor="middle" fill="#718079" font-size="9">${formatMm(x)}</text>`);
     }
 
     const cutMarkup = state.cuts.map((cut, index) => {
       const middleX = (cut.p1.x + cut.p2.x) / 2;
       return `
         <g>
-          <line x1="${cut.p1.x}" y1="${cut.p1.y}" x2="${cut.p2.x}" y2="${cut.p2.y}"
+          <line class="piece-cut-line" x1="${cut.p1.x}" y1="${cut.p1.y}" x2="${cut.p2.x}" y2="${cut.p2.y}"
                 stroke="#d06b32" stroke-width="3" vector-effect="non-scaling-stroke"/>
-          <circle cx="${cut.p1.x}" cy="${cut.p1.y}" r="4" fill="#fffefa" stroke="#d06b32" stroke-width="2" vector-effect="non-scaling-stroke"/>
-          <circle cx="${cut.p2.x}" cy="${cut.p2.y}" r="4" fill="#fffefa" stroke="#d06b32" stroke-width="2" vector-effect="non-scaling-stroke"/>
-          <text x="${middleX}" y="-14" text-anchor="middle" fill="#91451f" font-size="9" font-weight="800">C${index + 1} · ${cut.inclinationDeg.toFixed(1)}°</text>
+          <circle class="piece-cut-point" cx="${cut.p1.x}" cy="${cut.p1.y}" r="4" fill="#fffefa" stroke="#d06b32" stroke-width="2" vector-effect="non-scaling-stroke"/>
+          <circle class="piece-cut-point" cx="${cut.p2.x}" cy="${cut.p2.y}" r="4" fill="#fffefa" stroke="#d06b32" stroke-width="2" vector-effect="non-scaling-stroke"/>
+          <text class="piece-cut-label" x="${middleX}" y="-14" text-anchor="middle" fill="#91451f" font-size="9" font-weight="800">C${index + 1} · ${cut.inclinationDeg.toFixed(1)}°</text>
         </g>`;
     }).join("");
     const boundaryCuts = [...state.cuts].sort((a, b) => ((a.p1.x + a.p2.x) - (b.p1.x + b.p2.x)));
     const leftCut = boundaryCuts[0];
     const rightCut = boundaryCuts.at(-1);
     const actualShape = boundaryCuts.length >= 2
-      ? `<polygon points="${leftCut.p1.x},0 ${rightCut.p1.x},0 ${rightCut.p2.x},${faceWidth} ${leftCut.p2.x},${faceWidth}"
+      ? `<polygon class="piece-shape" points="${leftCut.p1.x},0 ${rightCut.p1.x},0 ${rightCut.p2.x},${faceWidth} ${leftCut.p2.x},${faceWidth}"
                   fill="#dcebe3" stroke="#235c48" stroke-width="2" vector-effect="non-scaling-stroke"/>`
-      : `<rect x="0" y="0" width="${length}" height="${faceWidth}" rx="2"
+      : `<rect class="piece-shape" x="0" y="0" width="${length}" height="${faceWidth}" rx="2"
                fill="#dcebe3" stroke="#235c48" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
 
     svg.innerHTML = `
       ${ticks.join("")}
-      <rect x="0" y="0" width="${length}" height="${faceWidth}" rx="2"
+      <rect class="piece-reference" x="0" y="0" width="${length}" height="${faceWidth}" rx="2"
             fill="none" stroke="#a8b5ae" stroke-dasharray="5 5" stroke-width="1" vector-effect="non-scaling-stroke"/>
       ${actualShape}
-      <line x1="0" y1="${faceWidth / 2}" x2="${length}" y2="${faceWidth / 2}"
+      <line class="piece-centerline" x1="0" y1="${faceWidth / 2}" x2="${length}" y2="${faceWidth / 2}"
             stroke="#7aa18f" stroke-dasharray="5 5" stroke-width="1" vector-effect="non-scaling-stroke"/>
       ${cutMarkup}
-      <text x="${length / 2}" y="${faceWidth + 36}" text-anchor="middle" fill="#3d4b45" font-size="10" font-weight="700">${formatMm(length)} mm</text>
-      <text x="${-horizontalPadding * .55}" y="${faceWidth / 2}" text-anchor="middle" fill="#3d4b45" font-size="9" transform="rotate(-90 ${-horizontalPadding * .55} ${faceWidth / 2})">${formatMm(faceWidth)} mm</text>`;
+      <text class="piece-dimension" x="${length / 2}" y="${faceWidth + 36}" text-anchor="middle" fill="#3d4b45" font-size="10" font-weight="700">${formatMm(length)} mm</text>
+      <text class="piece-dimension" x="${-horizontalPadding * .55}" y="${faceWidth / 2}" text-anchor="middle" fill="#3d4b45" font-size="9" transform="rotate(-90 ${-horizontalPadding * .55} ${faceWidth / 2})">${formatMm(faceWidth)} mm</text>`;
     renderCutsList();
     updateCutProjection();
   }
@@ -279,15 +301,15 @@
     const maxX = Math.max(length, ...pointsX);
     const padding = Math.max(10, (maxX - minX) * .03);
     const cuts = (piece.cuts || []).map((cut) => `
-      <line x1="${cut.p1.x}" y1="${cut.p1.y}" x2="${cut.p2.x}" y2="${cut.p2.y}" stroke="#d06b32" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join("");
+      <line class="piece-cut-line" x1="${cut.p1.x}" y1="${cut.p1.y}" x2="${cut.p2.x}" y2="${cut.p2.y}" stroke="#d06b32" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join("");
     const boundaryCuts = [...(piece.cuts || [])].sort((a, b) => ((a.p1.x + a.p2.x) - (b.p1.x + b.p2.x)));
     const leftCut = boundaryCuts[0];
     const rightCut = boundaryCuts.at(-1);
     const shape = boundaryCuts.length >= 2
-      ? `<polygon points="${leftCut.p1.x},0 ${rightCut.p1.x},0 ${rightCut.p2.x},${faceWidth} ${leftCut.p2.x},${faceWidth}" fill="#dcebe3" stroke="#235c48" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`
-      : `<rect x="0" y="0" width="${length}" height="${faceWidth}" fill="#dcebe3" stroke="#235c48" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
+      ? `<polygon class="piece-shape" points="${leftCut.p1.x},0 ${rightCut.p1.x},0 ${rightCut.p2.x},${faceWidth} ${leftCut.p2.x},${faceWidth}" fill="#dcebe3" stroke="#235c48" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`
+      : `<rect class="piece-shape" x="0" y="0" width="${length}" height="${faceWidth}" fill="#dcebe3" stroke="#235c48" stroke-width="1.5" vector-effect="non-scaling-stroke"/>`;
     return `<svg viewBox="${minX - padding} -10 ${maxX - minX + padding * 2} ${faceWidth + 20}" aria-hidden="true">
-      <rect x="0" y="0" width="${length}" height="${faceWidth}" fill="none" stroke="#a8b5ae" stroke-dasharray="4 4" stroke-width="1" vector-effect="non-scaling-stroke"/>
+      <rect class="piece-reference" x="0" y="0" width="${length}" height="${faceWidth}" fill="none" stroke="#a8b5ae" stroke-dasharray="4 4" stroke-width="1" vector-effect="non-scaling-stroke"/>
       ${shape}
       ${cuts}</svg>`;
   }
@@ -343,12 +365,12 @@
     byId("partThickness").value = piece.profile.thicknessMm;
     byId("savePieceButton").textContent = "Atualizar arquivo da peça";
     renderCanvas();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    document.querySelector(".main-shell")?.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function buildPieceFromEditor() {
-    const code = byId("partCode").value.trim().toUpperCase();
-    const name = byId("partName").value.trim();
+    const code = cleanText(byId("partCode").value, 80).toUpperCase();
+    const name = cleanText(byId("partName").value, LIMITS.maxTextLength);
     const lengthMm = currentLength();
     const profile = currentProfile();
     if (!code || !name) throw new Error("Preencha o código e o nome da peça.");
@@ -380,7 +402,10 @@
     const anchor = document.createElement("a");
     anchor.href = url;
     anchor.download = filename;
+    anchor.hidden = true;
+    document.body.appendChild(anchor);
     anchor.click();
+    anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
@@ -401,29 +426,38 @@
     }
   }
 
+  function isValidImportedCut(cut) {
+    if (!isPlainObject(cut)) return false;
+    if (Number.isFinite(Number(cut.startX)) && Math.abs(Number(cut.startX)) <= LIMITS.maxDimensionMm && Number.isFinite(Number(cut.angleDeg ?? cut.inclinationDeg)) && Math.abs(Number(cut.angleDeg ?? cut.inclinationDeg)) < 89.9) return true;
+    return isPlainObject(cut.p1) && isPlainObject(cut.p2) && [cut.p1.x, cut.p1.y, cut.p2.x, cut.p2.y].every((value) => Number.isFinite(Number(value)) && Math.abs(Number(value)) <= LIMITS.maxDimensionMm);
+  }
+
   function isPieceFile(value) {
-    return value && value.type === "piece" && value.code && Number(value.lengthMm) > 0 && Array.isArray(value.cuts);
+    return isPlainObject(value) && value.type === "piece"
+      && typeof value.code === "string" && cleanText(value.code, 80).length > 0
+      && typeof value.name === "string" && cleanText(value.name).length > 0
+      && Number.isFinite(Number(value.lengthMm)) && Number(value.lengthMm) > 0 && Number(value.lengthMm) <= LIMITS.maxDimensionMm
+      && Array.isArray(value.cuts) && value.cuts.length >= 2 && value.cuts.length <= LIMITS.maxCutsPerPiece
+      && value.cuts.every(isValidImportedCut);
   }
 
   function isPlanFile(value) {
-    return value && value.type === "cut-plan" && Array.isArray(value.bars);
+    return isPlainObject(value) && value.type === "cut-plan" && Array.isArray(value.bars) && value.bars.length <= LIMITS.maxBarsPerPlan;
   }
 
   async function loadDirectoryJson(directoryHandle, validator) {
     const values = [];
+    let inspectedFiles = 0;
     for await (const entry of directoryHandle.values()) {
       if (entry.kind !== "file" || !entry.name.toLowerCase().endsWith(".json")) continue;
+      inspectedFiles += 1;
+      if (inspectedFiles > LIMITS.maxFiles) { console.warn("Limite de " + LIMITS.maxFiles + " arquivos JSON atingido na pasta."); break; }
       try {
         const file = await entry.getFile();
+        if (file.size > LIMITS.maxFileBytes) throw new Error("arquivo acima de 2 MB");
         const value = JSON.parse(await file.text());
-        if (validator(value)) {
-          values.push(value.type === "piece"
-            ? { ...normalizePiece(value), source: "arquivo JSON" }
-            : { ...value, source: "arquivo JSON" });
-        }
-      } catch (error) {
-        console.warn(`Arquivo ignorado: ${entry.name}`, error);
-      }
+        if (validator(value)) values.push(value.type === "piece" ? { ...normalizePiece(value), source: "arquivo JSON" } : { ...value, source: "arquivo JSON" });
+      } catch (error) { console.warn("Arquivo ignorado: " + entry.name, error); }
     }
     return values;
   }
@@ -456,27 +490,27 @@
   }
 
   async function importFiles(fileList) {
-    let pieceCount = 0;
-    let planCount = 0;
-    for (const file of fileList) {
+    const files = Array.from(fileList || []);
+    let pieceCount = 0, planCount = 0, rejectedCount = Math.max(0, files.length - LIMITS.maxFiles);
+    for (const file of files.slice(0, LIMITS.maxFiles)) {
       try {
+        if (!file.name.toLowerCase().endsWith(".json") || file.size > LIMITS.maxFileBytes) throw new Error("arquivo inválido ou acima de 2 MB");
         const value = JSON.parse(await file.text());
         if (isPieceFile(value)) {
-          const index = state.pieces.findIndex((piece) => piece.id === value.id || piece.code === value.code);
+          const index = state.pieces.findIndex((piece) => piece.id === value.id || piece.code === cleanText(value.code, 80).toUpperCase());
           const imported = { ...normalizePiece(value), source: "arquivo importado" };
           if (index >= 0) state.pieces.splice(index, 1, imported);
-          else state.pieces.push(imported);
+          else if (state.pieces.length < LIMITS.maxPieces) state.pieces.push(imported);
+          else throw new Error("limite de " + LIMITS.maxPieces + " peças atingido");
           pieceCount += 1;
         } else if (isPlanFile(value)) {
-          state.savedPlans.push(value);
-          planCount += 1;
-        }
-      } catch (error) {
-        console.warn(`Falha ao importar ${file.name}`, error);
-      }
+          if (state.savedPlans.length >= LIMITS.maxPlans) throw new Error("limite de " + LIMITS.maxPlans + " planos atingido");
+          state.savedPlans.push(value); planCount += 1;
+        } else throw new Error("estrutura JSON não reconhecida");
+      } catch (error) { rejectedCount += 1; console.warn("Falha ao importar " + file.name, error); }
     }
     renderPieces();
-    toast(`${pieceCount} peça(s) e ${planCount} plano(s) importados.`);
+    toast(pieceCount + " peça(s) e " + planCount + " plano(s) importados" + (rejectedCount ? " · " + rejectedCount + " rejeitado(s)" : "") + ".", rejectedCount && !pieceCount && !planCount ? "error" : "normal");
   }
 
   function renderOrderItems() {
@@ -504,14 +538,18 @@
     container.innerHTML = compatiblePieces.map((piece) => `
       <label class="order-item">
         <div><strong>${escapeHtml(piece.code)} · ${escapeHtml(piece.name)}</strong><span>${formatMm(piece.lengthMm)} mm · largura ${formatMm(piece.profile.widthMm)} × esp. ${formatMm(piece.profile.thicknessMm)} mm · ${piece.cuts.length} cortes</span></div>
-        <input type="number" min="0" step="1" value="${Number(state.quantities[piece.id] || 0)}" data-quantity="${escapeHtml(piece.id)}" aria-label="Quantidade de ${escapeHtml(piece.code)}">
+        <input type="number" inputmode="numeric" min="0" max="${LIMITS.maxQuantityPerPiece}" step="1" value="${Number(state.quantities[piece.id] || 0)}" data-quantity="${escapeHtml(piece.id)}" aria-label="Quantidade de ${escapeHtml(piece.code)}">
       </label>`).join("");
   }
 
   function generatePlan() {
     try {
+      const stockLength = Number(byId("stockLength").value);
+      if (!Number.isFinite(stockLength) || stockLength < 100 || stockLength > LIMITS.maxDimensionMm) throw new Error(`O comprimento da barra deve ficar entre 100 e ${LIMITS.maxDimensionMm} mm.`);
       const items = state.pieces.filter(isPieceCompatibleWithStock)
         .map((piece) => ({ piece, quantity: Number(state.quantities[piece.id] || 0) }));
+      const requestedTotal = items.reduce((total, item) => total + Math.max(0, Math.floor(item.quantity || 0)), 0);
+      if (requestedTotal > LIMITS.maxRequestedPieces) throw new Error("O plano aceita no máximo " + LIMITS.maxRequestedPieces + " peças por vez.");
       const plan = CutOptimizer.optimizeCutPlan({
         stockLengthMm: Number(byId("stockLength").value),
         stockProfile: currentStockProfile(),
@@ -626,7 +664,7 @@
   document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => switchTab(button.dataset.tab)));
   byId("openFolderButton").addEventListener("click", selectWorkspace);
   byId("importButton").addEventListener("click", () => byId("fileInput").click());
-  byId("fileInput").addEventListener("change", (event) => importFiles(event.target.files));
+  byId("fileInput").addEventListener("change", async (event) => { try { await importFiles(event.target.files); } finally { event.target.value = ""; } });
   byId("partLength").addEventListener("input", renderCanvas);
   byId("partWidth").addEventListener("input", updateProfileDrawing);
   byId("partThickness").addEventListener("input", renderCanvas);
@@ -655,7 +693,7 @@
     if (button) editPiece(button.dataset.editPiece);
   });
   byId("orderItems").addEventListener("input", (event) => {
-    if (event.target.matches("[data-quantity]")) state.quantities[event.target.dataset.quantity] = Math.max(0, Math.floor(Number(event.target.value) || 0));
+    if (event.target.matches("[data-quantity]")) state.quantities[event.target.dataset.quantity] = Math.min(LIMITS.maxQuantityPerPiece, Math.max(0, Math.floor(Number(event.target.value) || 0)));
   });
   byId("generatePlanButton").addEventListener("click", generatePlan);
 
