@@ -795,3 +795,21 @@ svg text{ font-family:var(--font); }
 .modal.modal-wide>.modal-fixed-foot.superapp-modal-foot{position:relative!important;bottom:auto!important;z-index:4!important;margin:0!important;padding:14px 30px!important;background:var(--surface)!important;border-radius:0 0 var(--r-lg) var(--r-lg)!important}
 .modal.modal-wide>.modal-fixed-foot .btn{margin-inline:0!important}
 @media(max-width:560px){.modal-backdrop{padding:10px}.modal.modal-wide{width:calc(100vw - 20px);height:calc(100dvh - 20px);max-height:calc(100dvh - 20px)}.modal.modal-wide>.modal-fixed-head.superapp-modal-head-native{padding:18px 16px 14px!important}.modal.modal-wide>.modal-scroll-body{padding:14px 16px}.modal.modal-wide>.modal-fixed-foot.superapp-modal-foot{padding:12px 16px calc(12px + env(safe-area-inset-bottom))!important}}
+/* Chamados SAC: paginação mantém o DOM leve mesmo com histórico crescente. */
+.table-pagination{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  margin:10px 0 0;padding:10px 12px;border:1px solid var(--border);
+  border-radius:var(--r);background:var(--surface);box-shadow:var(--shadow-sm);
+  color:var(--text-dim);font-size:12px;font-weight:700;
+}
+.table-pagination[hidden]{display:none!important}
+.table-pagination-actions{display:flex;align-items:center;gap:9px}
+.table-pagination-page{min-width:104px;text-align:center;color:var(--text);font-weight:800}
+.table-pagination .btn{width:auto;min-height:34px;padding:7px 12px}
+.table-pagination .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+@media(max-width:640px){
+  .table-pagination{align-items:stretch;flex-direction:column}
+  .table-pagination-info{text-align:center}
+  .table-pagination-actions{justify-content:space-between}
+  .table-pagination-page{min-width:0;flex:1}
+}

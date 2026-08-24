@@ -2055,7 +2055,18 @@ async function viewTabela(tableName){
     });
     return mapa;
   }
-  if (cfg.notificacoes) eventosPorRegistro = await carregarNotificacoes();
+  let notificacoesGeracao = 0;
+  async function atualizarNotificacoesTabela({ renderizar=false } = {}){
+    const geracao = ++notificacoesGeracao;
+    const mapa = await carregarNotificacoes();
+    if (geracao !== notificacoesGeracao) return false;
+    eventosPorRegistro = mapa;
+    if (renderizar && currentView === cfg.aba && root.isConnected){
+      atualizarBotaoMarcarTudoTabela();
+      renderGestaoWhenSafe(aplicarFiltrosOrdenacao);
+    }
+    return true;
+  }
   // Todos os ids de evento não lidos da tabela inteira (linha "Novo", campos
   // editados e o que tiver pendente no Detalhes) — usado pelo botão
   // "Marcar tudo como lido" da barra de ferramentas.
@@ -2100,6 +2111,8 @@ async function viewTabela(tableName){
     }catch(e){ /* estado salvo inválido — ignora e começa limpo */ }
   }
   carregarEstado();
+  const tamanhoPagina = tableName === 'chamados_sac' ? 40 : Number.POSITIVE_INFINITY;
+  let paginaAtual = 1;
 
   // Um registro "tem algo não visto" se sobrar qualquer notificação
   // pendente nele — linha nova, campo alterado ou coisa no Detalhes.
@@ -2129,6 +2142,14 @@ async function viewTabela(tableName){
       </thead>
       <tbody id="tbody"></tbody>
     </table></div>
+    <div class="table-pagination" id="table-pagination" hidden>
+      <span class="table-pagination-info" id="table-pagination-info"></span>
+      <div class="table-pagination-actions">
+        <button class="btn" id="table-page-prev" type="button">Anterior</button>
+        <span class="table-pagination-page" id="table-pagination-page"></span>
+        <button class="btn" id="table-page-next" type="button">Próxima</button>
+      </div>
+    </div>
   `;
 
   function valorExibivel(r, f){
@@ -2150,6 +2171,22 @@ async function viewTabela(tableName){
     document.querySelectorAll('.th-filtro').forEach(btn=>{
       btn.classList.toggle('ativo', !!state.colFiltros[btn.dataset.key]);
     });
+  }
+
+  function atualizarPaginacao(totalRegistros){
+    const barra = document.getElementById('table-pagination');
+    if (!barra) return;
+    const paginavel = Number.isFinite(tamanhoPagina) && totalRegistros > tamanhoPagina;
+    barra.hidden = !paginavel;
+    if (!paginavel) return;
+    const totalPaginas = Math.max(1, Math.ceil(totalRegistros / tamanhoPagina));
+    paginaAtual = Math.min(Math.max(1, paginaAtual), totalPaginas);
+    const inicio = (paginaAtual - 1) * tamanhoPagina + 1;
+    const fim = Math.min(totalRegistros, paginaAtual * tamanhoPagina);
+    document.getElementById('table-pagination-info').textContent = `Mostrando ${inicio}-${fim} de ${totalRegistros} chamados`;
+    document.getElementById('table-pagination-page').textContent = `Página ${paginaAtual} de ${totalPaginas}`;
+    document.getElementById('table-page-prev').disabled = paginaAtual <= 1;
+    document.getElementById('table-page-next').disabled = paginaAtual >= totalPaginas;
   }
 
   function aplicarFiltrosOrdenacao(){
@@ -2177,7 +2214,13 @@ async function viewTabela(tableName){
         return 0;
       });
     }
-    render(rows);
+    const totalRegistros = rows.length;
+    const totalPaginas = Number.isFinite(tamanhoPagina) ? Math.max(1, Math.ceil(totalRegistros / tamanhoPagina)) : 1;
+    paginaAtual = Math.min(Math.max(1, paginaAtual), totalPaginas);
+    const inicioPagina = Number.isFinite(tamanhoPagina) ? (paginaAtual - 1) * tamanhoPagina : 0;
+    const linhasVisiveis = Number.isFinite(tamanhoPagina) ? rows.slice(inicioPagina, inicioPagina + tamanhoPagina) : rows;
+    render(linhasVisiveis);
+    atualizarPaginacao(totalRegistros);
   }
 
   function render(rows){
@@ -2277,6 +2320,17 @@ async function viewTabela(tableName){
     return true;
   };
   aplicarFiltrosOrdenacao();
+  document.getElementById('table-page-prev')?.addEventListener('click', ()=>{
+    if (paginaAtual <= 1) return;
+    paginaAtual--;
+    aplicarFiltrosOrdenacao();
+    root.querySelector('.table-wrap')?.scrollTo({ top:0, behavior:'smooth' });
+  });
+  document.getElementById('table-page-next')?.addEventListener('click', ()=>{
+    paginaAtual++;
+    aplicarFiltrosOrdenacao();
+    root.querySelector('.table-wrap')?.scrollTo({ top:0, behavior:'smooth' });
+  });
   ativarRedimensionamentoColunas(root.querySelector('.tabela-principal table'), tableName);
   atualizarIndicadoresOrdenacao();
   atualizarIndicadoresFiltro();
@@ -2285,6 +2339,7 @@ async function viewTabela(tableName){
   filterTextEl.value = state.busca;
   filterTextEl.addEventListener('input', (e)=>{
     state.busca = e.target.value.toLowerCase();
+    paginaAtual = 1;
     salvarEstado();
     aplicarFiltrosOrdenacao();
   });
@@ -2292,13 +2347,14 @@ async function viewTabela(tableName){
   if (cfg.notificacoes){
     document.getElementById('chk-nao-vistos').addEventListener('change', (e)=>{
       state.somenteNaoVistos = e.target.checked;
+      paginaAtual = 1;
       salvarEstado();
       aplicarFiltrosOrdenacao();
     });
   }
 
   document.getElementById('btn-limpar-filtros').addEventListener('click', ()=>{
-    state.busca = ''; state.colFiltros = {}; state.sortRules = []; state.somenteNaoVistos = false;
+    state.busca = ''; state.colFiltros = {}; state.sortRules = []; state.somenteNaoVistos = false; paginaAtual = 1;
     filterTextEl.value = '';
     if (cfg.notificacoes) document.getElementById('chk-nao-vistos').checked = false;
     localStorage.removeItem(chaveEstado);
@@ -2379,6 +2435,7 @@ async function viewTabela(tableName){
             cb.addEventListener('change', ()=>{
               if (!state.colFiltros[key]) state.colFiltros[key] = new Set(valoresDisponiveis);
               if (cb.checked) state.colFiltros[key].add(cb.value); else state.colFiltros[key].delete(cb.value);
+              paginaAtual = 1;
               if (state.colFiltros[key].size === valoresDisponiveis.length) delete state.colFiltros[key];
               atualizarIndicadoresFiltro();
               salvarEstado();
@@ -2389,11 +2446,13 @@ async function viewTabela(tableName){
         religarCheckboxes();
         painel.querySelector('[data-acao="todos"]').addEventListener('click', ()=>{
           delete state.colFiltros[key];
+          paginaAtual = 1;
           painel.querySelectorAll('.filtro-lista input[type=checkbox]').forEach(cb=>cb.checked=true);
           atualizarIndicadoresFiltro(); salvarEstado(); aplicarFiltrosOrdenacao();
         });
         painel.querySelector('[data-acao="nenhum"]').addEventListener('click', ()=>{
           state.colFiltros[key] = new Set();
+          paginaAtual = 1;
           painel.querySelectorAll('.filtro-lista input[type=checkbox]').forEach(cb=>cb.checked=false);
           atualizarIndicadoresFiltro(); salvarEstado(); aplicarFiltrosOrdenacao();
         });
@@ -2475,6 +2534,14 @@ async function viewTabela(tableName){
     });
   }
 
+  // A tabela aparece primeiro. O histórico de notificações, que é muito maior,
+  // entra logo depois sem bloquear os controles nem a primeira pintura.
+  if (cfg.notificacoes){
+    requestAnimationFrame(()=>setTimeout(()=>{
+      if (currentView === cfg.aba) void atualizarNotificacoesTabela({ renderizar:true });
+    }, 0));
+  }
+
   // Atualização silenciosa (chamada pelo poller a cada alguns segundos):
   // só refaz a consulta e atualiza as linhas, sem recriar cabeçalho/filtros.
   currentSilentRefresh = async ()=>{
@@ -2489,10 +2556,9 @@ async function viewTabela(tableName){
       } else { data.forEach(r=>{ r.__resp_ids = []; }); }
     }
     for (let i = data.length - 1; i >= 0; i--){ if (!registroVisivel(perm, data[i])) data.splice(i, 1); }
-    if (cfg.notificacoes) eventosPorRegistro = await carregarNotificacoes();
     await loadProfilesCache();
     renderGestaoWhenSafe(aplicarFiltrosOrdenacao);
-    if (cfg.notificacoes) atualizarBotaoMarcarTudoTabela();
+    if (cfg.notificacoes) void atualizarNotificacoesTabela({ renderizar:true });
   };
 }
 

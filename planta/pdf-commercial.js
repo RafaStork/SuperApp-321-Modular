@@ -821,65 +821,86 @@ function normalizeProposalLines(value,fallback){
     .map(line=>line.slice(0,300));
 }
 
-function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,images){
+function addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems){
   const sections=[
     {title:"ITENS QUE COMPÕEM O ORÇAMENTO",items:includedItems,color:[31,51,27]},
     {title:"O QUE NÃO ESTÁ INCLUSO",items:excludedItems,color:[180,58,45]}
   ].filter(section=>section.items.length);
-  if(!sections.length&&!images.length)return;
+  if(!sections.length)return;
   doc.addPage();
   doc.setFont(fontFamily,"bold");
   doc.setFontSize(15);
   doc.setTextColor(31,51,27);
-  doc.text(sections.length?"ESCOPO E REFERÊNCIAS":"REFERÊNCIAS DO PROJETO",14,43);
-  let galleryTop=55;
-  if(sections.length){
-    const columnWidth=87,scopeTop=53,scopeBottom=133;
-    sections.forEach((section,index)=>{
-      const x=index===0?14:109;
-      let y=scopeTop;
-      doc.setFillColor(...section.color);
-      doc.roundedRect(x,y,columnWidth,10,2,2,"F");
-      doc.setFont(fontFamily,"bold");
-      doc.setFontSize(7.4);
-      doc.setTextColor(255,255,255);
-      doc.text(section.title,x+4,y+6.5);
-      y+=15;
-      let omitted=0;
-      section.items.forEach(item=>{
-        const wrapped=doc.splitTextToSize(item,columnWidth-13);
-        const needed=Math.max(6,wrapped.length*3.25+1.5);
-        if(y+needed>scopeBottom){omitted++;return;}
-        doc.setFillColor(...section.color);
-        doc.circle(x+3.7,y+1.8,0.9,"F");
-        doc.setFont(fontFamily,"normal");
-        doc.setFontSize(6.6);
-        doc.setTextColor(58,65,56);
-        doc.text(wrapped,x+7,y+3);
-        y+=needed;
-      });
-      if(omitted){
-        doc.setFont(fontFamily,"bold");
-        doc.setFontSize(6.2);
-        doc.setTextColor(...section.color);
-        doc.text(`+ ${omitted} item(ns) adicional(is)`,x+7,scopeBottom);
-      }
-    });
-    galleryTop=145;
-  }
-  if(images.length){
+  doc.text("ESCOPO DA PROPOSTA",14,43);
+  const columnWidth=87,scopeTop=53,scopeBottom=133;
+  sections.forEach((section,index)=>{
+    const x=index===0?14:109;
+    let y=scopeTop;
+    doc.setFillColor(...section.color);
+    doc.roundedRect(x,y,columnWidth,10,2,2,"F");
     doc.setFont(fontFamily,"bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(31,51,27);
-    doc.text("IMAGENS SELECIONADAS",14,galleryTop);
-    const gridTop=galleryTop+6,columns=3,gap=4;
-    const cellWidth=(182-gap*(columns-1))/columns;
-    const cellHeight=cellWidth*9/16;
-    images.forEach((image,index)=>{
-      const column=index%columns,row=Math.floor(index/columns);
-      const x=14+column*(cellWidth+gap),y=gridTop+row*(cellHeight+gap);
-      addProposalImage16x9(doc,image,x,y,cellWidth);
+    doc.setFontSize(7.4);
+    doc.setTextColor(255,255,255);
+    doc.text(section.title,x+4,y+6.5);
+    y+=15;
+    let omitted=0;
+    section.items.forEach(item=>{
+      const wrapped=doc.splitTextToSize(item,columnWidth-13);
+      const needed=Math.max(6,wrapped.length*3.25+1.5);
+      if(y+needed>scopeBottom){omitted++;return;}
+      doc.setFillColor(...section.color);
+      doc.circle(x+3.7,y+1.8,0.9,"F");
+      doc.setFont(fontFamily,"normal");
+      doc.setFontSize(6.6);
+      doc.setTextColor(58,65,56);
+      doc.text(wrapped,x+7,y+3);
+      y+=needed;
     });
+    if(omitted){
+      doc.setFont(fontFamily,"bold");
+      doc.setFontSize(6.2);
+      doc.setTextColor(...section.color);
+      doc.text(`+ ${omitted} item(ns) adicional(is)`,x+7,scopeBottom);
+    }
+  });
+}
+
+function drawCommercialImageGrid(doc,fontFamily,images,{titleY,gridTop,bottom=274}={}){
+  if(!images.length)return 0;
+  const columns=3,gap=4;
+  const cellWidth=(182-gap*(columns-1))/columns;
+  const cellHeight=cellWidth*9/16;
+  const availableHeight=Math.max(0,bottom-gridTop);
+  const rows=Math.max(0,Math.floor((availableHeight+gap)/(cellHeight+gap)));
+  const capacity=rows*columns;
+  if(!capacity)return 0;
+  doc.setFont(fontFamily,"bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(31,51,27);
+  doc.text("IMAGENS SELECIONADAS",14,titleY);
+  images.slice(0,capacity).forEach((image,index)=>{
+    const column=index%columns,row=Math.floor(index/columns);
+    const x=14+column*(cellWidth+gap),y=gridTop+row*(cellHeight+gap);
+    addProposalImage16x9(doc,image,x,y,cellWidth);
+  });
+  return Math.min(images.length,capacity);
+}
+
+function addCommercialImageOverflowPages(doc,fontFamily,images){
+  let offset=0;
+  while(offset<images.length){
+    doc.addPage();
+    doc.setFont(fontFamily,"bold");
+    doc.setFontSize(15);
+    doc.setTextColor(31,51,27);
+    doc.text("IMAGENS DO PROJETO",14,43);
+    const consumed=drawCommercialImageGrid(doc,fontFamily,images.slice(offset),{
+      titleY:51,
+      gridTop:57,
+      bottom:274
+    });
+    if(!consumed)break;
+    offset+=consumed;
   }
 }
 
@@ -933,7 +954,7 @@ async function drawCommercialFloorSheet(doc,svgString,x,y,width,height){
     addContainedProposalImage(doc,image,x,y,width,height);
   }finally{URL.revokeObjectURL(objectUrl);}
 }
-async function addCommercialFloorPlansPage(doc,fontFamily){
+async function addCommercialFloorPlansPage(doc,fontFamily,images=[]){
   doc.addPage();
   doc.setFont(fontFamily,"bold");
   doc.setFontSize(15);
@@ -970,7 +991,12 @@ async function addCommercialFloorPlansPage(doc,fontFamily){
   doc.setFont(fontFamily,"normal");
   doc.setFontSize(7.5);
   doc.setTextColor(105,113,103);
-  doc.text("As plantas integram esta proposta para referência do escopo comercial.",14,201);
+  doc.text("As plantas integram esta proposta para referência do escopo comercial.",14,178);
+  return drawCommercialImageGrid(doc,fontFamily,images,{
+    titleY:187,
+    gridTop:193,
+    bottom:274
+  });
 }
 async function generateCommercialProposal(action="save",options={}){
   const js=window.jspdf&&window.jspdf.jsPDF;
@@ -1068,9 +1094,10 @@ async function generateCommercialProposal(action="save",options={}){
       doc.text("Valores e condicoes comerciais sujeitos a validacao do escopo final.",14,260);
     }
 
-    updatePdfLoading("Montando as plantas baixas...");
-    await addCommercialFloorPlansPage(doc,fontFamily);
-    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems,loaded);
+    addCommercialDetailsPage(doc,fontFamily,includedItems,excludedItems);
+    updatePdfLoading("Montando as plantas e imagens...");
+    const imagesOnFloorPage=await addCommercialFloorPlansPage(doc,fontFamily,loaded);
+    addCommercialImageOverflowPages(doc,fontFamily,loaded.slice(imagesOnFloorPage));
 
     const totalPages=doc.getNumberOfPages();
     for(let page=1;page<=totalPages;page++){
