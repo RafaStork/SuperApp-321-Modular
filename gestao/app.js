@@ -14,6 +14,17 @@ let gestaoRefreshInFlight = false;
 let gestaoRealtimePending = false;
 let gestaoSafeRenderTimer = null;
 let gestaoAutomaticRetryTimer = null;
+let gestaoInteractionUntil = 0;
+
+function registrarInteracaoGestao(durationMs){
+  gestaoInteractionUntil = Math.max(gestaoInteractionUntil, Date.now() + Math.max(250, Number(durationMs) || 700));
+}
+document.addEventListener('pointerdown', (event)=>{
+  if (document.getElementById('view-root')?.contains(event.target)) registrarInteracaoGestao(700);
+}, true);
+document.addEventListener('keydown', (event)=>{
+  if (document.getElementById('view-root')?.contains(event.target)) registrarInteracaoGestao(500);
+}, true);
 
 function markGestaoLocalChange(){
   gestaoRealtimeStop?.markLocalChange?.(8000);
@@ -24,7 +35,7 @@ function gestaoInteractionActive(){
   const editingField = !!(active && root?.contains(active) && active.matches?.('input, textarea, select, [contenteditable="true"]'));
   const floatingControl = !!document.querySelector('.dd-panel-float, .msel-panel-float, .cal-dd-float, .color-picker-float');
   const modalOpen = document.getElementById('modal-backdrop')?.classList.contains('active') || document.getElementById('lightbox-backdrop')?.classList.contains('active');
-  return editingField || floatingControl || modalOpen;
+  return Date.now() < gestaoInteractionUntil || editingField || floatingControl || modalOpen;
 }
 function renderGestaoWhenSafe(renderFn){
   const target = typeof renderFn === 'function' ? renderFn : aplicarFiltrosAtual;
@@ -395,7 +406,6 @@ async function bootAfterLogin(){
   await loadConfigVisual();
   await loadPermissoesAbas();
   buildNav();
-  atualizarBolinhaNotificacoes();
   if (notificacoesFallbackTimer) clearInterval(notificacoesFallbackTimer);
   // Contingência; o fluxo principal passa a ser acionado pelo Realtime.
   notificacoesFallbackTimer = setInterval(()=>{ if (!document.hidden) atualizarBolinhaNotificacoes(); }, 300000);
@@ -429,7 +439,8 @@ async function atualizarManualmente(options){
     await navigateTo(currentView, { silencioso: true });
     const novoWrap = document.getElementById('view-root').querySelector('.table-wrap');
     if (novoWrap) novoWrap.scrollTop = scrollTop;
-    await atualizarBolinhaNotificacoes();
+    if (automatico) agendarAtualizacaoBolinhaNotificacoes(1400);
+    else await atualizarBolinhaNotificacoes();
     if (!automatico) toast('Dados atualizados.');
   } finally {
     gestaoRefreshInFlight = false;
@@ -1055,6 +1066,22 @@ function registroEhDoProprio(row){
 function registroVisivel(perm, row){
   return !!(perm && perm.ver_outros) || !!(perm && perm.ver_proprio && registroEhDoProprio(row));
 }
+function agruparResponsaveisPorRegistro(responsaveis, chaveRegistro){
+  const porRegistro = new Map();
+  (responsaveis || []).forEach(item=>{
+    const chave = String(item[chaveRegistro] || '');
+    if (!chave) return;
+    if (!porRegistro.has(chave)) porRegistro.set(chave, []);
+    porRegistro.get(chave).push(item.profile_id);
+  });
+  return porRegistro;
+}
+function aplicarResponsaveisNosRegistros(registros, responsaveis, chaveRegistro){
+  const porRegistro = agruparResponsaveisPorRegistro(responsaveis, chaveRegistro);
+  (registros || []).forEach(registro=>{
+    registro.__resp_ids = porRegistro.get(String(registro.id)) || [];
+  });
+}
 
 // ── Notificações individuais (por usuário) ─────────────────────────────
 let __avisoNotificacoes = false;
@@ -1067,6 +1094,81 @@ function reportarFalhaNotificacoes(context, errors){
   }
 }
 
+const NOTIFICACOES_LOTE_IDS = 120;
+const NOTIFICACOES_PAGINA = 1000;
+let __notificacoesAgendaTimer = null;
+
+function idsNotificacaoUnicos(valores){
+  return Array.from(new Set((valores || []).filter(Boolean).map(String)));
+}
+function lotearNotificacoes(valores, tamanho=NOTIFICACOES_LOTE_IDS){
+  const lotes = [];
+  for (let i=0; i<valores.length; i+=tamanho) lotes.push(valores.slice(i, i+tamanho));
+  return lotes;
+}
+async function processarLotesNotificacoes(lotes, worker, concorrencia=4){
+  if (!lotes.length) return [];
+  const resultados = new Array(lotes.length);
+  let proximo = 0;
+  async function executar(){
+    while (true){
+      const indice = proximo++;
+      if (indice >= lotes.length) return;
+      resultados[indice] = await worker(lotes[indice], indice);
+    }
+  }
+  const quantidade = Math.min(Math.max(1, concorrencia), lotes.length);
+  await Promise.all(Array.from({ length:quantidade }, ()=>executar()));
+  return resultados;
+}
+// A API limita respostas a 1.000 linhas. Além de paginar, limita o tamanho
+// do filtro `in` para evitar URLs grandes quando a tabela acumula histórico.
+async function selecionarNotificacoesPorIds(tabela, campos, coluna, valores){
+  const ids = idsNotificacaoUnicos(valores);
+  if (!ids.length) return { data: [], error: null };
+  const lotes = lotearNotificacoes(ids);
+  const resultados = await processarLotesNotificacoes(lotes, async lote=>{
+    const dadosLote = [];
+    let inicio = 0;
+    while (true){
+      const resultado = await sb.from(tabela).select(campos).in(coluna, lote)
+        .range(inicio, inicio + NOTIFICACOES_PAGINA - 1);
+      if (resultado.error) return { data:dadosLote, error:resultado.error };
+      const pagina = resultado.data || [];
+      dadosLote.push(...pagina);
+      if (pagina.length < NOTIFICACOES_PAGINA) break;
+      inicio += NOTIFICACOES_PAGINA;
+    }
+    return { data:dadosLote, error:null };
+  });
+  const falha = resultados.find(resultado=>resultado.error);
+  return {
+    data: resultados.flatMap(resultado=>resultado.data || []),
+    error: falha?.error || null,
+  };
+}
+async function selecionarTodasNotificacoes(tabela, campos){
+  const acumulado = [];
+  let inicio = 0;
+  while (true){
+    const resultado = await sb.from(tabela).select(campos)
+      .range(inicio, inicio + NOTIFICACOES_PAGINA - 1);
+    if (resultado.error) return { data: acumulado, error: resultado.error };
+    const pagina = resultado.data || [];
+    acumulado.push(...pagina);
+    if (pagina.length < NOTIFICACOES_PAGINA) break;
+    inicio += NOTIFICACOES_PAGINA;
+  }
+  return { data: acumulado, error: null };
+}
+function agendarAtualizacaoBolinhaNotificacoes(delay=700){
+  clearTimeout(__notificacoesAgendaTimer);
+  __notificacoesAgendaTimer = setTimeout(()=>{
+    __notificacoesAgendaTimer = null;
+    atualizarBolinhaNotificacoes();
+  }, Math.max(120, Number(delay) || 700));
+}
+
 // Marca um ou vários eventos como lidos de uma vez pra QUEM ESTÁ LOGADO
 // agora (não afeta outras pessoas) e some com o(s) selo(s), com uma
 // pequena animação de saída. Aceita string única ou array de ids — usar
@@ -1074,16 +1176,40 @@ function reportarFalhaNotificacoes(context, errors){
 // editado mais de uma vez: todas as edições daquele campo são marcadas
 // como lidas juntas, de uma vez só.
 async function marcarNotifLida(tabelaLidos, eventoIds, badgeEls){
-  const ids = (Array.isArray(eventoIds) ? eventoIds : [eventoIds]).filter(Boolean);
+  const ids = idsNotificacaoUnicos(Array.isArray(eventoIds) ? eventoIds : [eventoIds]);
   if (!ids.length) return true;
-  const linhas = ids.map(id=>({ evento_id: id, usuario_id: currentUser.id }));
-  const { error } = await sb.from(tabelaLidos).upsert(linhas, { onConflict:'evento_id,usuario_id' });
-  if (error){ toast('Erro: '+error.message, true); return false; }
+  const gravacoes = await processarLotesNotificacoes(lotearNotificacoes(ids), async lote=>{
+    const linhas = lote.map(id=>({ evento_id: id, usuario_id: currentUser.id }));
+    // A confirmação é imutável: se já existe, não há motivo para executar UPDATE.
+    return sb.from(tabelaLidos).upsert(linhas, {
+      onConflict:'evento_id,usuario_id', ignoreDuplicates:true
+    });
+  });
+  const falhaGravacao = gravacoes.find(resultado=>resultado.error);
+  if (falhaGravacao){
+    toast('Erro ao marcar como lido: '+falhaGravacao.error.message, true);
+    return false;
+  }
+  // Só altera a interface depois de confirmar, pela mesma sessão/RLS, que
+  // todas as leituras gravadas podem ser consultadas novamente após um F5.
+  const confirmacao = await selecionarNotificacoesPorIds(tabelaLidos, 'evento_id', 'evento_id', ids);
+  if (confirmacao.error){
+    toast('Não foi possível confirmar a leitura. Tente novamente.', true);
+    console.error('[Notificações] falha ao confirmar leitura', confirmacao.error);
+    return false;
+  }
+  const confirmados = new Set((confirmacao.data||[]).map(item=>String(item.evento_id)));
+  const faltantes = ids.filter(id=>!confirmados.has(id));
+  if (faltantes.length){
+    console.error('[Notificações] leituras não confirmadas', { tabelaLidos, quantidade:faltantes.length });
+    toast('A leitura não foi confirmada pelo servidor. Atualize e tente novamente.', true);
+    return false;
+  }
   (badgeEls||[]).forEach(badge=>{
     badge.classList.add('notif-saindo');
     setTimeout(()=>badge.remove(), 170);
   });
-  atualizarBolinhaNotificacoes();
+  agendarAtualizacaoBolinhaNotificacoes();
   return true;
 }
 
@@ -1097,18 +1223,24 @@ async function marcarNotifLida(tabelaLidos, eventoIds, badgeEls){
 async function contarNaoLidos(tableName, idsVisiveis){
   if (!idsVisiveis.size) return false;
   const cfg = TABLE_CONFIG[tableName];
-  const eventosResult = await sb.from(cfg.notifEventosTable)
-    .select(`id, criado_por, tipo, campo, item_id, ${cfg.notifFk}`)
-    .in(cfg.notifFk, Array.from(idsVisiveis));
+  const eventosResult = await selecionarNotificacoesPorIds(
+    cfg.notifEventosTable,
+    `id, criado_por, tipo, campo, item_id, ${cfg.notifFk}`,
+    cfg.notifFk,
+    Array.from(idsVisiveis)
+  );
   if (eventosResult.error){ reportarFalhaNotificacoes(`Erro ao contar ${cfg.title}`, eventosResult.error); return false; }
   const relevantes = (eventosResult.data||[]).filter(e=>
     e.criado_por !== currentUser.id && classificarEventoNotificacao(cfg, e)
   );
   if (!relevantes.length) return false;
-  const lidosResult = await sb.from(cfg.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id);
+  const idsRelevantes = relevantes.map(e=>e.id);
+  const lidosResult = await selecionarNotificacoesPorIds(
+    cfg.notifLidosTable, 'evento_id', 'evento_id', idsRelevantes
+  );
   if (lidosResult.error){ reportarFalhaNotificacoes(`Erro ao contar leituras de ${cfg.title}`, lidosResult.error); return false; }
-  const lidosSet = new Set((lidosResult.data||[]).map(l=>l.evento_id));
-  return relevantes.some(e=>!lidosSet.has(e.id));
+  const lidosSet = new Set((lidosResult.data||[]).map(l=>String(l.evento_id)));
+  return relevantes.some(e=>!lidosSet.has(String(e.id)));
 }
 async function atualizarBolinhaNotificacoes(){
   const refreshId = ++__notificacoesRefreshId;
@@ -1138,9 +1270,7 @@ async function atualizarBolinhaNotificacoes(){
           dot.style.display = 'none';
           continue;
         }
-        (registros||[]).forEach(r=>{
-          r.__resp_ids = (resp||[]).filter(item=>item[cfg.respFk]===r.id).map(item=>item.profile_id);
-        });
+        aplicarResponsaveisNosRegistros(registros, resp, cfg.respFk);
       }
       const idsVisiveis = new Set((registros||[]).filter(r=>registroVisivel(perm, r)).map(r=>r.id));
       const temNaoLidos = await contarNaoLidos(tableName, idsVisiveis);
@@ -1876,7 +2006,7 @@ async function viewTabela(tableName){
     const ids = data.map(r=>r.id);
     if (ids.length){
       const { data: resp } = await sb.from(cfg.respTable).select('*').in(cfg.respFk, ids);
-      data.forEach(r=>{ r.__resp_ids = (resp||[]).filter(x=>x[cfg.respFk]===r.id).map(x=>x.profile_id); });
+      aplicarResponsaveisNosRegistros(data, resp, cfg.respFk);
     } else { data.forEach(r=>{ r.__resp_ids = []; }); }
   }
   // Remove da lista local qualquer registro que a pessoa não tem permissão
@@ -1900,24 +2030,32 @@ async function viewTabela(tableName){
     const mapa = {};
     if (!cfg.notificacoes || !data.length) return mapa;
     const ids = data.map(r=>r.id);
-    const [eventosResult, lidosResult] = await Promise.all([
-      sb.from(cfg.notifEventosTable).select('*').in(cfg.notifFk, ids),
-      sb.from(cfg.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id),
-    ]);
-    if (eventosResult.error || lidosResult.error){
-      reportarFalhaNotificacoes(`Erro ao carregar ${cfg.title}`, [eventosResult.error, lidosResult.error]);
+    const eventosResult = await selecionarNotificacoesPorIds(
+      cfg.notifEventosTable, '*', cfg.notifFk, ids
+    );
+    if (eventosResult.error){
+      reportarFalhaNotificacoes(`Erro ao carregar ${cfg.title}`, eventosResult.error);
       return mapa;
     }
-    const eventos = eventosResult.data || [];
-    const lidos = lidosResult.data || [];
-    const lidosSet = new Set(lidos.map(l=>l.evento_id));
+    const eventos = (eventosResult.data || []).filter(ev=>
+      ev.criado_por !== currentUser.id && classificarEventoNotificacao(cfg, ev)
+    );
+    if (!eventos.length) return mapa;
+    const lidosResult = await selecionarNotificacoesPorIds(
+      cfg.notifLidosTable, 'evento_id', 'evento_id', eventos.map(ev=>ev.id)
+    );
+    if (lidosResult.error){
+      reportarFalhaNotificacoes(`Erro ao carregar leituras de ${cfg.title}`, lidosResult.error);
+      return mapa;
+    }
+    const lidosSet = new Set((lidosResult.data||[]).map(l=>String(l.evento_id)));
     eventos.forEach(ev=>{
-      if (ev.criado_por === currentUser.id) return;
-      if (lidosSet.has(ev.id)) return;
+      if (lidosSet.has(String(ev.id))) return;
       adicionarEventoNotificacao(mapa, cfg, ev);
     });
     return mapa;
-  }  if (cfg.notificacoes) eventosPorRegistro = await carregarNotificacoes();
+  }
+  if (cfg.notificacoes) eventosPorRegistro = await carregarNotificacoes();
   // Todos os ids de evento não lidos da tabela inteira (linha "Novo", campos
   // editados e o que tiver pendente no Detalhes) — usado pelo botão
   // "Marcar tudo como lido" da barra de ferramentas.
@@ -2347,7 +2485,7 @@ async function viewTabela(tableName){
       const ids = data.map(r=>r.id);
       if (ids.length){
         const { data: resp } = await sb.from(cfg.respTable).select('*').in(cfg.respFk, ids);
-        data.forEach(r=>{ r.__resp_ids = (resp||[]).filter(x=>x[cfg.respFk]===r.id).map(x=>x.profile_id); });
+        aplicarResponsaveisNosRegistros(data, resp, cfg.respFk);
       } else { data.forEach(r=>{ r.__resp_ids = []; }); }
     }
     for (let i = data.length - 1; i >= 0; i--){ if (!registroVisivel(perm, data[i])) data.splice(i, 1); }
@@ -2801,17 +2939,24 @@ async function viewMinhasTarefas(){
     const mapa = {};
     if (!dados.length) return mapa;
     const ids = dados.map(r=>r.id);
-    const [eventosResult, lidosResult] = await Promise.all([
-      sb.from(cfgProjetos.notifEventosTable).select('*').in(cfgProjetos.notifFk, ids),
-      sb.from(cfgProjetos.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id),
-    ]);
-    if (eventosResult.error || lidosResult.error){
-      reportarFalhaNotificacoes('Erro ao carregar Minhas Tarefas', [eventosResult.error, lidosResult.error]);
+    const eventosResult = await selecionarNotificacoesPorIds(
+      cfgProjetos.notifEventosTable, '*', cfgProjetos.notifFk, ids
+    );
+    if (eventosResult.error){
+      reportarFalhaNotificacoes('Erro ao carregar Minhas Tarefas', eventosResult.error);
       return mapa;
     }
-    const lidosSet = new Set((lidosResult.data||[]).map(l=>l.evento_id));
-    (eventosResult.data||[]).forEach(ev=>{
-      if (ev.criado_por === currentUser.id || lidosSet.has(ev.id)) return;
+    const eventos = (eventosResult.data||[]).filter(ev=>ev.criado_por !== currentUser.id);
+    const lidosResult = await selecionarNotificacoesPorIds(
+      cfgProjetos.notifLidosTable, 'evento_id', 'evento_id', eventos.map(ev=>ev.id)
+    );
+    if (lidosResult.error){
+      reportarFalhaNotificacoes('Erro ao carregar leituras de Minhas Tarefas', lidosResult.error);
+      return mapa;
+    }
+    const lidosSet = new Set((lidosResult.data||[]).map(l=>String(l.evento_id)));
+    eventos.forEach(ev=>{
+      if (lidosSet.has(String(ev.id))) return;
       adicionarEventoNotificacao(mapa, cfgProjetos, ev);
     });
     return mapa;
@@ -3738,8 +3883,8 @@ async function viewPendenciasLeitura(){
     ...tabelasNotif.map(t=>{
       const cfg = TABLE_CONFIG[t];
       return Promise.all([
-        sb.from(cfg.notifEventosTable).select('id, criado_por, tipo, campo, item_id'),
-        sb.from(cfg.notifLidosTable).select('evento_id, usuario_id'),
+        selecionarTodasNotificacoes(cfg.notifEventosTable, 'id, criado_por, tipo, campo, item_id'),
+        selecionarTodasNotificacoes(cfg.notifLidosTable, 'evento_id, usuario_id'),
       ]);
     }),
   ]);
@@ -4145,17 +4290,19 @@ window.abrirDetalhes = async function(tabela, id){
   let eventosItemMap = {};   // por item_id (checklist, checklist_grupo ou imagem)
   let eventosDescricao = []; // ids de evento da "Descrição da tarefa"
   if (cfg.notificacoes){
-    const [eventosDetalheResult, lidosDetalheResult] = await Promise.all([
-      sb.from(cfg.notifEventosTable).select('*').eq(cfg.notifFk, id),
-      sb.from(cfg.notifLidosTable).select('evento_id').eq('usuario_id', currentUser.id),
-    ]);
+    const eventosDetalheResult = await selecionarNotificacoesPorIds(
+      cfg.notifEventosTable, '*', cfg.notifFk, [id]
+    );
+    const eventosDetalhe = (eventosDetalheResult.data||[]).filter(ev=>ev.criado_por !== currentUser.id);
+    const lidosDetalheResult = await selecionarNotificacoesPorIds(
+      cfg.notifLidosTable, 'evento_id', 'evento_id', eventosDetalhe.map(ev=>ev.id)
+    );
     if (eventosDetalheResult.error || lidosDetalheResult.error){
       reportarFalhaNotificacoes('Erro ao carregar notificações dos detalhes', [eventosDetalheResult.error, lidosDetalheResult.error]);
     }
-    const lidosSet = new Set((lidosDetalheResult.data||[]).map(l=>l.evento_id));
-    (eventosDetalheResult.data||[]).forEach(ev=>{
-      if (ev.criado_por === currentUser.id) return;
-      if (lidosSet.has(ev.id)) return;
+    const lidosSet = new Set((lidosDetalheResult.data||[]).map(l=>String(l.evento_id)));
+    eventosDetalhe.forEach(ev=>{
+      if (lidosSet.has(String(ev.id))) return;
       if (ev.tipo === 'edicao' && ev.campo === cfg.campoDescricao){
         eventosDescricao.push(ev.id);
         return;
