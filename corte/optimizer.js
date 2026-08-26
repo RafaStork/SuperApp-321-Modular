@@ -56,10 +56,30 @@
     };
   }
 
-  function orientPiece(piece, rotated) {
+  function reverseCutEndForEnd(cut, lengthMm, faceWidthMm) {
+    const oldTopX = pointOnEdge(cut, "top");
+    const oldBottomX = pointOnEdge(cut, "bottom");
+    const topX = lengthMm - oldTopX;
+    const bottomX = lengthMm - oldBottomX;
+    const angle = -(cutAngle(cut) ?? 0);
+    const origin = cut.origin === "bottom" ? "bottom" : "top";
+    return {
+      ...cut,
+      origin,
+      startX: Number((origin === "top" ? topX : bottomX).toFixed(2)),
+      p1: { x: Number(topX.toFixed(4)), y: 0 },
+      p2: { x: Number(bottomX.toFixed(4)), y: faceWidthMm },
+      angleDeg: Number(angle.toFixed(2)),
+      inclinationDeg: Number(angle.toFixed(2)),
+    };
+  }
+
+  function orientPiece(piece, rotated, reverseAngle = false) {
     const lengthMm = Number(piece.lengthMm);
     const profile = normalizeProfile(piece.profile);
-    const cuts = (piece.cuts || []).map((cut) => rotated ? rotateCut(cut, lengthMm, profile.widthMm) : {
+    const cuts = (piece.cuts || []).map((cut) => rotated
+      ? (reverseAngle ? reverseCutEndForEnd(cut, lengthMm, profile.widthMm) : rotateCut(cut, lengthMm, profile.widthMm))
+      : {
       ...cut,
       p1: { x: pointOnEdge(cut, "top"), y: 0 },
       p2: { x: pointOnEdge(cut, "bottom"), y: profile.widthMm },
@@ -75,6 +95,7 @@
     const endCut = cuts[cuts.length - 1] || null;
     return {
       rotated,
+      rotationMode: !rotated ? "original" : reverseAngle ? "end-for-end" : "in-plane",
       profile,
       cuts,
       lengthMm,
@@ -104,7 +125,11 @@
       if (!Number.isFinite(quantity) || quantity < 0) throw new Error(`Quantidade inválida para ${item.piece.code}.`);
       const lengthMm = assertPositiveNumber(item.piece.lengthMm, `Comprimento de ${item.piece.code}`);
       const profile = normalizeProfile(item.piece.profile);
-      const orientations = [orientPiece(item.piece, false), orientPiece(item.piece, true)];
+      const orientations = [
+        orientPiece(item.piece, false),
+        orientPiece(item.piece, true),
+        orientPiece(item.piece, true, true),
+      ];
       for (let serial = 1; serial <= quantity; serial += 1) {
         instances.push({
           piece: item.piece,
@@ -274,6 +299,7 @@
       piece: item.piece,
       profile: { ...orientation.profile },
       rotated: orientation.rotated,
+      rotationMode: orientation.rotationMode,
       cuts: orientation.cuts,
       startMm: nominalStartMm,
       endMm: nominalStartMm + orientation.lengthMm,
@@ -430,6 +456,7 @@
       placements: bar.placements.map((placement) => ({
         code: placement.piece.code,
         rotated: placement.rotated,
+        rotationMode: placement.rotationMode,
         startMm: rounded(placement.startMm),
         endMm: rounded(placement.endMm),
         envelopeStartMm: rounded(placement.envelopeStartMm),

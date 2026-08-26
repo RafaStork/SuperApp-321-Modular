@@ -25,8 +25,8 @@
   <link rel="stylesheet" href="integration.css?v=20260823-corte-2">
   <link rel="stylesheet" href="audit-fixes.css?v=20260823-audit-2">
   <script src="../shared/ui-controls.js?v=20260823-corte-1" defer></script>
-  <script src="optimizer.js?v=20260826-material-priority-3" defer></script>
-  <script src="app.js?v=20260826-angle-operations-1" defer></script>
+  <script src="optimizer.js?v=20260826-end-for-end-4" defer></script>
+  <script src="app.js?v=20260826-catalog-search-2" defer></script>
   <script src="integration.js?v=20260823-corte-2" defer></script>
 </head>
 <body>
@@ -201,6 +201,10 @@
           </div>
 
           <span class="step order-step">PEÇAS E QUANTIDADES</span>
+          <label class="field">
+            <span>Pesquisar no catálogo</span>
+            <input id="catalogSearch" type="search" placeholder="Código, nome ou dimensão" autocomplete="off" maxlength="120">
+          </label>
           <p id="compatibilitySummary" class="compatibility-summary">Filtrando peças compatíveis.</p>
           <div id="orderItems" class="order-items"></div>
           <button id="generatePlanButton" class="button button-primary full" type="button">Gerar plano de corte</button>

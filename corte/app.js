@@ -23,6 +23,7 @@
   });
   const isPlainObject = (value) => Boolean(value) && typeof value === "object" && !Array.isArray(value);
   const cleanText = (value, maxLength = LIMITS.maxTextLength) => String(value ?? "").trim().slice(0, maxLength);
+  const normalizeSearchText = (value) => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   function boundedNumber(value, fallback, min = 0, max = LIMITS.maxDimensionMm) {
     const number = Number(value);
     return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
@@ -535,12 +536,23 @@
     for (const piece of state.pieces) {
       if (!compatiblePieces.includes(piece)) state.quantities[piece.id] = 0;
     }
-    byId("compatibilitySummary").textContent = `${compatiblePieces.length} de ${state.pieces.length} peça(s) compatível(is) com barra de ${formatMm(stockLength)} × ${formatMm(stock.widthMm)} × ${formatMm(stock.thicknessMm)} mm.`;
+    const query = normalizeSearchText(byId("catalogSearch")?.value);
+    const visiblePieces = query ? compatiblePieces.filter((piece) => normalizeSearchText([
+      piece.code, piece.name, piece.lengthMm, piece.profile.widthMm, piece.profile.thicknessMm,
+      formatMm(piece.lengthMm), formatMm(piece.profile.widthMm), formatMm(piece.profile.thicknessMm),
+    ].join(" ")).includes(query)) : compatiblePieces;
+    byId("compatibilitySummary").textContent = query
+      ? `${visiblePieces.length} de ${compatiblePieces.length} peça(s) compatível(is) encontrada(s).`
+      : `${compatiblePieces.length} de ${state.pieces.length} peça(s) compatível(is) com barra de ${formatMm(stockLength)} × ${formatMm(stock.widthMm)} × ${formatMm(stock.thicknessMm)} mm.`;
     if (!compatiblePieces.length) {
       container.innerHTML = '<div class="cuts-empty">Nenhuma peça combina com as dimensões desta matéria-prima.</div>';
       return;
     }
-    container.innerHTML = compatiblePieces.map((piece) => `
+    if (!visiblePieces.length) {
+      container.innerHTML = '<div class="cuts-empty">Nenhuma peça encontrada para esta pesquisa.</div>';
+      return;
+    }
+    container.innerHTML = visiblePieces.map((piece) => `
       <label class="order-item">
         <div><strong>${escapeHtml(piece.code)} · ${escapeHtml(piece.name)}</strong><span>${formatMm(piece.lengthMm)} mm · largura ${formatMm(piece.profile.widthMm)} × esp. ${formatMm(piece.profile.thicknessMm)} mm · ${piece.cuts.length} cortes</span></div>
         <input type="number" class="gestao-number" data-ui-native inputmode="numeric" min="0" max="${LIMITS.maxQuantityPerPiece}" step="1" value="${Number(state.quantities[piece.id] || 0)}" data-quantity="${escapeHtml(piece.id)}" aria-label="Quantidade de ${escapeHtml(piece.code)}">
@@ -683,6 +695,7 @@
   byId("cutOrigin").addEventListener("change", updateCutProjection);
   byId("cutStartX").addEventListener("input", updateCutProjection);
   byId("cutAngle").addEventListener("input", updateCutProjection);
+  byId("catalogSearch").addEventListener("input", renderOrderItems);
   [byId("cutStartX"), byId("cutAngle")].forEach((input) => input.addEventListener("blur", () => {
     const value = Number(input.value);
     if (Number.isFinite(value)) input.value = value.toFixed(2);
