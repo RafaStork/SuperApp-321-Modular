@@ -247,13 +247,14 @@
 
   function chooseCandidate(candidates, mode) {
     return [...candidates].sort((a, b) => {
-      if (mode === "angle-fit") {
+      const materialFirst = mode === "material-first" || mode === "material-best-fit";
+      if (!materialFirst) {
         const sharedDifference = Number(b.sharedStart) - Number(a.sharedStart);
         if (sharedDifference) return sharedDifference;
       }
       const edgeDifference = a.edgePriority - b.edgePriority;
       if (edgeDifference) return edgeDifference;
-      if (mode !== "first-fit") {
+      if (mode !== "first-fit" && mode !== "material-first") {
         const remainderDifference = a.remainingAfter - b.remainingAfter;
         if (Math.abs(remainderDifference) > EPSILON) return remainderDifference;
       }
@@ -409,7 +410,9 @@
     const angleOrder = byPotentialAngleChains(instances);
     const variants = [];
     for (const order of [lengthOrder, angleOrder]) {
-      for (const mode of ["first-fit", "best-fit", "angle-fit"]) variants.push(pack(order, settings, mode));
+      for (const mode of ["material-first", "material-best-fit", "first-fit", "best-fit", "angle-fit"]) {
+        variants.push(pack(order, settings, mode));
+      }
     }
     return variants.reduce((best, candidate) => isBetter(candidate, best) ? candidate : best);
   }
