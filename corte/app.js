@@ -5,6 +5,9 @@
   const COLORS = ["#cfe5da", "#f2d5c3", "#d8dfef", "#eee2b4", "#ddd2e8", "#cbe3e2"];
   const byId = (id) => document.getElementById(id);
   const formatMm = (value) => Number(value).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+  const internalToMachineAngle = (value) => Number((90 + Number(value || 0)).toFixed(2));
+  const machineToInternalAngle = (value) => Number((Number(value) - 90).toFixed(2));
+  const formatMachineAngle = (value, digits = 2) => internalToMachineAngle(value).toFixed(digits).replace(".", ",");
   const uid = () => globalThis.crypto?.randomUUID?.() || `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const LIMITS = Object.freeze({
     maxFiles: 100,
@@ -166,7 +169,7 @@
     const angle = Number(Number(angleDeg).toFixed(2));
     if (!Number.isFinite(x) || Math.abs(x) > LIMITS.maxDimensionMm) throw new Error(`Informe uma posição X entre -${LIMITS.maxDimensionMm} e ${LIMITS.maxDimensionMm} mm.`);
     if (!Number.isFinite(angle) || angle <= -89.9 || angle >= 89.9) {
-      throw new Error("O ângulo deve estar entre -89,89° e 89,89°.");
+      throw new Error("O ângulo da serra deve estar entre 0,11° e 179,89°.");
     }
     const deltaX = Math.tan(angle * Math.PI / 180) * faceWidthMm;
     const topX = origin === "top" ? x : x - deltaX;
@@ -185,8 +188,10 @@
   function updateCutProjection() {
     const origin = byId("cutOrigin").value;
     const startX = Number(byId("cutStartX").value);
-    const angle = Number(byId("cutAngle").value);
-    const deltaX = Math.tan(angle * Math.PI / 180) * currentProfile().widthMm;
+    const machineAngle = Number(byId("cutAngle").value);
+    const angle = machineToInternalAngle(machineAngle);
+    const angleValid = Number.isFinite(machineAngle) && machineAngle > 0.1 && machineAngle < 179.9;
+    const deltaX = angleValid ? Math.tan(angle * Math.PI / 180) * currentProfile().widthMm : Number.NaN;
     const oppositeX = origin === "top" ? startX + deltaX : startX - deltaX;
     const oppositeEdge = origin === "top" ? "inferior" : "superior";
     const valid = Number.isFinite(oppositeX);
@@ -204,13 +209,13 @@
       const cut = projectCut(
         byId("cutOrigin").value,
         Number(byId("cutStartX").value),
-        Number(byId("cutAngle").value),
+        machineToInternalAngle(byId("cutAngle").value),
         currentProfile().widthMm,
       );
       state.cuts.push(cut);
       byId("cutInstruction").textContent = "Corte adicionado. Informe os dados do próximo corte ou salve a peça.";
       renderCanvas();
-      toast(`Corte de ${cut.angleDeg.toFixed(2)}° adicionado.`);
+      toast(`Corte de ${formatMachineAngle(cut.angleDeg)}° adicionado.`);
     } catch (error) {
       toast(error.message, "error");
     }
@@ -249,7 +254,7 @@
                 stroke="#d06b32" stroke-width="3" vector-effect="non-scaling-stroke"/>
           <circle class="piece-cut-point" cx="${cut.p1.x}" cy="${cut.p1.y}" r="4" fill="#fffefa" stroke="#d06b32" stroke-width="2" vector-effect="non-scaling-stroke"/>
           <circle class="piece-cut-point" cx="${cut.p2.x}" cy="${cut.p2.y}" r="4" fill="#fffefa" stroke="#d06b32" stroke-width="2" vector-effect="non-scaling-stroke"/>
-          <text class="piece-cut-label" x="${middleX}" y="-14" text-anchor="middle" fill="#91451f" font-size="9" font-weight="800">C${index + 1} · ${cut.inclinationDeg.toFixed(1)}°</text>
+          <text class="piece-cut-label" x="${middleX}" y="-14" text-anchor="middle" fill="#91451f" font-size="9" font-weight="800">C${index + 1} · ${formatMachineAngle(cut.inclinationDeg, 1)}°</text>
         </g>`;
     }).join("");
     const boundaryCuts = [...state.cuts].sort((a, b) => ((a.p1.x + a.p2.x) - (b.p1.x + b.p2.x)));
@@ -287,7 +292,7 @@
         <div class="cut-index">${index + 1}</div>
         <div>
           <strong>${cut.origin === "top" ? "Superior" : "Inferior"} · X ${Number(cut.startX).toFixed(2).replace(".", ",")} mm</strong>
-          <span>ângulo ${Number(cut.angleDeg).toFixed(2).replace(".", ",")}° · topo ${formatMm(cut.p1.x)} / base ${formatMm(cut.p2.x)} mm</span>
+          <span>ângulo da serra ${formatMachineAngle(cut.angleDeg)}° · topo ${formatMm(cut.p1.x)} / base ${formatMm(cut.p2.x)} mm</span>
         </div>
         <button class="remove-cut" type="button" data-remove-cut="${escapeHtml(cut.id)}" aria-label="Remover corte ${index + 1}">×</button>
       </article>`).join("");
@@ -346,9 +351,9 @@
     byId("partThickness").value = String(DEFAULT_PROFILE.thicknessMm);
     byId("cutOrigin").value = "top";
     byId("cutStartX").value = "0.00";
-    byId("cutAngle").value = "0.00";
+    byId("cutAngle").value = "90.00";
     byId("savePieceButton").textContent = "Salvar arquivo da peça";
-    byId("cutInstruction").textContent = "Ângulo 0° é vertical. Positivo significa que o ponto inferior fica à direita do superior.";
+    byId("cutInstruction").textContent = "Ângulo 90° é vertical. Valores menores inclinam para um lado e valores maiores para o lado oposto.";
     renderCanvas();
   }
 
@@ -606,8 +611,13 @@
       <line class="plan-cut${operation.sharedWith ? " shared" : ""}"
             x1="${operation.topPointMm}" y1="2" x2="${operation.bottomPointMm}" y2="98"
             vector-effect="non-scaling-stroke"/>`).join("");
-    const operations = bar.operations.map((operation, index) => `
-      <tr><td>${index + 1}</td><td>${escapeHtml(operation.instance)}</td><td>${formatMm(operation.referenceMm)} mm</td><td>${formatMm(operation.topPointMm)} / ${formatMm(operation.bottomPointMm)} mm</td><td>${operation.inclinationDeg.toFixed(2)}°${operation.sharedWith ? ` ↔ ${escapeHtml(operation.sharedWith)}` : ""}</td></tr>`).join("");
+    let previousReferenceMm = 0;
+    const operations = bar.operations.map((operation, index) => {
+      const referenceMm = Number(operation.referenceMm) || 0;
+      const advanceMm = Math.max(0, referenceMm - previousReferenceMm);
+      previousReferenceMm = referenceMm;
+      return `<tr><td>${index + 1}</td><td>${formatMm(advanceMm)} mm</td><td>${formatMachineAngle(operation.inclinationDeg)}°</td></tr>`;
+    }).join("");
     return `
       <article class="bar-card">
         <div class="bar-head"><h3>Modelo ${bar.number} · ${bar.quantity}× barra${bar.quantity === 1 ? "" : "s"}</h3><span>largura ${formatMm(profile.widthMm)} × esp. ${formatMm(profile.thicknessMm)} mm · ${bar.sharedCuts} corte(s) reaproveitado(s) · sobra ${formatMm(bar.remainingMm)} mm</span></div>
@@ -620,7 +630,7 @@
         </div>
         <div class="bar-legend"><span class="cut-key"><i></i> corte da serra</span>${bar.placements.map((placement) => `<span><strong>${placement.rotated ? "↻ " : ""}${escapeHtml(placement.instance)}</strong> ${formatMm(placement.startMm)}–${formatMm(placement.endMm)} mm${placement.edgePlacement ? " · beirada" : ""}${placement.sharedStart ? " · ↔ mesmo ângulo" : ""}</span>`).join("")}</div>
         <details class="operations"><summary>${bar.operations.length} operações de corte calculadas</summary>
-          <table class="operations-table"><thead><tr><th>#</th><th>Peça</th><th>Referência</th><th>Topo / base</th><th>Inclinação</th></tr></thead><tbody>${operations}</tbody></table>
+          <table class="operations-table"><thead><tr><th>Operação</th><th>Avanço</th><th>Ângulo da serra</th></tr></thead><tbody>${operations}</tbody></table>
         </details>
       </article>`;
   }

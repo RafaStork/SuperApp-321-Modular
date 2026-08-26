@@ -25,8 +25,8 @@
   <link rel="stylesheet" href="integration.css?v=20260823-corte-2">
   <link rel="stylesheet" href="audit-fixes.css?v=20260823-audit-2">
   <script src="../shared/ui-controls.js?v=20260823-corte-1" defer></script>
-  <script src="optimizer.js?v=20260823-audit-1" defer></script>
-  <script src="app.js?v=20260823-audit-2" defer></script>
+  <script src="optimizer.js?v=20260826-remnant-1" defer></script>
+  <script src="app.js?v=20260826-angle-operations-1" defer></script>
   <script src="integration.js?v=20260823-corte-2" defer></script>
 </head>
 <body>
@@ -84,7 +84,7 @@
           <div class="cut-summary">
             <span class="step">PASSO 2</span>
             <div class="summary-row"><span>Cortes definidos</span><strong id="cutCount">0</strong></div>
-            <p id="cutInstruction">Ângulo 0° é vertical. Positivo significa que o ponto inferior fica à direita do superior.</p>
+            <p id="cutInstruction">Ângulo 90° é vertical. Valores menores inclinam para um lado e valores maiores para o lado oposto.</p>
           </div>
 
           <div class="cut-fields">
@@ -100,8 +100,8 @@
               <div class="input-unit"><input id="cutStartX" type="number" class="gestao-number" data-ui-native min="-100000" max="100000" inputmode="decimal" value="0.00" step="0.01"><span>mm</span></div>
             </label>
             <label class="field full-field">
-              <span>Ângulo em relação à vertical</span>
-              <div class="input-unit"><input id="cutAngle" type="number" class="gestao-number" data-ui-native inputmode="decimal" value="0.00" min="-89" max="89" step="0.01"><span>°</span></div>
+              <span>Ângulo da serra</span>
+              <div class="input-unit"><input id="cutAngle" type="number" class="gestao-number" data-ui-native inputmode="decimal" value="90.00" min="0.11" max="179.89" step="0.01"><span>°</span></div>
             </label>
           </div>
           <div id="cutProjection" class="cut-projection">Ponto oposto: x 0,00 mm</div>

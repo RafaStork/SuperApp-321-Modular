@@ -381,7 +381,11 @@
   function planScore(bars) {
     const sharedCuts = bars.reduce((sum, bar) => sum + bar.sharedCuts, 0);
     const remaining = bars.reduce((sum, bar) => sum + bar.remainingMm, 0);
-    return [bars.length, -sharedCuts, -remaining];
+    const reusableRemnantScore = bars.reduce((sum, bar) => {
+      const remnant = Math.max(0, Number(bar.remainingMm) || 0);
+      return sum + remnant * remnant;
+    }, 0);
+    return [bars.length, -reusableRemnantScore, -remaining, -sharedCuts];
   }
 
   function isBetter(candidate, current) {
@@ -519,7 +523,7 @@
         savedKerfMm: sharedCuts * settings.kerfMm,
         utilizationPercent: suppliedLengthMm ? usefulLengthMm / suppliedLengthMm * 100 : 0,
       },
-      warning: "Plano geométrico preliminar para uma única dimensão de matéria-prima. Avanços externos ficam nas extremidades e a rotação aplicada é de 180°. Validar a referência da máquina.",
+      warning: "Plano geométrico preliminar para uma única dimensão de matéria-prima. Avanços externos ficam nas extremidades, a rotação aplicada é de 180° e 90° representa o corte vertical.",
     };
   }
 
