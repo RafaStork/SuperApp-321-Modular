@@ -475,7 +475,7 @@
       const remnant = Math.max(0, Number(bar.remainingMm) || 0);
       return sum + remnant * remnant;
     }, 0);
-    return [bars.length, -reusableRemnantScore, -remaining, -sharedCuts];
+    return [bars.length, -sharedCuts, -reusableRemnantScore, -remaining];
   }
 
   function isBetter(candidate, current) {
