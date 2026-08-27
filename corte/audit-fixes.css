@@ -50,3 +50,14 @@ html,body{height:100%;overflow:hidden}
 .input-unit>.gestao-number{min-height:43px;padding-right:52px}.input-unit>span:not(.ui-number-shell){right:40px;z-index:2;pointer-events:none}.order-item>.gestao-number{min-height:38px;padding-right:25px;text-align:center}.order-item>.ui-number-shell{min-width:0;width:100%}
 .ui-select-button:focus-visible,.ui-select-button[aria-expanded=true]{outline:none;border-color:var(--accent,var(--orange))!important;background:var(--surface)!important;box-shadow:var(--ring)!important}
 @media(max-width:600px){.two-fields,.cut-fields,.profile-grid{grid-template-columns:minmax(0,1fr)!important}.field,.input-unit,.ui-control-shell,.gestao-number{min-width:0!important;max-width:100%!important}.editor-fields,.plan-form{overflow:visible}.order-item{grid-template-columns:minmax(0,1fr) 82px!important}}
+/* Plano de corte: rolagens independentes no painel de entrada e nos resultados. */
+@media(min-width:881px){
+  body:has(#plansPage.active) .shell.main-shell{overflow:hidden}
+  #plansPage.active{height:100%;min-height:0}
+  #plansPage.active .plan-layout{height:100%;min-height:0;align-items:stretch}
+  #plansPage.active .plan-form,
+  #plansPage.active .result-column{height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
+  #plansPage.active .plan-form{position:relative;top:auto}
+  #plansPage.active .plan-form .order-items{max-height:none;overflow:visible}
+  #plansPage.active .result-column{padding-right:6px}
+}
