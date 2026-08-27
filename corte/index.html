@@ -41,18 +41,13 @@
       <header class="topbar"><div class="title-group"><button class="hamburger-btn" id="menuBtn" type="button" aria-label="Abrir menu" aria-controls="side" aria-expanded="false">☰</button><div><h1 id="pageTitle">Peças</h1><p id="workspaceStatus">Arquivos de demonstração</p></div></div><div class="workspace-actions"><button id="openFolderButton" class="button button-light" type="button">Selecionar pasta</button><button id="importButton" class="button button-ghost-light" type="button">Importar JSON</button><input id="fileInput" type="file" accept="application/json,.json" multiple hidden></div></header>
       <div class="shell main-shell">
     <section id="piecesPage" class="page active" aria-labelledby="piecesTitle" aria-hidden="false">
-      <header class="page-heading">
-        <span class="eyebrow">EDITOR DE PEÇAS</span>
-        <h1 id="piecesTitle">Comece pelo retângulo.<br>Marque os cortes.</h1>
-        <p>A vista do corte usa a largura da peça. Escolha a borda de origem, informe X com precisão de 0,01 mm e defina o ângulo. A espessura é registrada separadamente.</p>
-      </header>
 
       <div class="editor-layout">
         <aside class="panel editor-fields">
           <div class="panel-heading">
             <div>
               <span class="step">PASSO 1</span>
-              <h2>Dimensões da peça</h2>
+              <h2 id="piecesTitle">Dimensões da peça</h2>
             </div>
             <button id="newPieceButton" class="icon-button" type="button" title="Limpar e criar nova peça">Nova</button>
           </div>
