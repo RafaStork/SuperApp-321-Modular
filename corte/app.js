@@ -415,6 +415,43 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  function buildCutOrder() {
+    const items = state.pieces.map((piece) => ({
+      pieceId: piece.id,
+      code: piece.code,
+      quantity: Math.min(LIMITS.maxQuantityPerPiece, Math.max(0, Math.floor(Number(state.quantities[piece.id]) || 0))),
+    })).filter((item) => item.quantity > 0);
+    if (!items.length) throw new Error("Informe ao menos uma quantidade antes de salvar.");
+    const requestedTotal = items.reduce((total, item) => total + item.quantity, 0);
+    if (requestedTotal > LIMITS.maxRequestedPieces) throw new Error("O pedido aceita no máximo " + LIMITS.maxRequestedPieces + " peças.");
+    return {
+      schemaVersion: 1,
+      type: "cut-order",
+      createdAt: new Date().toISOString(),
+      settings: {
+        stockLengthMm: boundedNumber(byId("stockLength").value, 3000, 100),
+        stockProfile: currentStockProfile(),
+        kerfMm: boundedNumber(byId("kerf").value, 3.2, 0, 10000),
+        initialTrimMm: boundedNumber(byId("initialTrim").value, 10, 0),
+      },
+      items,
+    };
+  }
+
+  async function saveCutOrder() {
+    try {
+      const order = buildCutOrder();
+      const filename = `quantidades-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+      if (state.plansHandle) await writeJson(state.plansHandle, filename, order);
+      else downloadJson(filename, order);
+      toast(state.plansHandle
+        ? `Quantidades salvas em planos/${filename}.`
+        : "Arquivo de quantidades baixado. Importe-o depois para restaurar o preenchimento.");
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  }
+
   async function savePiece() {
     try {
       const piece = buildPieceFromEditor();
@@ -449,6 +486,42 @@
 
   function isPlanFile(value) {
     return isPlainObject(value) && value.type === "cut-plan" && Array.isArray(value.bars) && value.bars.length <= LIMITS.maxBarsPerPlan;
+  }
+
+  function isCutOrderFile(value) {
+    if (!isPlainObject(value) || value.type !== "cut-order" || !isPlainObject(value.settings) || !Array.isArray(value.items)) return false;
+    if (value.items.length < 1 || value.items.length > LIMITS.maxPieces) return false;
+    let total = 0;
+    for (const item of value.items) {
+      if (!isPlainObject(item) || typeof item.code !== "string" || !cleanText(item.code, 80)) return false;
+      const quantity = Number(item.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > LIMITS.maxQuantityPerPiece) return false;
+      total += quantity;
+      if (total > LIMITS.maxRequestedPieces) return false;
+    }
+    return true;
+  }
+
+  function applyCutOrder(order) {
+    const settings = order.settings || {};
+    const profile = normalizeProfile(settings.stockProfile || DEFAULT_PROFILE);
+    byId("stockLength").value = boundedNumber(settings.stockLengthMm, 3000, 100);
+    byId("stockWidth").value = profile.widthMm;
+    byId("stockThickness").value = profile.thicknessMm;
+    byId("kerf").value = boundedNumber(settings.kerfMm, 3.2, 0, 10000);
+    byId("initialTrim").value = boundedNumber(settings.initialTrimMm, 10, 0);
+    state.quantities = Object.fromEntries(state.pieces.map((piece) => [piece.id, 0]));
+    let applied = 0, missing = 0;
+    for (const item of order.items) {
+      const normalizedCode = cleanText(item.code, 80).toUpperCase();
+      const piece = state.pieces.find((candidate) => candidate.id === item.pieceId || candidate.code === normalizedCode);
+      if (!piece) { missing += 1; continue; }
+      const current = Number(state.quantities[piece.id]) || 0;
+      state.quantities[piece.id] = Math.min(LIMITS.maxQuantityPerPiece, current + Number(item.quantity));
+      applied += 1;
+    }
+    renderOrderItems();
+    return { applied, missing };
   }
 
   async function loadDirectoryJson(directoryHandle, validator) {
@@ -497,7 +570,9 @@
 
   async function importFiles(fileList) {
     const files = Array.from(fileList || []);
-    let pieceCount = 0, planCount = 0, rejectedCount = Math.max(0, files.length - LIMITS.maxFiles);
+    let pieceCount = 0, planCount = 0, orderCount = 0, missingCount = 0;
+    let rejectedCount = Math.max(0, files.length - LIMITS.maxFiles);
+    const pendingOrders = [];
     for (const file of files.slice(0, LIMITS.maxFiles)) {
       try {
         if (!file.name.toLowerCase().endsWith(".json") || file.size > LIMITS.maxFileBytes) throw new Error("arquivo inválido ou acima de 2 MB");
@@ -511,14 +586,28 @@
           pieceCount += 1;
         } else if (isPlanFile(value)) {
           if (state.savedPlans.length >= LIMITS.maxPlans) throw new Error("limite de " + LIMITS.maxPlans + " planos atingido");
-          state.savedPlans.push(value); planCount += 1;
+          state.savedPlans.push(value);
+          planCount += 1;
+        } else if (isCutOrderFile(value)) {
+          pendingOrders.push(value);
         } else throw new Error("estrutura JSON não reconhecida");
-      } catch (error) { rejectedCount += 1; console.warn("Falha ao importar " + file.name, error); }
+      } catch (error) {
+        rejectedCount += 1;
+        console.warn("Falha ao importar " + file.name, error);
+      }
     }
     renderPieces();
-    toast(pieceCount + " peça(s) e " + planCount + " plano(s) importados" + (rejectedCount ? " · " + rejectedCount + " rejeitado(s)" : "") + ".", rejectedCount && !pieceCount && !planCount ? "error" : "normal");
+    for (const order of pendingOrders) {
+      const result = applyCutOrder(order);
+      orderCount += 1;
+      missingCount += result.missing;
+    }
+    renderOrderItems();
+    const summary = `${pieceCount} peça(s), ${planCount} plano(s) e ${orderCount} arquivo(s) de quantidades importado(s)`;
+    const missing = missingCount ? ` · ${missingCount} item(ns) não encontrado(s) no catálogo` : "";
+    const rejected = rejectedCount ? ` · ${rejectedCount} rejeitado(s)` : "";
+    toast(summary + missing + rejected + ".", rejectedCount && !pieceCount && !planCount && !orderCount ? "error" : "normal");
   }
-
   function renderOrderItems() {
     const container = byId("orderItems");
     const stock = currentStockProfile();
@@ -552,11 +641,14 @@
       container.innerHTML = '<div class="cuts-empty">Nenhuma peça encontrada para esta pesquisa.</div>';
       return;
     }
-    container.innerHTML = visiblePieces.map((piece) => `
+    container.innerHTML = visiblePieces.map((piece) => {
+      const quantity = Number(state.quantities[piece.id]) || 0;
+      return `
       <label class="order-item">
         <div><strong>${escapeHtml(piece.code)} · ${escapeHtml(piece.name)}</strong><span>${formatMm(piece.lengthMm)} mm · largura ${formatMm(piece.profile.widthMm)} × esp. ${formatMm(piece.profile.thicknessMm)} mm · ${piece.cuts.length} cortes</span></div>
-        <input type="number" class="gestao-number" data-ui-native inputmode="numeric" min="0" max="${LIMITS.maxQuantityPerPiece}" step="1" value="${Number(state.quantities[piece.id] || 0)}" data-quantity="${escapeHtml(piece.id)}" aria-label="Quantidade de ${escapeHtml(piece.code)}">
-      </label>`).join("");
+        <input type="number" class="gestao-number" data-ui-native inputmode="numeric" min="0" max="${LIMITS.maxQuantityPerPiece}" step="1" value="${quantity > 0 ? quantity : ""}" placeholder="0" data-quantity="${escapeHtml(piece.id)}" aria-label="Quantidade de ${escapeHtml(piece.code)}">
+      </label>`;
+    }).join("");
   }
 
   function generatePlan() {
@@ -718,6 +810,7 @@
   byId("orderItems").addEventListener("input", (event) => {
     if (event.target.matches("[data-quantity]")) state.quantities[event.target.dataset.quantity] = Math.min(LIMITS.maxQuantityPerPiece, Math.max(0, Math.floor(Number(event.target.value) || 0)));
   });
+  byId("saveQuantitiesButton").addEventListener("click", saveCutOrder);
   byId("generatePlanButton").addEventListener("click", generatePlan);
 
   if (!("showDirectoryPicker" in window)) {

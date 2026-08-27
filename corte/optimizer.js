@@ -441,6 +441,40 @@
     return bars;
   }
 
+  function localBarScore(bar) {
+    const rotatedPieces = bar.placements.filter((placement) => placement.rotated).length;
+    return [-bar.sharedCuts, -bar.remainingMm, rotatedPieces];
+  }
+
+  function isLocalBarBetter(candidate, current) {
+    const candidateScore = localBarScore(candidate);
+    const currentScore = localBarScore(current);
+    for (let index = 0; index < candidateScore.length; index += 1) {
+      if (candidateScore[index] < currentScore[index]) return true;
+      if (candidateScore[index] > currentScore[index]) return false;
+    }
+    return false;
+  }
+
+  function improveBarSequences(bars, settings, instances) {
+    const byInstance = new Map(instances.map((item) => [item.instance, item]));
+    return bars.map((bar, barIndex) => {
+      const currentOrder = bar.placements.map((placement) => byInstance.get(placement.instance)).filter(Boolean);
+      if (currentOrder.length < 2) return { ...bar, number: barIndex + 1 };
+      const orders = [currentOrder, byLength(currentOrder), byPotentialAngleChains(currentOrder)];
+      let best = bar;
+      for (const order of orders) {
+        for (const mode of ["angle-fit", "best-fit", "material-best-fit", "first-fit"]) {
+          const candidateBars = pack(order, settings, mode);
+          if (candidateBars.length !== 1) continue;
+          const candidate = candidateBars[0];
+          if (isLocalBarBetter(candidate, best)) best = candidate;
+        }
+      }
+      return { ...best, number: barIndex + 1 };
+    });
+  }
+
   function buildOperations(bar) {
     const operations = [];
     let previousEndOperation = null;
@@ -475,7 +509,7 @@
       const remnant = Math.max(0, Number(bar.remainingMm) || 0);
       return sum + remnant * remnant;
     }, 0);
-    return [bars.length, -sharedCuts, -reusableRemnantScore, -remaining];
+    return [bars.length, -reusableRemnantScore, -sharedCuts, -remaining];
   }
 
   function isBetter(candidate, current) {
@@ -500,7 +534,9 @@
     const variants = [];
     for (const order of [lengthOrder, angleOrder]) {
       for (const mode of ["material-first", "material-best-fit", "first-fit", "best-fit", "angle-fit"]) {
-        variants.push(pack(order, settings, mode));
+        const packed = pack(order, settings, mode);
+        variants.push(packed);
+        variants.push(improveBarSequences(packed, settings, instances));
       }
     }
     return variants.reduce((best, candidate) => isBetter(candidate, best) ? candidate : best);
