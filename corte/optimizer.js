@@ -74,11 +74,33 @@
     };
   }
 
-  function orientPiece(piece, rotated, reverseAngle = false) {
+  function flipCutAcrossLengthAxis(cut, faceWidthMm) {
+    const oldTopX = pointOnEdge(cut, "top");
+    const oldBottomX = pointOnEdge(cut, "bottom");
+    const topX = oldBottomX;
+    const bottomX = oldTopX;
+    const angle = -(cutAngle(cut) ?? 0);
+    const origin = cut.origin === "bottom" ? "top" : "bottom";
+    return {
+      ...cut,
+      origin,
+      startX: Number((origin === "top" ? topX : bottomX).toFixed(2)),
+      p1: { x: Number(topX.toFixed(4)), y: 0 },
+      p2: { x: Number(bottomX.toFixed(4)), y: faceWidthMm },
+      angleDeg: Number(angle.toFixed(2)),
+      inclinationDeg: Number(angle.toFixed(2)),
+    };
+  }
+
+  function orientPiece(piece, rotated, reverseAngle = false, flipFace = false) {
     const lengthMm = Number(piece.lengthMm);
     const profile = normalizeProfile(piece.profile);
     const cuts = (piece.cuts || []).map((cut) => rotated
-      ? (reverseAngle ? reverseCutEndForEnd(cut, lengthMm, profile.widthMm) : rotateCut(cut, lengthMm, profile.widthMm))
+      ? (flipFace
+        ? flipCutAcrossLengthAxis(cut, profile.widthMm)
+        : reverseAngle
+          ? reverseCutEndForEnd(cut, lengthMm, profile.widthMm)
+          : rotateCut(cut, lengthMm, profile.widthMm))
       : {
       ...cut,
       p1: { x: pointOnEdge(cut, "top"), y: 0 },
@@ -95,7 +117,7 @@
     const endCut = cuts[cuts.length - 1] || null;
     return {
       rotated,
-      rotationMode: !rotated ? "original" : reverseAngle ? "end-for-end" : "in-plane",
+      rotationMode: !rotated ? "original" : flipFace ? "face-flip" : reverseAngle ? "end-for-end" : "in-plane",
       profile,
       cuts,
       lengthMm,
@@ -129,6 +151,7 @@
         orientPiece(item.piece, false),
         orientPiece(item.piece, true),
         orientPiece(item.piece, true, true),
+        orientPiece(item.piece, true, false, true),
       ];
       for (let serial = 1; serial <= quantity; serial += 1) {
         instances.push({
@@ -147,23 +170,59 @@
     return [...instances].sort((a, b) => b.lengthMm - a.lengthMm || a.instance.localeCompare(b.instance));
   }
 
+  function angleKey(angle) {
+    const value = Number(angle);
+    return Number.isFinite(value) ? value.toFixed(2) : "none";
+  }
+
   function byPotentialAngleChains(instances) {
     const remaining = byLength(instances);
     const ordered = [];
+    const startAngleCounts = new Map();
+
+    const itemStartKeys = (item) => new Set(item.orientations.map((orientation) => angleKey(orientation.startAngleDeg)));
+    const changeStartCounts = (item, difference) => {
+      for (const key of itemStartKeys(item)) {
+        const next = (startAngleCounts.get(key) || 0) + difference;
+        if (next > 0) startAngleCounts.set(key, next);
+        else startAngleCounts.delete(key);
+      }
+    };
+    for (const item of remaining) changeStartCounts(item, 1);
+
     let desiredAngle = null;
     while (remaining.length) {
-      let matchIndex = -1;
+      let selectedIndex = 0;
+      let selectedOrientation = remaining[0].orientations[0];
+
       if (desiredAngle !== null) {
-        matchIndex = remaining.findIndex((item) => item.orientations.some((orientation) => (
-          sameAngle(desiredAngle, orientation.startAngleDeg)
-        )));
+        const matches = [];
+        for (let index = 0; index < remaining.length; index += 1) {
+          const item = remaining[index];
+          const ownStartKeys = itemStartKeys(item);
+          for (const orientation of item.orientations) {
+            if (!sameAngle(desiredAngle, orientation.startAngleDeg)) continue;
+            const nextKey = angleKey(orientation.endAngleDeg);
+            const continuationCount = Math.max(0, (startAngleCounts.get(nextKey) || 0) - Number(ownStartKeys.has(nextKey)));
+            matches.push({ index, item, orientation, continuationCount });
+          }
+        }
+        if (matches.length) {
+          matches.sort((first, second) => (
+            second.continuationCount - first.continuationCount
+            || Number(first.orientation.rotated) - Number(second.orientation.rotated)
+            || second.item.lengthMm - first.item.lengthMm
+            || first.item.instance.localeCompare(second.item.instance)
+          ));
+          selectedIndex = matches[0].index;
+          selectedOrientation = matches[0].orientation;
+        }
       }
-      const item = remaining.splice(matchIndex >= 0 ? matchIndex : 0, 1)[0];
+
+      const item = remaining.splice(selectedIndex, 1)[0];
+      changeStartCounts(item, -1);
       ordered.push(item);
-      const matchingOrientation = desiredAngle === null
-        ? item.orientations[0]
-        : item.orientations.find((orientation) => sameAngle(desiredAngle, orientation.startAngleDeg)) || item.orientations[0];
-      desiredAngle = matchingOrientation.endAngleDeg;
+      desiredAngle = selectedOrientation.endAngleDeg;
     }
     return ordered;
   }
