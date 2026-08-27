@@ -216,6 +216,9 @@
           transitionKerfMm = settings.kerfMm;
           translationMm = bar.usedMm + transitionKerfMm - orientation.minX;
         }
+        // Uma peça só pode ser girada quando o próprio giro elimina o corte
+        // de transição ao compartilhar exatamente o corte anterior.
+        if (orientation.rotated && !sharedStart) continue;
         const envelopeStartMm = translationMm + orientation.minX;
         const envelopeEndMm = translationMm + orientation.maxX;
         const nextUsedMm = Math.max(bar.usedMm, envelopeEndMm);
@@ -230,7 +233,7 @@
         continue;
       }
 
-      if (empty && orientation.leftOverhangMm > EDGE_TOLERANCE_MM) {
+      if (!orientation.rotated && empty && orientation.leftOverhangMm > EDGE_TOLERANCE_MM) {
         const translationMm = -orientation.minX;
         const envelopeStartMm = 0;
         const envelopeEndMm = translationMm + orientation.maxX;
@@ -254,6 +257,7 @@
         const sharedStart = canShare(bar, orientation)
           && Math.abs(translationMm + orientation.startTopX - bar.lastEndTopMm) <= EDGE_TOLERANCE_MM
           && Math.abs(translationMm + orientation.startBottomX - bar.lastEndBottomMm) <= EDGE_TOLERANCE_MM;
+        if (orientation.rotated && !sharedStart) continue;
         const transitionKerfMm = emptySequential || sharedStart ? 0 : settings.kerfMm;
         const baseUsedMm = bar.usedMm;
         if (sharedStart || baseUsedMm + transitionKerfMm <= envelopeStartMm + EPSILON) {
