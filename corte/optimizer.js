@@ -140,7 +140,39 @@
     };
   }
 
-  function normalizeItems(items) {
+  function applyKerfCompensation(orientation, kerfMm) {
+    const kerf = Math.max(0, Number(kerfMm) || 0);
+    const nominalCuts = orientation.cuts || [];
+    const cuts = nominalCuts.map((cut, index) => {
+      const offsetMm = index * kerf;
+      return {
+        ...cut,
+        startX: Number.isFinite(Number(cut.startX)) ? Number((Number(cut.startX) + offsetMm).toFixed(4)) : cut.startX,
+        p1: { ...cut.p1, x: Number((Number(cut.p1.x) + offsetMm).toFixed(4)) },
+        p2: { ...cut.p2, x: Number((Number(cut.p2.x) + offsetMm).toFixed(4)) },
+      };
+    });
+    const allX = cuts.flatMap((cut) => [pointOnEdge(cut, "top"), pointOnEdge(cut, "bottom")]);
+    const minX = allX.length ? Math.min(...allX) : orientation.minX;
+    const maxX = allX.length ? Math.max(...allX) : orientation.maxX;
+    const startCut = cuts[0] || null;
+    const endCut = cuts[cuts.length - 1] || null;
+    return {
+      ...orientation,
+      nominalCuts,
+      cuts,
+      minX,
+      maxX,
+      spanMm: maxX - minX,
+      startTopX: startCut ? pointOnEdge(startCut, "top") : minX,
+      startBottomX: startCut ? pointOnEdge(startCut, "bottom") : minX,
+      endTopX: endCut ? pointOnEdge(endCut, "top") : maxX,
+      endBottomX: endCut ? pointOnEdge(endCut, "bottom") : maxX,
+      kerfCompensationMm: Math.max(0, cuts.length - 1) * kerf,
+    };
+  }
+
+  function normalizeItems(items, kerfMm = 0) {
     const instances = [];
     for (const item of items) {
       const quantity = Math.floor(Number(item.quantity));
@@ -152,7 +184,7 @@
         orientPiece(item.piece, true),
         orientPiece(item.piece, true, true),
         orientPiece(item.piece, true, false, true),
-      ];
+      ].map((orientation) => applyKerfCompensation(orientation, kerfMm));
       for (let serial = 1; serial <= quantity; serial += 1) {
         instances.push({
           piece: item.piece,
@@ -364,6 +396,7 @@
       rotated: orientation.rotated,
       rotationMode: orientation.rotationMode,
       cuts: orientation.cuts,
+      nominalCuts: orientation.nominalCuts || orientation.cuts,
       startMm: nominalStartMm,
       endMm: nominalStartMm + orientation.lengthMm,
       lengthMm: orientation.lengthMm,
@@ -603,7 +636,7 @@
     if (!Number.isFinite(settings.kerfMm) || settings.kerfMm < 0) throw new Error("A largura do corte não pode ser negativa.");
     if (!Number.isFinite(settings.initialTrimMm) || settings.initialTrimMm < 0) throw new Error("O refilo inicial não pode ser negativo.");
 
-    const instances = normalizeItems(input.items || []);
+    const instances = normalizeItems(input.items || [], settings.kerfMm);
     if (!instances.length) throw new Error("Informe a quantidade de pelo menos uma peça.");
     for (const instance of instances) {
       if (!sameProfile(instance.profile, stockProfile)) {
@@ -623,12 +656,12 @@
     const additionalAngleCuts = rawBars.reduce((sum, bar) => sum + bar.additionalAngleCuts, 0);
     const rotatedPieces = rawBars.reduce((sum, bar) => sum + bar.placements.filter((placement) => placement.rotated).length, 0);
     const edgePieces = rawBars.reduce((sum, bar) => sum + bar.placements.filter((placement) => placement.edgePlacement).length, 0);
-    const kerfLossMm = (instances.length + additionalAngleCuts) * settings.kerfMm;
+    const kerfLossMm = rawBars.reduce((sum, bar) => sum + Math.max(0, bar.operations.length - 1) * settings.kerfMm, 0);
     const trimLossMm = rawBars.reduce((sum, bar) => sum + bar.trimMm, 0);
     const cutCount = rawBars.reduce((sum, bar) => sum + bar.operations.length, 0);
 
     return {
-      schemaVersion: 5,
+      schemaVersion: 6,
       type: "cut-plan",
       createdAt: new Date().toISOString(),
       profiles: [stockProfile],
@@ -652,7 +685,7 @@
         savedKerfMm: sharedCuts * settings.kerfMm,
         utilizationPercent: suppliedLengthMm ? usefulLengthMm / suppliedLengthMm * 100 : 0,
       },
-      warning: "Plano geométrico preliminar para uma única dimensão de matéria-prima. Avanços externos ficam nas extremidades, a rotação aplicada é de 180° e 90° representa o corte vertical.",
+      warning: "Plano geométrico para uma única dimensão de matéria-prima. Os avanços incluem a espessura da lâmina, avanços externos ficam nas extremidades, a rotação aplicada é de 180° e 90° representa o corte vertical.",
     };
   }
 

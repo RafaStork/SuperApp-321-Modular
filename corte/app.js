@@ -5,6 +5,7 @@
   const COLORS = ["#cfe5da", "#f2d5c3", "#d8dfef", "#eee2b4", "#ddd2e8", "#cbe3e2"];
   const byId = (id) => document.getElementById(id);
   const formatMm = (value) => Number(value).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+  const formatMeasureMm = (value) => Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const internalToMachineAngle = (value) => Number((90 + Number(value || 0)).toFixed(2));
   const machineToInternalAngle = (value) => Number((Number(value) - 90).toFixed(2));
   const formatMachineAngle = (value, digits = 2) => internalToMachineAngle(value).toFixed(digits).replace(".", ",");
@@ -69,6 +70,7 @@
   };
 
   let toastTimer;
+  let pieceDetailReturnFocus = null;
   function toast(message, kind = "normal") {
     const element = byId("toast");
     element.textContent = message;
@@ -688,7 +690,103 @@
     return marks.join("");
   }
 
-  function renderBar(bar, settings) {
+  function detailEdgeX(cut, edge) {
+    const first = cut?.p1 || { x: 0, y: 0 };
+    const second = cut?.p2 || { x: 0, y: 0 };
+    const top = Number(first.y) <= Number(second.y) ? first : second;
+    const bottom = Number(first.y) <= Number(second.y) ? second : first;
+    return Number(edge === "top" ? top.x : bottom.x) || 0;
+  }
+
+  function closePieceDetails() {
+    const overlay = byId("pieceDetailOverlay");
+    if (!overlay?.classList.contains("open")) return;
+    overlay.classList.remove("open");
+    overlay.setAttribute("aria-hidden", "true");
+    const returnFocus = pieceDetailReturnFocus;
+    pieceDetailReturnFocus = null;
+    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+  }
+
+  function openPieceDetails(barIndex, placementIndex, trigger) {
+    const bar = state.activePlan?.bars?.[barIndex];
+    const placement = bar?.placements?.[placementIndex];
+    if (!placement) return;
+    const piece = placement.piece || {};
+    const profile = normalizeProfile(placement.profile || piece.profile || DEFAULT_PROFILE);
+    const cuts = [...(placement.nominalCuts || placement.cuts || piece.cuts || [])]
+      .sort((first, second) => ((detailEdgeX(first, "top") + detailEdgeX(first, "bottom")) - (detailEdgeX(second, "top") + detailEdgeX(second, "bottom"))));
+    if (!cuts.length) return;
+    const startCut = cuts[0];
+    const endCut = cuts.at(-1);
+    const topLengthMm = Math.abs(detailEdgeX(endCut, "top") - detailEdgeX(startCut, "top"));
+    const bottomLengthMm = Math.abs(detailEdgeX(endCut, "bottom") - detailEdgeX(startCut, "bottom"));
+    const kerfMm = Math.max(0, Number(state.activePlan?.settings?.kerfMm) || 0);
+    const kerfCompensationMm = Math.max(0, cuts.length - 1) * kerfMm;
+    const code = cleanText(piece.code || placement.instance || "Peça", 80);
+    const name = cleanText(piece.name || "Peça do plano");
+    const cutRows = cuts.map((cut, index) => {
+      const topX = detailEdgeX(cut, "top");
+      const bottomX = detailEdgeX(cut, "bottom");
+      const offsetMm = Math.abs(bottomX - topX);
+      const cutLengthMm = Math.hypot(profile.widthMm, offsetMm);
+      const role = index === 0 ? "Inicial" : index === cuts.length - 1 ? "Final" : `Intermediário ${index}`;
+      return `<tr>
+        <td>C${index + 1} · ${escapeHtml(role)}</td>
+        <td>${formatMeasureMm(topX)} mm</td>
+        <td>${formatMeasureMm(bottomX)} mm</td>
+        <td>${formatMeasureMm(offsetMm)} mm</td>
+        <td>${formatMeasureMm(cutLengthMm)} mm</td>
+        <td>${formatMachineAngle(cut.angleDeg ?? cut.inclinationDeg)}°</td>
+      </tr>`;
+    }).join("");
+    byId("pieceDetailTitle").textContent = `${code} · ${name}`;
+    byId("pieceDetailBody").innerHTML = `
+      <div class="piece-detail-meta">
+        <span>${placement.rotated ? "Girado 180°" : "Orientação original"}</span>
+        <span>Posição ocupada: ${formatMeasureMm(placement.envelopeStartMm)}–${formatMeasureMm(placement.envelopeEndMm)} mm</span>
+        <span>Kerf configurado: ${formatMeasureMm(kerfMm)} mm</span>
+      </div>
+      <div class="piece-measure-grid">
+        <div class="piece-measure-card"><span>Comprimento nominal</span><strong>${formatMeasureMm(placement.lengthMm ?? piece.lengthMm)} mm</strong></div>
+        <div class="piece-measure-card"><span>Face superior</span><strong>${formatMeasureMm(topLengthMm)} mm</strong></div>
+        <div class="piece-measure-card"><span>Face inferior</span><strong>${formatMeasureMm(bottomLengthMm)} mm</strong></div>
+        <div class="piece-measure-card"><span>Largura no corte</span><strong>${formatMeasureMm(profile.widthMm)} mm</strong></div>
+        <div class="piece-measure-card"><span>Espessura</span><strong>${formatMeasureMm(profile.thicknessMm)} mm</strong></div>
+        <div class="piece-measure-card"><span>Ocupação no plano</span><strong>${formatMeasureMm(placement.spanMm)} mm</strong></div>
+      </div>
+      <h3 class="piece-detail-section-title">Medidas de cada corte</h3>
+      <div class="piece-cut-table-wrap">
+        <table class="piece-cut-table">
+          <thead><tr><th>Corte</th><th>X superior</th><th>X inferior</th><th>Deslocamento</th><th>Linha inclinada</th><th>Ângulo da serra</th></tr></thead>
+          <tbody>${cutRows}</tbody>
+        </table>
+      </div>
+      <p class="piece-detail-note">As faces superior e inferior usam a geometria nominal da peça. A ocupação no plano inclui os avanços externos e ${formatMeasureMm(kerfCompensationMm)} mm de compensação acumulada da lâmina nesta peça.</p>`;
+    pieceDetailReturnFocus = trigger || document.activeElement;
+    const overlay = byId("pieceDetailOverlay");
+    overlay.classList.add("open");
+    overlay.setAttribute("aria-hidden", "false");
+    requestAnimationFrame(() => overlay.querySelector(".piece-detail-dialog")?.focus({ preventScroll: true }));
+  }
+
+  function handlePieceDetailKeydown(event) {
+    const overlay = byId("pieceDetailOverlay");
+    if (!overlay?.classList.contains("open")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePieceDetails();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = [...overlay.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];
+    if (!focusable.length) return;
+    const first = focusable[0], last = focusable.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  }
+
+  function renderBar(bar, settings, barIndex) {
     const length = settings.stockLengthMm;
     const profile = normalizeProfile(bar.profile);
     const pieces = bar.placements.map((placement, index) => {
@@ -706,7 +804,7 @@
         placement.edgePlacement ? `na beirada ${placement.edgePlacement === "left" ? "inicial" : "final"}` : "",
         placement.sharedStart ? "corte inicial reaproveitado" : "",
       ].filter(Boolean).join(" · ");
-      return `<div class="bar-piece${placement.sharedStart ? " shared-start" : ""}${placement.edgePlacement ? " edge-piece" : ""}" style="left:${left}%;width:${width}%;background:${COLORS[index % COLORS.length]};clip-path:${shape}" title="${escapeHtml(placement.instance)} · ${escapeHtml(details)}"><strong>${placement.rotated ? "↻ " : ""}${escapeHtml(placement.instance)}</strong></div>`;
+      return `<button type="button" class="bar-piece${placement.sharedStart ? " shared-start" : ""}${placement.edgePlacement ? " edge-piece" : ""}" data-bar-index="${barIndex}" data-placement-index="${index}" style="left:${left}%;width:${width}%;background:${COLORS[index % COLORS.length]};clip-path:${shape}" title="${escapeHtml(placement.instance)} · ${escapeHtml(details)}" aria-label="Ver todas as medidas de ${escapeHtml(placement.instance)}"><strong>${placement.rotated ? "↻ " : ""}${escapeHtml(placement.instance)}</strong></button>`;
     }).join("");
     const remainingLeft = bar.remainingStartMm / length * 100;
     const remainingWidth = bar.remainingMm / length * 100;
@@ -731,7 +829,7 @@
           <div class="bar-leftover" style="left:${remainingLeft}%;width:${remainingWidth}%">${bar.remainingMm >= 70 ? `${formatMm(bar.remainingMm)} mm` : ""}</div>
           <svg class="bar-cuts-overlay" viewBox="0 0 ${length} 100" preserveAspectRatio="none" aria-label="Cortes inclinados do modelo de barra">${cutOverlay}</svg>
         </div>
-        <div class="bar-legend"><span class="cut-key"><i></i> corte da serra</span>${bar.placements.map((placement) => `<span><strong>${placement.rotated ? "↻ " : ""}${escapeHtml(placement.instance)}</strong> ${formatMm(placement.startMm)}–${formatMm(placement.endMm)} mm${placement.edgePlacement ? " · beirada" : ""}${placement.sharedStart ? " · ↔ mesmo ângulo" : ""}</span>`).join("")}</div>
+        <div class="bar-legend"><span class="cut-key"><i></i> corte da serra</span>${bar.placements.map((placement) => `<span><strong>${placement.rotated ? "↻ " : ""}${escapeHtml(placement.instance)}</strong> ${formatMm(placement.envelopeStartMm)}–${formatMm(placement.envelopeEndMm)} mm${placement.edgePlacement ? " · beirada" : ""}${placement.sharedStart ? " · ↔ mesmo ângulo" : ""}</span>`).join("")}</div>
         <details class="operations"><summary>${bar.operations.length} operações de corte calculadas</summary>
           <table class="operations-table"><thead><tr><th>Operação</th><th>Avanço</th><th>Ângulo da serra</th></tr></thead><tbody>${operations}</tbody></table>
         </details>
@@ -757,7 +855,7 @@
         </div>
       </section>
       <div class="notice">${escapeHtml(plan.warning)}</div>
-      ${plan.bars.map((bar) => renderBar(bar, plan.settings)).join("")}
+      ${plan.bars.map((bar, index) => renderBar(bar, plan.settings, index)).join("")}
       <div class="save-row"><button id="savePlanButton" class="button button-primary" type="button">Salvar arquivo do plano</button></div>`;
     byId("savePlanButton").addEventListener("click", saveActivePlan);
   }
@@ -809,6 +907,15 @@
   byId("orderItems").addEventListener("input", (event) => {
     if (event.target.matches("[data-quantity]")) state.quantities[event.target.dataset.quantity] = Math.min(LIMITS.maxQuantityPerPiece, Math.max(0, Math.floor(Number(event.target.value) || 0)));
   });
+  byId("planResult").addEventListener("click", (event) => {
+    const pieceButton = event.target.closest("[data-bar-index][data-placement-index]");
+    if (!pieceButton) return;
+    openPieceDetails(Number(pieceButton.dataset.barIndex), Number(pieceButton.dataset.placementIndex), pieceButton);
+  });
+  byId("pieceDetailClose").addEventListener("click", closePieceDetails);
+  byId("pieceDetailCloseX").addEventListener("click", closePieceDetails);
+  byId("pieceDetailOverlay").addEventListener("click", (event) => { if (event.target === event.currentTarget) closePieceDetails(); });
+  document.addEventListener("keydown", handlePieceDetailKeydown);
   byId("saveQuantitiesButton").addEventListener("click", saveCutOrder);
   byId("generatePlanButton").addEventListener("click", generatePlan);
 
