@@ -719,11 +719,11 @@
     const viewMaxY = bottomDimensionY + outerGap;
     const viewWidth = Math.max(1, viewMaxX - viewMinX);
     const viewHeight = Math.max(1, viewMaxY - viewMinY);
-    const fitPieceHeightScale = 112 / pieceWidthMm;
-    const maxDocumentScale = 7600 / viewWidth;
+    const fitPieceHeightScale = 52 / pieceWidthMm;
+    const maxDocumentScale = 2600 / viewWidth;
     const pixelsPerMm = Math.max(.05, Math.min(2.4, fitPieceHeightScale, maxDocumentScale));
-    const displayWidth = Math.max(240, Math.round(viewWidth * pixelsPerMm));
-    const displayHeight = Math.max(170, Math.round(viewHeight * pixelsPerMm));
+    const displayWidth = Math.max(220, Math.round(viewWidth * pixelsPerMm));
+    const displayHeight = Math.max(118, Math.round(viewHeight * pixelsPerMm));
     const fontSize = Math.max(8, Math.min(14, pieceWidthMm * .13));
     const labelHalo = Math.max(2.4, fontSize * .28);
     const cutPointRadius = Math.max(2.4, Math.min(4.5, pieceWidthMm * .04));

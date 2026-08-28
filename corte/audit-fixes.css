@@ -76,7 +76,7 @@ html,body{height:100%;overflow:hidden}
 .piece-detail-close{display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;padding:0;border:1px solid var(--border);border-radius:10px;background:var(--bg-soft);color:var(--dim);font-size:22px;line-height:1;cursor:pointer;transition:color .16s,border-color .16s,background .16s,transform .14s var(--ease-spring)}
 .piece-detail-close:hover{border-color:var(--orange);background:var(--surface);color:var(--orange)}
 .piece-detail-close:active{transform:scale(.94)}
-.piece-detail-body{flex:1 1 auto;min-height:0;overflow:auto;padding:20px 22px;overscroll-behavior:contain}
+.piece-detail-body{flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;padding:20px 22px;overscroll-behavior:contain}
 .piece-detail-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
 .piece-detail-meta span{padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:var(--bg-soft);color:var(--dim);font-size:10.5px;font-weight:700}
 .piece-measure-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:20px}
@@ -87,8 +87,8 @@ html,body{height:100%;overflow:hidden}
 .piece-detail-drawing{width:100%;margin:0 0 18px;overflow:hidden;border:1px solid var(--border);border-radius:13px;background:linear-gradient(180deg,var(--bg-soft),color-mix(in srgb,var(--surface) 82%,var(--bg-soft)))}
 .piece-detail-scale-note{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--surface) 88%,var(--bg-soft));color:var(--dim);font-size:9.5px}
 .piece-detail-scale-note strong{color:var(--text);font-size:10px;letter-spacing:.05em;text-transform:uppercase}
-.piece-detail-drawing-viewport{width:100%;min-height:190px;overflow:auto;padding:10px;scrollbar-gutter:stable;overscroll-behavior:contain}
-.piece-detail-drawing svg{display:block;max-width:none;min-width:0;margin:auto}
+.piece-detail-drawing-viewport{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:10px 10px 13px;scrollbar-gutter:stable;overscroll-behavior-x:contain;overscroll-behavior-y:auto;touch-action:pan-x;-webkit-overflow-scrolling:touch}
+.piece-detail-drawing svg{display:block;max-width:none;min-width:0;margin:0}
 .piece-detail-shape{fill:color-mix(in srgb,var(--green) 18%,var(--surface));stroke:color-mix(in srgb,var(--green) 76%,var(--text));stroke-width:2}
 .piece-detail-cut-line{stroke:var(--orange);stroke-width:3}
 .piece-detail-cut-point{fill:var(--surface);stroke:var(--orange);stroke-width:2}

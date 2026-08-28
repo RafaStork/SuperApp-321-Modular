@@ -15,7 +15,7 @@
       [238, 226, 180], [221, 210, 232], [203, 227, 226],
     ],
   };
-  const PAGE = Object.freeze({ width: 297, height: 210, left: 14, right: 14, top: 25, bottom: 197 });
+  const PAGE = Object.freeze({ width: 210, height: 297, left: 10, right: 10, top: 24, bottom: 288 });
   let pdfFontName = "Montserrat";
   let pdfFontsPromise = null;
 
@@ -184,6 +184,70 @@
       y += rowHeight;
     });
     return y + 5;
+  }
+
+  function fitCellText(doc, value, maxWidth) {
+    const text = cleanText(value) || "—";
+    if (doc.getTextWidth(text) <= maxWidth) return text;
+    let low = 0, high = text.length;
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2);
+      if (doc.getTextWidth(`${text.slice(0, middle)}…`) <= maxWidth) low = middle;
+      else high = middle - 1;
+    }
+    return `${text.slice(0, Math.max(1, low))}…`;
+  }
+
+  function drawDenseTable(doc, options) {
+    const { x, y, width, height, title, columns, rows } = options;
+    const titleHeight = 6;
+    const headerHeight = 5.5;
+    const bodyHeight = Math.max(2, height - titleHeight - headerHeight);
+    const rowHeight = rows.length ? Math.max(1.15, bodyHeight / rows.length) : bodyHeight;
+    const fontSize = Math.max(2.2, Math.min(6.1, rowHeight * .62 + 1.7));
+    const headerFontSize = Math.max(2.5, Math.min(5.3, fontSize));
+    const declaredWidth = columns.reduce((sum, column) => sum + column.width, 0) || 1;
+    const normalized = columns.map((column) => ({ ...column, width: width * column.width / declaredWidth }));
+
+    doc.setTextColor(...COLORS.orange);
+    setFont(doc, "bold", 6.5);
+    doc.text(cleanText(title).toUpperCase(), x, y + 4.1);
+    doc.setFillColor(232, 235, 238);
+    doc.roundedRect(x, y + titleHeight, width, headerHeight, 1.2, 1.2, "F");
+    let cursorX = x;
+    setFont(doc, "bold", headerFontSize);
+    doc.setTextColor(...COLORS.muted);
+    normalized.forEach((column) => {
+      doc.text(fitCellText(doc, column.label.toUpperCase(), Math.max(1, column.width - 2)), cursorX + 1, y + titleHeight + 3.7);
+      cursorX += column.width;
+    });
+
+    if (!rows.length) {
+      doc.setTextColor(...COLORS.muted);
+      setFont(doc, "normal", 5.6);
+      doc.text("Nenhum registro.", x + 1, y + titleHeight + headerHeight + 4);
+      return;
+    }
+    rows.forEach((row, rowIndex) => {
+      const rowY = y + titleHeight + headerHeight + rowIndex * rowHeight;
+      if (rowIndex % 2 === 0) {
+        doc.setFillColor(...COLORS.surface);
+        doc.rect(x, rowY, width, rowHeight, "F");
+      }
+      cursorX = x;
+      normalized.forEach((column, columnIndex) => {
+        const value = typeof column.value === "function" ? column.value(row, rowIndex) : row[column.key];
+        setFont(doc, columnIndex === 0 ? "bold" : "normal", fontSize);
+        doc.setTextColor(...COLORS.text);
+        const label = fitCellText(doc, value, Math.max(1, column.width - 2));
+        doc.text(label, cursorX + 1, rowY + Math.min(rowHeight - .25, rowHeight * .7 + fontSize * .12));
+        cursorX += column.width;
+      });
+      doc.setDrawColor(...COLORS.line);
+      doc.setLineWidth(.12);
+      doc.line(x, rowY + rowHeight, x + width, rowY + rowHeight);
+    });
+    doc.setLineWidth(.2);
   }
 
   function drawScaledBar(doc, bar, settings, y) {
@@ -365,8 +429,8 @@
     y = sectionTitle(doc, "Configuração da matéria-prima", y);
     setFont(doc, "normal", 8.3);
     doc.text(`Barra: ${formatMm(plan?.settings?.stockLengthMm)} × ${formatMm(profile.widthMm)} × ${formatMm(profile.thicknessMm)} mm`, PAGE.left, y + 3);
-    doc.text(`Lâmina (kerf): ${formatMm(plan?.settings?.kerfMm, 2)} mm`, PAGE.left + 92, y + 3);
-    doc.text(`Refilo inicial: ${formatMm(plan?.settings?.initialTrimMm, 2)} mm`, PAGE.left + 172, y + 3);
+    doc.text(`Lâmina (kerf): ${formatMm(plan?.settings?.kerfMm, 2)} mm`, PAGE.left, y + 10);
+    doc.text(`Refilo inicial: ${formatMm(plan?.settings?.initialTrimMm, 2)} mm`, PAGE.left + 92, y + 10);
     y += 14;
     y = sectionTitle(doc, "Conteúdo", y);
     setFont(doc, "normal", 8.1);
@@ -416,16 +480,95 @@
     ], operationRows(bar), y);
   }
 
+  function drawPortraitModel(doc, plan, bar, index) {
+    doc.addPage("a4", "portrait");
+    const settings = plan?.settings || {};
+    const profile = profileOf(bar?.profile || settings?.stockProfile);
+    pageHeader(
+      doc,
+      modelLabel(bar),
+      `${formatMm(settings.stockLengthMm)} × ${formatMm(profile.widthMm)} × ${formatMm(profile.thicknessMm)} mm · sobra ${formatMm(bar?.remainingMm)} mm`,
+    );
+    doc.setTextColor(...COLORS.muted);
+    setFont(doc, "normal", 6.7);
+    doc.text(
+      `${number(bar?.placements?.length)} peça(s) por barra · ${number(bar?.sharedCuts)} corte(s) reaproveitado(s) · kerf ${formatMm(settings.kerfMm, 2)} mm · refilo ${formatMm(settings.initialTrimMm, 2)} mm`,
+      PAGE.left,
+      26.5,
+    );
+
+    let y = sectionTitle(doc, "Desenho do modelo em escala uniforme", 32);
+    y = drawScaledBar(doc, bar, settings, y);
+    const pieces = placementRows(bar);
+    const cuts = cutRows(bar);
+    const operations = operationRows(bar);
+    const piecesHeight = Math.min(78, Math.max(28, 11.5 + pieces.length * 4.8));
+    drawDenseTable(doc, {
+      x: PAGE.left,
+      y,
+      width: PAGE.width - PAGE.left - PAGE.right,
+      height: piecesHeight,
+      title: `Peças deste modelo (${pieces.length})`,
+      columns: [
+        { key: "piece", label: "Peça", width: 52 },
+        { key: "nominal", label: "Nominal", width: 22 },
+        { key: "top", label: "Face sup.", width: 23 },
+        { key: "bottom", label: "Face inf.", width: 23 },
+        { key: "occupied", label: "Ocupação", width: 23 },
+        { key: "range", label: "Faixa", width: 31 },
+        { key: "orientation", label: "Orientação", width: 27 },
+      ],
+      rows: pieces,
+    });
+
+    const detailY = y + piecesHeight + 4;
+    const detailHeight = Math.max(34, PAGE.bottom - detailY);
+    const gap = 4;
+    const operationsWidth = 64;
+    const cutsWidth = PAGE.width - PAGE.left - PAGE.right - gap - operationsWidth;
+    drawDenseTable(doc, {
+      x: PAGE.left,
+      y: detailY,
+      width: cutsWidth,
+      height: detailHeight,
+      title: `Medidas dos cortes (${cuts.length})`,
+      columns: [
+        { key: "piece", label: "Peça", width: 36 },
+        { key: "cut", label: "C", width: 9 },
+        { key: "top", label: "X sup.", width: 18 },
+        { key: "bottom", label: "X inf.", width: 18 },
+        { key: "offset", label: "Desloc.", width: 18 },
+        { key: "diagonal", label: "Linha", width: 20 },
+        { key: "angle", label: "Serra", width: 19 },
+      ],
+      rows: cuts,
+    });
+    drawDenseTable(doc, {
+      x: PAGE.left + cutsWidth + gap,
+      y: detailY,
+      width: operationsWidth,
+      height: detailHeight,
+      title: `Operações (${operations.length})`,
+      columns: [
+        { key: "operation", label: "Op.", width: 9 },
+        { key: "advance", label: "Avanço", width: 22 },
+        { key: "angle", label: "Serra", width: 21 },
+        { key: "shared", label: "Tipo", width: 16, value: (row) => row.shared === "Corte reaproveitado" ? "Reap." : "Novo" },
+      ],
+      rows: operations,
+    });
+  }
+
   function addFooters(doc) {
     const pages = doc.getNumberOfPages();
     for (let page = 1; page <= pages; page += 1) {
       doc.setPage(page);
       doc.setDrawColor(...COLORS.line);
-      doc.line(PAGE.left, 201, PAGE.width - PAGE.right, 201);
+      doc.line(PAGE.left, PAGE.height - 8, PAGE.width - PAGE.right, PAGE.height - 8);
       doc.setTextColor(...COLORS.muted);
       setFont(doc, "normal", 6.3);
-      doc.text("321 Modular · Plano de corte", PAGE.left, 205.5);
-      doc.text(`Página ${page} de ${pages}`, PAGE.width - PAGE.right, 205.5, { align: "right" });
+      doc.text("321 Modular · Plano de corte", PAGE.left, PAGE.height - 3.5);
+      doc.text(page === 1 ? "Informações gerais" : `Modelo ${page - 1} de ${pages - 1}`, PAGE.width - PAGE.right, PAGE.height - 3.5, { align: "right" });
     }
   }
 
@@ -433,7 +576,7 @@
     const PDF = globalScope.jspdf?.jsPDF;
     if (!PDF) throw new Error("Gerador de PDF indisponível.");
     if (!plan?.bars?.length) throw new Error("Gere um plano de corte antes de exportar o PDF.");
-    const doc = new PDF({ orientation: "landscape", unit: "mm", format: "a4", compress: true, putOnlyUsedFonts: true });
+    const doc = new PDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true, putOnlyUsedFonts: true });
     pdfFontName = "Montserrat";
     try {
       await registerFonts(doc);
@@ -449,7 +592,7 @@
     });
     drawCover(doc, plan);
     for (let index = 0; index < plan.bars.length; index += 1) {
-      drawModel(doc, plan.bars[index], plan.settings || {});
+      drawPortraitModel(doc, plan, plan.bars[index], index);
       if (index % 4 === 3) await new Promise((resolve) => requestAnimationFrame(() => resolve()));
     }
     addFooters(doc);
