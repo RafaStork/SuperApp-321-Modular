@@ -698,6 +698,57 @@
     return Number(edge === "top" ? top.x : bottom.x) || 0;
   }
 
+  function buildPieceDetailDrawing(cuts, profile) {
+    const startCut = cuts[0];
+    const endCut = cuts.at(-1);
+    const values = cuts.flatMap((cut) => [detailEdgeX(cut, "top"), detailEdgeX(cut, "bottom")]);
+    const minX = Math.min(...values);
+    const maxX = Math.max(...values);
+    const rangeX = Math.max(1, maxX - minX);
+    const plotLeft = 70, plotRight = 900, plotTop = 105, plotBottom = 215;
+    const mapX = (value) => plotLeft + ((Number(value) - minX) / rangeX) * (plotRight - plotLeft);
+    const startTop = mapX(detailEdgeX(startCut, "top"));
+    const startBottom = mapX(detailEdgeX(startCut, "bottom"));
+    const endTop = mapX(detailEdgeX(endCut, "top"));
+    const endBottom = mapX(detailEdgeX(endCut, "bottom"));
+    const topLengthMm = Math.abs(detailEdgeX(endCut, "top") - detailEdgeX(startCut, "top"));
+    const bottomLengthMm = Math.abs(detailEdgeX(endCut, "bottom") - detailEdgeX(startCut, "bottom"));
+    const cutLines = cuts.map((cut, index) => {
+      const topX = mapX(detailEdgeX(cut, "top"));
+      const bottomX = mapX(detailEdgeX(cut, "bottom"));
+      const labelX = (topX + bottomX) / 2;
+      return `<g class="piece-detail-cut-group">
+        <line class="piece-detail-cut-line" x1="${topX}" y1="${plotTop}" x2="${bottomX}" y2="${plotBottom}" vector-effect="non-scaling-stroke"/>
+        <circle class="piece-detail-cut-point" cx="${topX}" cy="${plotTop}" r="4" vector-effect="non-scaling-stroke"/>
+        <circle class="piece-detail-cut-point" cx="${bottomX}" cy="${plotBottom}" r="4" vector-effect="non-scaling-stroke"/>
+        <text class="piece-detail-cut-id" x="${labelX}" y="166" text-anchor="middle">C${index + 1}</text>
+      </g>`;
+    }).join("");
+    return `<div class="piece-detail-drawing" role="img" aria-label="Desenho cotado da peça com ${cuts.length} cortes">
+      <svg viewBox="0 0 1000 320" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+        <defs>
+          <marker id="pieceMeasureArrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" class="piece-detail-arrow-head"/></marker>
+        </defs>
+        <polygon class="piece-detail-shape" points="${startTop},${plotTop} ${endTop},${plotTop} ${endBottom},${plotBottom} ${startBottom},${plotBottom}"/>
+        ${cutLines}
+        <g class="piece-detail-dimensions">
+          <line class="piece-detail-extension" x1="${startTop}" y1="${plotTop - 4}" x2="${startTop}" y2="54"/>
+          <line class="piece-detail-extension" x1="${endTop}" y1="${plotTop - 4}" x2="${endTop}" y2="54"/>
+          <line class="piece-detail-dimension-line" x1="${startTop}" y1="58" x2="${endTop}" y2="58" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
+          <text class="piece-detail-dimension-label" x="${(startTop + endTop) / 2}" y="42" text-anchor="middle">Face superior · ${formatMeasureMm(topLengthMm)} mm</text>
+          <line class="piece-detail-extension" x1="${startBottom}" y1="${plotBottom + 4}" x2="${startBottom}" y2="266"/>
+          <line class="piece-detail-extension" x1="${endBottom}" y1="${plotBottom + 4}" x2="${endBottom}" y2="266"/>
+          <line class="piece-detail-dimension-line" x1="${startBottom}" y1="262" x2="${endBottom}" y2="262" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
+          <text class="piece-detail-dimension-label" x="${(startBottom + endBottom) / 2}" y="292" text-anchor="middle">Face inferior · ${formatMeasureMm(bottomLengthMm)} mm</text>
+          <line class="piece-detail-extension" x1="${Math.max(endTop, endBottom) + 5}" y1="${plotTop}" x2="948" y2="${plotTop}"/>
+          <line class="piece-detail-extension" x1="${Math.max(endTop, endBottom) + 5}" y1="${plotBottom}" x2="948" y2="${plotBottom}"/>
+          <line class="piece-detail-dimension-line" x1="944" y1="${plotTop}" x2="944" y2="${plotBottom}" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
+          <text class="piece-detail-dimension-label" x="970" y="160" text-anchor="middle" transform="rotate(-90 970 160)">Largura · ${formatMeasureMm(profile.widthMm)} mm</text>
+        </g>
+      </svg>
+    </div>`;
+  }
+
   function closePieceDetails() {
     const overlay = byId("pieceDetailOverlay");
     if (!overlay?.classList.contains("open")) return;
@@ -747,6 +798,8 @@
         <span>Posição ocupada: ${formatMeasureMm(placement.envelopeStartMm)}–${formatMeasureMm(placement.envelopeEndMm)} mm</span>
         <span>Kerf configurado: ${formatMeasureMm(kerfMm)} mm</span>
       </div>
+      <h3 class="piece-detail-section-title">Desenho cotado</h3>
+      ${buildPieceDetailDrawing(cuts, profile)}
       <div class="piece-measure-grid">
         <div class="piece-measure-card"><span>Comprimento nominal</span><strong>${formatMeasureMm(placement.lengthMm ?? piece.lengthMm)} mm</strong></div>
         <div class="piece-measure-card"><span>Face superior</span><strong>${formatMeasureMm(topLengthMm)} mm</strong></div>
