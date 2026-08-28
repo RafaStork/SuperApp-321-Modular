@@ -705,47 +705,70 @@
     const minX = Math.min(...values);
     const maxX = Math.max(...values);
     const rangeX = Math.max(1, maxX - minX);
-    const plotLeft = 70, plotRight = 900, plotTop = 105, plotBottom = 215;
-    const mapX = (value) => plotLeft + ((Number(value) - minX) / rangeX) * (plotRight - plotLeft);
-    const startTop = mapX(detailEdgeX(startCut, "top"));
-    const startBottom = mapX(detailEdgeX(startCut, "bottom"));
-    const endTop = mapX(detailEdgeX(endCut, "top"));
-    const endBottom = mapX(detailEdgeX(endCut, "bottom"));
+    const pieceWidthMm = Math.max(1, Number(profile.widthMm) || 1);
+    const plotTop = 0, plotBottom = pieceWidthMm;
+    const dimensionGap = Math.max(36, pieceWidthMm * .55);
+    const outerGap = Math.max(26, pieceWidthMm * .34);
+    const horizontalPadding = Math.max(42, pieceWidthMm * .7);
+    const topDimensionY = -dimensionGap;
+    const bottomDimensionY = plotBottom + dimensionGap;
+    const rightDimensionX = maxX + dimensionGap;
+    const viewMinX = minX - horizontalPadding;
+    const viewMaxX = rightDimensionX + outerGap;
+    const viewMinY = topDimensionY - outerGap;
+    const viewMaxY = bottomDimensionY + outerGap;
+    const viewWidth = Math.max(1, viewMaxX - viewMinX);
+    const viewHeight = Math.max(1, viewMaxY - viewMinY);
+    const fitPieceHeightScale = 112 / pieceWidthMm;
+    const maxDocumentScale = 7600 / viewWidth;
+    const pixelsPerMm = Math.max(.05, Math.min(2.4, fitPieceHeightScale, maxDocumentScale));
+    const displayWidth = Math.max(240, Math.round(viewWidth * pixelsPerMm));
+    const displayHeight = Math.max(170, Math.round(viewHeight * pixelsPerMm));
+    const fontSize = Math.max(8, Math.min(14, pieceWidthMm * .13));
+    const labelHalo = Math.max(2.4, fontSize * .28);
+    const cutPointRadius = Math.max(2.4, Math.min(4.5, pieceWidthMm * .04));
+    const startTop = detailEdgeX(startCut, "top");
+    const startBottom = detailEdgeX(startCut, "bottom");
+    const endTop = detailEdgeX(endCut, "top");
+    const endBottom = detailEdgeX(endCut, "bottom");
     const topLengthMm = Math.abs(detailEdgeX(endCut, "top") - detailEdgeX(startCut, "top"));
     const bottomLengthMm = Math.abs(detailEdgeX(endCut, "bottom") - detailEdgeX(startCut, "bottom"));
     const cutLines = cuts.map((cut, index) => {
-      const topX = mapX(detailEdgeX(cut, "top"));
-      const bottomX = mapX(detailEdgeX(cut, "bottom"));
+      const topX = detailEdgeX(cut, "top");
+      const bottomX = detailEdgeX(cut, "bottom");
       const labelX = (topX + bottomX) / 2;
       return `<g class="piece-detail-cut-group">
         <line class="piece-detail-cut-line" x1="${topX}" y1="${plotTop}" x2="${bottomX}" y2="${plotBottom}" vector-effect="non-scaling-stroke"/>
-        <circle class="piece-detail-cut-point" cx="${topX}" cy="${plotTop}" r="4" vector-effect="non-scaling-stroke"/>
-        <circle class="piece-detail-cut-point" cx="${bottomX}" cy="${plotBottom}" r="4" vector-effect="non-scaling-stroke"/>
-        <text class="piece-detail-cut-id" x="${labelX}" y="166" text-anchor="middle">C${index + 1}</text>
+        <circle class="piece-detail-cut-point" cx="${topX}" cy="${plotTop}" r="${cutPointRadius}" vector-effect="non-scaling-stroke"/>
+        <circle class="piece-detail-cut-point" cx="${bottomX}" cy="${plotBottom}" r="${cutPointRadius}" vector-effect="non-scaling-stroke"/>
+        <text class="piece-detail-cut-id" x="${labelX}" y="${pieceWidthMm * .56}" text-anchor="middle">C${index + 1}</text>
       </g>`;
     }).join("");
-    return `<div class="piece-detail-drawing" role="img" aria-label="Desenho cotado da peça com ${cuts.length} cortes">
-      <svg viewBox="0 0 1000 320" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    return `<div class="piece-detail-drawing" role="img" aria-label="Desenho cotado em escala uniforme da peça com ${cuts.length} cortes">
+      <div class="piece-detail-scale-note"><strong>Escala uniforme X/Y</strong><span>Deslize horizontalmente para navegar sem deformar a peça.</span></div>
+      <div class="piece-detail-drawing-viewport">
+      <svg viewBox="${viewMinX} ${viewMinY} ${viewWidth} ${viewHeight}" width="${displayWidth}" height="${displayHeight}" preserveAspectRatio="xMinYMin meet" style="--piece-drawing-font:${fontSize}px;--piece-drawing-halo:${labelHalo}px" aria-hidden="true">
         <defs>
           <marker id="pieceMeasureArrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 Z" class="piece-detail-arrow-head"/></marker>
         </defs>
         <polygon class="piece-detail-shape" points="${startTop},${plotTop} ${endTop},${plotTop} ${endBottom},${plotBottom} ${startBottom},${plotBottom}"/>
         ${cutLines}
         <g class="piece-detail-dimensions">
-          <line class="piece-detail-extension" x1="${startTop}" y1="${plotTop - 4}" x2="${startTop}" y2="54"/>
-          <line class="piece-detail-extension" x1="${endTop}" y1="${plotTop - 4}" x2="${endTop}" y2="54"/>
-          <line class="piece-detail-dimension-line" x1="${startTop}" y1="58" x2="${endTop}" y2="58" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
-          <text class="piece-detail-dimension-label" x="${(startTop + endTop) / 2}" y="42" text-anchor="middle">Face superior · ${formatMeasureMm(topLengthMm)} mm</text>
-          <line class="piece-detail-extension" x1="${startBottom}" y1="${plotBottom + 4}" x2="${startBottom}" y2="266"/>
-          <line class="piece-detail-extension" x1="${endBottom}" y1="${plotBottom + 4}" x2="${endBottom}" y2="266"/>
-          <line class="piece-detail-dimension-line" x1="${startBottom}" y1="262" x2="${endBottom}" y2="262" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
-          <text class="piece-detail-dimension-label" x="${(startBottom + endBottom) / 2}" y="292" text-anchor="middle">Face inferior · ${formatMeasureMm(bottomLengthMm)} mm</text>
-          <line class="piece-detail-extension" x1="${Math.max(endTop, endBottom) + 5}" y1="${plotTop}" x2="948" y2="${plotTop}"/>
-          <line class="piece-detail-extension" x1="${Math.max(endTop, endBottom) + 5}" y1="${plotBottom}" x2="948" y2="${plotBottom}"/>
-          <line class="piece-detail-dimension-line" x1="944" y1="${plotTop}" x2="944" y2="${plotBottom}" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
-          <text class="piece-detail-dimension-label" x="970" y="160" text-anchor="middle" transform="rotate(-90 970 160)">Largura · ${formatMeasureMm(profile.widthMm)} mm</text>
+          <line class="piece-detail-extension" x1="${startTop}" y1="${plotTop}" x2="${startTop}" y2="${topDimensionY}"/>
+          <line class="piece-detail-extension" x1="${endTop}" y1="${plotTop}" x2="${endTop}" y2="${topDimensionY}"/>
+          <line class="piece-detail-dimension-line" x1="${startTop}" y1="${topDimensionY}" x2="${endTop}" y2="${topDimensionY}" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
+          <text class="piece-detail-dimension-label" x="${(startTop + endTop) / 2}" y="${topDimensionY - fontSize * .72}" text-anchor="middle">Face superior · ${formatMeasureMm(topLengthMm)} mm</text>
+          <line class="piece-detail-extension" x1="${startBottom}" y1="${plotBottom}" x2="${startBottom}" y2="${bottomDimensionY}"/>
+          <line class="piece-detail-extension" x1="${endBottom}" y1="${plotBottom}" x2="${endBottom}" y2="${bottomDimensionY}"/>
+          <line class="piece-detail-dimension-line" x1="${startBottom}" y1="${bottomDimensionY}" x2="${endBottom}" y2="${bottomDimensionY}" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
+          <text class="piece-detail-dimension-label" x="${(startBottom + endBottom) / 2}" y="${bottomDimensionY + fontSize * 1.35}" text-anchor="middle">Face inferior · ${formatMeasureMm(bottomLengthMm)} mm</text>
+          <line class="piece-detail-extension" x1="${Math.max(endTop, endBottom)}" y1="${plotTop}" x2="${rightDimensionX}" y2="${plotTop}"/>
+          <line class="piece-detail-extension" x1="${Math.max(endTop, endBottom)}" y1="${plotBottom}" x2="${rightDimensionX}" y2="${plotBottom}"/>
+          <line class="piece-detail-dimension-line" x1="${rightDimensionX}" y1="${plotTop}" x2="${rightDimensionX}" y2="${plotBottom}" marker-start="url(#pieceMeasureArrow)" marker-end="url(#pieceMeasureArrow)"/>
+          <text class="piece-detail-dimension-label" x="${rightDimensionX + fontSize * 1.35}" y="${pieceWidthMm / 2}" text-anchor="middle" transform="rotate(-90 ${rightDimensionX + fontSize * 1.35} ${pieceWidthMm / 2})">Largura · ${formatMeasureMm(profile.widthMm)} mm</text>
         </g>
       </svg>
+      </div>
     </div>`;
   }
 
@@ -909,8 +932,39 @@
       </section>
       <div class="notice">${escapeHtml(plan.warning)}</div>
       ${plan.bars.map((bar, index) => renderBar(bar, plan.settings, index)).join("")}
-      <div class="save-row"><button id="savePlanButton" class="button button-primary" type="button">Salvar arquivo do plano</button></div>`;
+      <div class="save-row">
+        <button id="savePlanButton" class="button button-secondary" type="button">Salvar arquivo do plano</button>
+        <button id="generatePlanPdfButton" class="button button-primary" type="button">Gerar PDF completo</button>
+      </div>`;
     byId("savePlanButton").addEventListener("click", saveActivePlan);
+    byId("generatePlanPdfButton").addEventListener("click", generateActivePlanPdf);
+  }
+
+  async function generateActivePlanPdf() {
+    if (!state.activePlan) return;
+    const generator = globalThis.CutPlanPdf;
+    if (!generator?.download) {
+      toast("O gerador de PDF não foi carregado. Atualize a página e tente novamente.", "error");
+      return;
+    }
+    const button = byId("generatePlanPdfButton");
+    const originalLabel = button?.textContent || "Gerar PDF completo";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Gerando PDF…";
+    }
+    try {
+      await generator.download(state.activePlan);
+      toast("PDF completo do plano gerado com sucesso.");
+    } catch (error) {
+      console.error("[Plano de corte PDF]", error);
+      toast(`Não foi possível gerar o PDF: ${error.message}`, "error");
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalLabel;
+      }
+    }
   }
 
   async function saveActivePlan() {
